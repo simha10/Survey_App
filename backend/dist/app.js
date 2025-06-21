@@ -8,6 +8,9 @@ const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const client_1 = require("@prisma/client");
 const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
+const surveyorRoutes_1 = __importDefault(require("./routes/surveyorRoutes"));
+const surveyRoutes_1 = __importDefault(require("./routes/surveyRoutes"));
+const authMiddleware_1 = require("./middleware/authMiddleware");
 dotenv_1.default.config();
 // Initialize Express app
 const app = (0, express_1.default)();
@@ -17,7 +20,9 @@ app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 // Routes
 app.use('/auth', authRoutes_1.default);
-// Add other routes (e.g., surveyRoutes, userRoutes) here when implemented
+// Protected routes
+app.use('/surveyors', authMiddleware_1.authenticateJWT, surveyorRoutes_1.default);
+app.use('/surveys', surveyRoutes_1.default);
 // Health check route
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', message: 'Server is running' });

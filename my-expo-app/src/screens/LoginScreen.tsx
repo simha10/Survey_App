@@ -3,28 +3,21 @@ import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Animated } 
 import { Picker } from '@react-native-picker/picker';
 import { Feather } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
-import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as SecureStore from 'expo-secure-store';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 const roles = ['SUPERADMIN', 'ADMIN', 'SUPERVISOR', 'SURVEYOR'];
 
-interface LoginScreenProps {
-  setUserRole: (role: string) => void;
-}
-
-export default function LoginScreen(props: LoginScreenProps) {
-  const { setUserRole } = props;
+export default function LoginScreen() {
+  const { login } = useAuth();
   const [form, setForm] = useState({ username: '', password: '', role: '' });
   const [errors, setErrors] = useState<any>({});
   const [loading, setLoading] = useState(false);
-  const navigation = useNavigation<any>();
   const { theme } = useTheme();
   const animatedValue = React.useRef(new Animated.Value(0)).current;
-  const API_BASE_URL = 'http://192.168.18.210:4000'; // Replace with your backend URL and port
+  const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
   React.useEffect(() => {
     Animated.timing(animatedValue, {
@@ -32,7 +25,7 @@ export default function LoginScreen(props: LoginScreenProps) {
       duration: 300,
       useNativeDriver: true,
     }).start();
-  }, []);
+  }, [animatedValue]);
 
   const handleChange = (field: string, value: string) => {
     setForm({ ...form, [field]: value });
@@ -55,11 +48,8 @@ export default function LoginScreen(props: LoginScreenProps) {
     try {
       const res = await axios.post(`${API_BASE_URL}/auth/login`, form);
       const { token, user } = res.data;
-      await SecureStore.setItemAsync('authToken', token);
-      await AsyncStorage.setItem('user', JSON.stringify(user));
-      setUserRole(user.role);
+      await login(user.role, token, user);
       Toast.show({ type: 'success', text1: 'Login successful' });
-      navigation.replace('AuthenticatedDrawer');
     } catch (err: any) {
       Toast.show({ type: 'error', text1: err.response?.data?.error || 'Network error' });
     } finally {

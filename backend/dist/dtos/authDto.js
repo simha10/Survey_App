@@ -13,5 +13,5 @@ exports.RegisterSchema = zod_1.z.object({
     username: zod_1.z.string().min(3).max(50),
     password: zod_1.z.string().min(8),
     role: zod_1.z.enum(['SUPERADMIN', 'ADMIN', 'SUPERVISOR', 'SURVEYOR']),
-    mobileNumber: zod_1.z.string().min(10).max(10),
+    mobileNumber: zod_1.z.string().length(10, { message: "Mobile number must be 10 digits" }),
 });

@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createStackNavigator } from '@react-navigation/stack';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import SideNav from '../components/SideNav';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -12,11 +11,14 @@ import SuperAdminDashboard from '../screens/SuperAdminDashboard';
 import AdminDashboard from '../screens/AdminDashboard';
 import SupervisorDashboard from '../screens/SupervisorDashboard';
 import SurveyorDashboard from '../screens/SurveyorDashboard';
+import AddSurveyForm from '../screens/AddSurveyForm';
+import { useAuth } from '../context/AuthContext';
+import CustomHeader from '../components/CustomHeader';
 
 const Drawer = createDrawerNavigator();
 const Stack = createStackNavigator();
 
-function AuthenticatedDrawer({ initialRouteName }: { initialRouteName: string }) {
+function AuthenticatedDrawer({ initialRouteName, userRole }: { initialRouteName: string; userRole: string | null }) {
   return (
     <Drawer.Navigator
       initialRouteName={initialRouteName}
@@ -43,68 +45,86 @@ function AuthenticatedDrawer({ initialRouteName }: { initialRouteName: string })
             default:
               title = route.name;
           }
-          const CustomHeader = require('../components/CustomHeader').default;
           return <CustomHeader title={title} />;
         },
         headerShown: true,
       })}>
-      <Drawer.Screen name="SuperAdminDashboard" component={SuperAdminDashboard} />
-      <Drawer.Screen name="AdminDashboard" component={AdminDashboard} />
-      <Drawer.Screen name="SupervisorDashboard" component={SupervisorDashboard} />
-      <Drawer.Screen name="SurveyorDashboard" component={SurveyorDashboard} />
+      {/* Role-specific screens */}
+      {userRole === 'SUPERADMIN' && <Drawer.Screen name="SuperAdminDashboard" component={SuperAdminDashboard} />}
+      {userRole === 'ADMIN' && <Drawer.Screen name="AdminDashboard" component={AdminDashboard} />}
+      {userRole === 'SUPERVISOR' && <Drawer.Screen name="SupervisorDashboard" component={SupervisorDashboard} />}
+      {userRole === 'SURVEYOR' && <Drawer.Screen name="SurveyorDashboard" component={SurveyorDashboard} />}
+      
+      {/* Common screens */}
       <Drawer.Screen name="ProfileScreen" component={ProfileScreen} />
     </Drawer.Navigator>
   );
 }
 
 export default function AppNavigator() {
-  const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const { userRole, isLoading } = useAuth();
 
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      console.warn('Splash screen timeout, moving to LoginScreen');
-      setLoading(false);
-    }, 3000); // Show splash screen for 3 seconds
-
-    return () => {
-      clearTimeout(timeoutId);
-    };
-  }, []);
-
-  if (loading) {
-    console.log('Loading is true, showing SplashScreen');
+  if (isLoading) {
     return <SplashScreen />;
   }
 
-  console.log('Loading is false, showing LoginScreen as initial route');
-
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="LoginScreen" screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="SplashScreen" component={SplashScreen} />
-        <Stack.Screen name="LoginScreen">
-          {(props: any) => <LoginScreen {...props} setUserRole={setUserRole} />}
-        </Stack.Screen>
-        <Stack.Screen name="RegisterScreen" component={RegisterScreen} />
-        <Stack.Screen name="AuthenticatedDrawer">
-          {(props: any) => (
-            <AuthenticatedDrawer
-              {...props}
-              initialRouteName={
-                userRole === 'SUPERADMIN'
-                  ? 'SuperAdminDashboard'
-                  : userRole === 'ADMIN'
-                    ? 'AdminDashboard'
-                    : userRole === 'SUPERVISOR'
+      <Stack.Navigator>
+        {userRole ? (
+          <>
+            <Stack.Screen
+              name="AuthenticatedDrawer"
+              options={{ headerShown: false }}>
+              {(props) => (
+                <AuthenticatedDrawer
+                  {...props}
+                  userRole={userRole}
+                  initialRouteName={
+                    userRole === 'SUPERADMIN'
+                      ? 'SuperAdminDashboard'
+                      : userRole === 'ADMIN'
+                      ? 'AdminDashboard'
+                      : userRole === 'SUPERVISOR'
                       ? 'SupervisorDashboard'
                       : userRole === 'SURVEYOR'
-                        ? 'SurveyorDashboard'
-                        : 'ProfileScreen'
-              }
+                      ? 'SurveyorDashboard'
+                      : 'ProfileScreen'
+                  }
+                />
+              )}
+            </Stack.Screen>
+            <Stack.Screen
+              name="AddSurveyForm"
+              component={AddSurveyForm}
+              options={{
+                headerShown: true,
+                header: () => <CustomHeader title="Add New Survey" />,
+              }}
             />
-          )}
-        </Stack.Screen>
+            <Stack.Screen
+              name="RegisterScreen"
+              component={RegisterScreen}
+              options={{
+                headerShown: true,
+                header: () => <CustomHeader title="Create New User" />,
+              }}
+            />
+          </>
+        ) : (
+          <>
+            <Stack.Screen
+              name="LoginScreen"
+              component={LoginScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="RegisterScreen"
+              component={RegisterScreen}
+              options={{ headerShown: false }}
+            />
+          </>
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );
