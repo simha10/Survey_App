@@ -1,0 +1,31 @@
+First things first, I want to be specific with you regarding some areas and expect the same with you to be with the cursor prompt. 
+
+Preferred Tech-Stack - 
+Frontend: React Native (Expo)
+Backend: Node.js with Express
+Database: Prisma ORM
+Authentication: JWT (JSON Web Tokens)
+Validation: Zod
+Password Hashing: bcrypt
+Local Storage: React Native Async Storage
+
+Constraints and Restrictions - 
+1. Only either Surveyors or Supervisors out of the Users can do the survey part.
+2. Also, there are specific fields with specific input structure as can be seen in the provided text file.
+3. Options or choices for the Drop-downs need to be taken from the Master Tables that are already filled with the static data which remain same and doesn't change over the course often.
+
+Form Design Part - 
+1. There are 3 different types of surveyable properties - Residential, Non-Residential and Mix.
+2. For Residential, some of the fields should not appear in form which are meant for Non-Residential and Mix Properties only and not meant for the Residential ones.
+3. The form fields have been down into several parts and placed in separate tables for convenience and ease of maintenance, form too should follow the same breakage.
+4. First, a page should appear right after login of Surveyor that displays 4 different clickable cards - Residential, Non-Residential, Mix and Sync Data options.
+5. Then should appear a page where a button is available called Add Survey at the bottom of the screen which upon clicking opens the Survey Input Form.
+6. Save Survey button at the bottom end of the form
+
+Prompt Generation Part - 
+1. Tell Cursor to follow the specified pattern as per the form specifications provided to you through the .txt file.
+2. Cursor should generate the form in a such a way that, Input Field Name, Input Field should appear with no need for any Placeholders.
+3. Cursor should generate a neat, clean form with provided precise fields and input types along with some clean UI.
+4. Cursor has to highlight the Input Field Names to make the Surveyor not to overlook any.
+5. Fields with * are mandatory fields which makes the input field to have required in the form.
+6. All the Survey Fields should get stored in React Native Async Storage before being pushed to DB manually by the Surveyor.

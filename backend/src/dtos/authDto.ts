@@ -13,6 +13,6 @@ export const RegisterSchema = z.object({
   username: z.string().min(3).max(50),
   password: z.string().min(8),
   role: z.enum(['SUPERADMIN', 'ADMIN', 'SUPERVISOR', 'SURVEYOR']),
-  mobileNumber: z.string().min(10).max(10),
+  mobileNumber: z.string().length(10, { message: "Mobile number must be 10 digits" }),
 });
 export type RegisterDto = z.infer<typeof RegisterSchema>;

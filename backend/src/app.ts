@@ -3,6 +3,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 import authRoutes from './routes/authRoutes';
+import surveyorRoutes from './routes/surveyorRoutes';
+import surveyRoutes from './routes/surveyRoutes';
+import { authenticateJWT } from './middleware/authMiddleware';
 
 dotenv.config();
 
@@ -16,7 +19,10 @@ app.use(express.json());
 
 // Routes
 app.use('/auth', authRoutes);
-// Add other routes (e.g., surveyRoutes, userRoutes) here when implemented
+
+// Protected routes
+app.use('/surveyors', authenticateJWT, surveyorRoutes);
+app.use('/surveys', surveyRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {

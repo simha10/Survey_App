@@ -72,7 +72,7 @@ export async function register(dto: RegisterDto, creator: any) {
           username,
           password: hashed,
           isActive: true,
-          mobileNumber: mobileNumber
+          mobileNumber: mobileNumber,
         },
       });
       // Create UserRoleMapping

@@ -89,7 +89,7 @@ function register(dto, creator) {
                         username,
                         password: hashed,
                         isActive: true,
-                        mobileNumber: mobileNumber
+                        mobileNumber: mobileNumber,
                     },
                 });
                 // Create UserRoleMapping

@@ -1,0 +1,62 @@
+Survey Details Block
+--------------------
+*ULB: Pre-filled with the ULB Surveyor got assigned
+*Zone: Pre-filled with the Zone Surveyor got assigned
+*Ward: Pre-filled with the Ward Surveyor got assigned
+*Mohalla: Dropdown Menu - List of Mohalla present in the Ward through Ward-Mohalla Mapping Table
+*Entry Date and Time: Timestamp of the point Survey form got opened
+Parcel ID: Text box for Surveyor to enter
+*Map ID: Text box for Surveyor to enter
+*GIS ID: Text box for Surveyor to enter
+Sub-GIS ID: Text box for Surveyor to enter
+
+Property Details Block
+----------------------
+*Response Type: Dropdown Menu - Options from Response Type Master
+*Old House Number: Text box for Surveyor to enter
+Electricity Consumer Name: Text box for Surveyor to enter
+Water Sewerage Connection Number: Text box for Surveyor to enter
+*Respondent Name: Text box for Surveyor to enter
+*Respondent Status: Dropdown Menu - Options from Respondent Status Master
+
+Owner Details Block
+-------------------
+*Owner Name: Text box for Surveyor to enter
+*Father/Husband Name: Text box for Surveyor to enter
+Mobile Number: Text box for Surveyor to enter
+Aadhar Number: Text box for Surveyor to enter
+
+Location Details Block
+----------------------
+Property Latitude: Text box for Surveyor to enter
+Property Longitude: Text box for Surveyor to enter
+*Assessment Year: Pre-filled from backend as given by the Developer
+*Property Type: Dropdown Menu - Options from Property Type Master
+Building Name: Text box for Surveyor to enter
+*Road Type: Dropdown Menu - Options from Road Type Master
+*Construction Year - Dropdown Menu - last 50 years for choosing
+*Construction Type: Dropdown Menu - Options from Construction Type Master
+Address/Road Name: Text box for Surveyor to enter
+*Locality: Text box for Surveyor to enter
+*PIN Code: Text box for Surveyor to enter
+Landmark: Text box for Surveyor to enter
+Four Way-East: Text box for Surveyor to enter
+Four Way-West: Text box for Surveyor to enter
+Four Way-North: Text box for Surveyor to enter
+Four Way-South: Text box for Surveyor to enter
+New Ward: Pre-filled with assignment from backend
+
+Other Details
+-------------
+*Source of Water: Dropdown Menu - Options from Water Source Master
+*Rain Water Harvesting System (is Available): Dropdown Menu - YES or NO
+*Plantation (is Available): Dropdown Menu - YES or NO - Field not to be shown for Residential
+*Parking (is Available): Dropdown Menu - YES or NO - Field not to be shown for Residential
+*Pollution (is Created): Dropdown Menu - YES or NO - Field not to be shown for Residential
+*Pollution Measurement Taken: Text Box for Surveyor to enter - Field not to be shown for Residential
+*Water Supply within 200 Meters: Checkbox -  YES or NO handling in backend
+*Sewerage Line within 100 Meters: Checkbox -  YES or NO handling in backend
+*Disposal Type: Dropdown Menu - Options from Disposal Type Master
+*Total Plot Area: Text Box for Surveyor to enter
+*Builtup Area of Ground Floor: Text Box for Surveyor to enter
+Remarks: Text Box for Surveyor to enter

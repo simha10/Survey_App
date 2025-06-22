@@ -62,6 +62,7 @@ export default function RegisterScreen() {
     if (!form.password || form.password.length < 8) errs.password = 'Password min 8 chars';
     if (form.password !== form.confirmPassword) errs.confirmPassword = 'Passwords do not match';
     if (!form.role) errs.role = 'Role required';
+    if (!form.mobileNumber || form.mobileNumber.length !== 10) errs.mobileNumber = 'Mobile number must be 10 digits';
     return errs;
   };
 
@@ -217,6 +218,9 @@ export default function RegisterScreen() {
               accessibilityLabel="Enter mobile number"
             />
           </View>
+          {errors.mobileNumber && (
+            <Text className="ml-3 text-sm font-medium text-red-400">{errors.mobileNumber}</Text>
+          )}
           <TouchableOpacity
             onPress={handleRegister}
             disabled={loading}

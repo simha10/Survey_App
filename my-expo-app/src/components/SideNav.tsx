@@ -4,7 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import { DrawerContentComponentProps } from '@react-navigation/drawer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
-import { logout } from '../services/authService';
+import { useAuth } from '../context/AuthContext';
 import Toast from 'react-native-toast-message';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -14,6 +14,7 @@ const menuConfig = [
 ];
 
 export default function SideNav(props: DrawerContentComponentProps) {
+  const { userRole, logout } = useAuth();
   const [user, setUser] = useState<{ username: string; role: string } | null>(null);
   const { theme, toggleTheme } = useTheme();
   const animatedValue = React.useRef(new Animated.Value(0)).current;
@@ -52,7 +53,6 @@ export default function SideNav(props: DrawerContentComponentProps) {
   const handleLogout = async () => {
     await logout();
     Toast.show({ type: 'success', text1: 'Logged out successfully' });
-    props.navigation.reset({ index: 0, routes: [{ name: 'LoginScreen' }] });
   };
 
   const handleThemeToggle = () => {

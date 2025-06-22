@@ -20,24 +20,37 @@ const client_1 = require("@prisma/client");
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 const prisma = new client_1.PrismaClient();
 function authenticateJWT(req, res, next) {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: 'Missing or invalid token' });
-    }
-    const token = authHeader.split(' ')[1];
-    try {
-        const payload = jsonwebtoken_1.default.verify(token, JWT_SECRET);
-        req.user = payload;
-        next();
-    }
-    catch (err) {
-        return res.status(401).json({ error: 'Invalid token' });
-    }
+    return __awaiter(this, void 0, void 0, function* () {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Missing or invalid token' });
+        }
+        const token = authHeader.split(' ')[1];
+        try {
+            const payload = jsonwebtoken_1.default.verify(token, JWT_SECRET);
+            const userRoleMappings = yield prisma.userRoleMapping.findMany({
+                where: { userId: payload.userId, isActive: true },
+                include: { role: true },
+            });
+            if (!userRoleMappings.length) {
+                return res.status(403).json({ error: 'User has no active roles' });
+            }
+            const roles = userRoleMappings.map((mapping) => mapping.role.roleName);
+            req.user = {
+                userId: payload.userId,
+                roles,
+            };
+            next();
+        }
+        catch (err) {
+            return res.status(401).json({ error: 'Invalid token' });
+        }
+    });
 }
-function restrictToRoles(roles) {
+function restrictToRoles(allowedRoles) {
     return (req, res, next) => {
         const user = req.user;
-        if (!user || !roles.includes(user.role)) {
+        if (!user || !user.roles || !user.roles.some(role => allowedRoles.includes(role))) {
             return res.status(403).json({ error: 'Forbidden: insufficient role' });
         }
         next();

@@ -2,8 +2,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-export const API_BASE_URL = 'http://192.168.18.210:4000'; // <-- Set to your computer's IP for mobile access
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ;
 
 export async function login({ username, password, role }: { username: string; password: string; role: string }) {
   try {
@@ -79,6 +78,6 @@ export async function getProfile() {
       // fallback to cached user
       const cached = await AsyncStorage.getItem('user');
       if (cached) return JSON.parse(cached);
-      throw 'Failed to load profile';
+      throw `Failed to load profile ${err}`;
     }
   }
