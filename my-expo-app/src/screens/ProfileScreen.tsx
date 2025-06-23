@@ -14,6 +14,17 @@ export default function ProfileScreen() {
   const { theme } = useTheme();
   const animatedValue = React.useRef(new Animated.Value(0)).current;
 
+  // Map role codes to display names
+  const getRoleDisplayName = (role: string) => {
+    const roleMap: { [key: string]: string } = {
+      SUPERADMIN: 'Super Admin',
+      ADMIN: 'Admin',
+      SUPERVISOR: 'Supervisor',
+      SURVEYOR: 'Surveyor',
+    };
+    return roleMap[role] || role;
+  };
+
   useEffect(() => {
     (async () => {
       try {
@@ -35,7 +46,9 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView edges={['left', 'right', 'bottom']} className="flex-1 bg-white dark:bg-gray-900 justify-center items-center">
+      <SafeAreaView
+        edges={['left', 'right', 'bottom']}
+        className="flex-1 items-center justify-center bg-white dark:bg-gray-900">
         <ActivityIndicator
           size="large"
           color={theme === 'dark' ? '#e5e7eb' : '#2563eb'}
@@ -48,7 +61,7 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} className="flex-1 bg-white dark:bg-gray-900">
       <Animated.View
-        className="flex-1 p-4 space-y-4"
+        className="flex-1 space-y-4 p-4"
         style={{
           opacity: animatedValue,
           transform: [
@@ -59,45 +72,48 @@ export default function ProfileScreen() {
               }),
             },
           ],
-        }}
-      >
-        <Text className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-          Profile
-        </Text>
-        <View className="rounded-xl bg-white dark:bg-gray-800 p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+        }}>
+        <Text className="mb-4 text-2xl font-bold text-gray-900 dark:text-gray-100">Profile</Text>
+        <View className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
           <View className="space-y-2">
             <Text
               className="text-lg font-medium text-gray-900 dark:text-gray-100"
-              accessibilityLabel={`Name: ${profile?.name || 'Not available'}`}
-            >
+              accessibilityLabel={`Name: ${profile?.name || 'Not available'}`}>
               Name: {profile?.name || 'N/A'}
             </Text>
             <Text
               className="text-lg font-medium text-gray-900 dark:text-gray-100"
-              accessibilityLabel={`Username: ${profile?.username || 'Not available'}`}
-            >
+              accessibilityLabel={`Username: ${profile?.username || 'Not available'}`}>
               Username: {profile?.username || 'N/A'}
             </Text>
             <Text
               className="text-lg font-medium text-gray-900 dark:text-gray-100"
-              accessibilityLabel={`Mobile: ${profile?.mobileNumber || 'Not available'}`}
-            >
+              accessibilityLabel={`Mobile: ${profile?.mobileNumber || 'Not available'}`}>
               Mobile: {profile?.mobileNumber || 'N/A'}
             </Text>
             <Text
               className="text-lg font-medium text-gray-900 dark:text-gray-100"
-              accessibilityLabel={`Role: ${profile?.role || 'Not available'}`}
-            >
-              Role: {profile?.role || 'N/A'}
+              accessibilityLabel={`Role: ${profile?.role || 'Not available'}`}>
+              Role: {getRoleDisplayName(profile?.role) || 'N/A'}
+            </Text>
+            <Text
+              className="text-lg font-medium text-gray-900 dark:text-gray-100"
+              accessibilityLabel={`Status: ${profile?.isActive ? 'Active' : 'Inactive'}`}>
+              Status: {profile?.isActive ? 'Active' : 'Inactive'}
+            </Text>
+            <Text
+              className="text-lg font-medium text-gray-900 dark:text-gray-100"
+              accessibilityLabel={`Member Since: ${profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'N/A'}`}>
+              Member Since:{' '}
+              {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'N/A'}
             </Text>
           </View>
         </View>
         <TouchableOpacity
           disabled={true}
-          className="rounded-xl p-3 shadow-sm bg-blue-300"
+          className="rounded-xl bg-blue-300 p-3 shadow-sm"
           accessibilityLabel="Edit profile (disabled)"
-          accessibilityRole="button"
-        >
+          accessibilityRole="button">
           <Text className="text-center text-lg font-semibold text-white">Edit Profile</Text>
         </TouchableOpacity>
         <Toast />

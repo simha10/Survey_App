@@ -70,6 +70,7 @@ export async function register(dto: RegisterDto, creator: any) {
       const user = await tx.usersMaster.create({
         data: {
           username,
+          name,
           password: hashed,
           isActive: true,
           mobileNumber: mobileNumber,
@@ -115,6 +116,7 @@ export async function register(dto: RegisterDto, creator: any) {
       return {
         userId: user.userId,
         username: user.username,
+        name: user.name,
         role: roleRecord.roleName,
       };
     });

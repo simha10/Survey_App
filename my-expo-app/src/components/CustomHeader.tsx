@@ -39,13 +39,15 @@ const CustomHeader: React.FC<CustomHeaderProps> = ({ title }) => {
             },
           ],
         }}>
-        <TouchableOpacity
-          onPress={() => navigation.openDrawer()}
-          className="rounded-lg p-2 hover:bg-gray-100 active:bg-gray-200 dark:hover:bg-gray-800 dark:active:bg-gray-700"
-          accessibilityLabel="Open navigation drawer"
-          accessibilityRole="button">
-          <Feather name="menu" size={28} color={theme === 'dark' ? '#ffffff' : '#1f2937'} />
-        </TouchableOpacity>
+        {typeof navigation.openDrawer === 'function' && (
+          <TouchableOpacity
+            onPress={() => navigation.openDrawer()}
+            className="rounded-lg p-2 hover:bg-gray-100 active:bg-gray-200 dark:hover:bg-gray-800 dark:active:bg-gray-700"
+            accessibilityLabel="Open navigation drawer"
+            accessibilityRole="button">
+            <Feather name="menu" size={28} color={theme === 'dark' ? '#ffffff' : '#1f2937'} />
+          </TouchableOpacity>
+        )}
         <Text className="text-xl font-bold text-gray-800 dark:text-white">{title}</Text>
       </Animated.View>
     </SafeAreaView>

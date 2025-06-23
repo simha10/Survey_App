@@ -269,6 +269,7 @@ model WardStatusMaster {
 model UsersMaster {
   userId                        String                @id @default(uuid())
   username                      String                @db.Char(50)
+  name                          String?               @db.VarChar(100)
   password                      String                @db.VarChar(200)
   mobileNumber                  String?               @db.VarChar(20)
   isCreatedAt                   DateTime              @default(now())

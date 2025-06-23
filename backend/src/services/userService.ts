@@ -29,7 +29,7 @@ async function validateUserRole(userId: string, expectedRole: string) {
 
 // 1. Update User Profile
 export async function updateProfile(dto: UpdateProfileDto, userId: string) {
-  const { name, mobileNumber, email } = dto;
+  const { name, mobileNumber } = dto;
 
   try {
     const user = await prisma.usersMaster.findUnique({
@@ -48,7 +48,7 @@ export async function updateProfile(dto: UpdateProfileDto, userId: string) {
 
     const updateData: any = {};
     if (mobileNumber) updateData.mobileNumber = mobileNumber;
-    if (name) updateData.description = name;
+    if (name) updateData.name = name;
 
     const result = await prisma.$transaction(async (tx) => {
       // Update UsersMaster
@@ -82,9 +82,8 @@ export async function updateProfile(dto: UpdateProfileDto, userId: string) {
     return {
       userId: result.userId,
       username: result.username,
-      name: result.description,
+      name: result.name,
       mobileNumber: result.mobileNumber,
-      email: email,
       status: 'Profile updated successfully',
     };
   } catch (err: any) {
@@ -180,7 +179,7 @@ export async function getUsers(dto: GetUsersDto, requestingUserId: string) {
     if (search) {
       whereClause.OR = [
         { username: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search, mode: 'insensitive' } },
         { mobileNumber: { contains: search } },
       ];
     }
@@ -512,7 +511,7 @@ export async function searchUsers(dto: SearchUsersDto) {
     const whereClause: any = {
       OR: [
         { username: { contains: query, mode: 'insensitive' } },
-        { description: { contains: query, mode: 'insensitive' } },
+        { name: { contains: query, mode: 'insensitive' } },
         { mobileNumber: { contains: query } },
       ],
     };
@@ -569,9 +568,8 @@ export async function getUserProfile(userId: string) {
     return {
       userId: user.userId,
       username: user.username,
-      name: user.description,
+      name: user.name,
       mobileNumber: user.mobileNumber,
-      email: null,
       isActive: user.isActive,
       role: user.userRoleMaps[0]?.role.roleName || null,
       createdAt: user.isCreatedAt,

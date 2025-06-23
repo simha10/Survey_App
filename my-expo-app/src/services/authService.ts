@@ -69,7 +69,7 @@ export async function logout() {
 export async function getProfile() {
     try {
       const token = await SecureStore.getItemAsync('authToken');
-      const res = await axios.get(`${API_BASE_URL}/users/profile`, {
+      const res = await axios.get(`${API_BASE_URL}/user/profile`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       await AsyncStorage.setItem('user', JSON.stringify(res.data));

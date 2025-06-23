@@ -70,7 +70,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
             userId: profile.userId,
             username: profile.username,
             role: profile.userRoleMaps[0]?.role?.roleName || "NO_ROLE",
-            name: profile.description,
+            name: profile.name,
             mobileNumber: profile.mobileNumber,
             isActive: profile.isActive,
           };

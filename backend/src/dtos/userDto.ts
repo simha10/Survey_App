@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 // User Profile DTOs
 export const UpdateProfileSchema = z.object({
-  name: z.string().min(2).max(50).optional(),
+  name: z.string().min(2).max(100).optional(),
   mobileNumber: z.string().regex(/^[0-9]{10}$/).optional(),
   email: z.string().email().optional(), // This will be stored in description field
 });
@@ -88,7 +88,7 @@ export type SearchUsersDto = z.infer<typeof SearchUsersSchema>;
 export interface UserProfileResponse {
   userId: string;
   username: string;
-  name: string | null; // This comes from description field
+  name: string | null; // This now comes from the name field
   mobileNumber: string | null;
   email: string | null; // This comes from the request, not stored in DB
   isActive: boolean;
@@ -101,7 +101,7 @@ export interface UserListResponse {
   users: Array<{
     userId: string;
     username: string;
-    description: string | null;
+    name: string | null; // Updated to use name field
     mobileNumber: string | null;
     isActive: boolean;
     isCreatedAt: Date;

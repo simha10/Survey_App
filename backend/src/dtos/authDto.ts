@@ -9,7 +9,7 @@ export const LoginSchema = z.object({
 export type LoginDto = z.infer<typeof LoginSchema>;
 
 export const RegisterSchema = z.object({
-  name: z.string().min(3).max(50),
+  name: z.string().min(3).max(100),
   username: z.string().min(3).max(50),
   password: z.string().min(8),
   role: z.enum(['SUPERADMIN', 'ADMIN', 'SUPERVISOR', 'SURVEYOR']),

@@ -28,7 +28,7 @@ export interface LoginResponse {
 export interface User {
   userId: string;
   username: string;
-  name?: string; // description field from backend
+  name: string | null;
   mobileNumber?: string;
   isActive: boolean;
   role?: string; // Direct role field from backend
