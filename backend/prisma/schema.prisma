@@ -542,10 +542,19 @@ model OtherDetails {
   disposalType                DisposalTypeMaster @relation(fields: [disposalTypeId], references: [disposalTypeId])
 }
 
+model FloorMaster {
+  floornumberId   Int      @id @default(autoincrement())
+  floorNumberName String   @db.VarChar(50)
+  isActive        Boolean  @default(true)
+  description     String?  @db.Text
+  residentialPropertyAssessments    ResidentialPropertyAssessment[]
+  nonResidentialPropertyAssessments NonResidentialPropertyAssessment[]
+}
+
 model ResidentialPropertyAssessment {
   floorAssessmentId     String                   @id @default(uuid())
   surveyUniqueCode      String
-  floorNumber           String                   @db.VarChar(50)
+  floornumberId         Int
   occupancyStatusId     String
   constructionNatureId  String
   coveredArea           Decimal                  @db.Decimal(10, 2) // changed type from Float to Decimal
@@ -554,6 +563,7 @@ model ResidentialPropertyAssessment {
   allGarageArea         Decimal                  @db.Decimal(10, 2) // changed type from Float to Decimal
   carpetArea            Decimal                  @db.Decimal(10, 2) // changed type from Float to Decimal
   survey                SurveyDetails            @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
+  floorMaster           FloorMaster              @relation(fields: [floornumberId], references: [floornumberId])
   occupancyStatus       OccupancyStatusMaster    @relation(fields: [occupancyStatusId], references: [occupancyStatusId])
   constructionNature    ConstructionNatureMaster @relation(fields: [constructionNatureId], references: [constructionNatureId])
 }
@@ -561,7 +571,7 @@ model ResidentialPropertyAssessment {
 model NonResidentialPropertyAssessment {
   floorAssessmentId    String                      @id @default(uuid())
   surveyUniqueCode     String
-  floorNumber          String                      @db.VarChar(50)
+  floornumberId        Int
   nrPropertyCategoryId String
   nrSubCategoryId      String
   establishmentName    String                      @db.Text
@@ -570,6 +580,7 @@ model NonResidentialPropertyAssessment {
   occupancyStatusId    String
   constructionNatureId String
   builtupArea          Decimal                     @db.Decimal(10, 2) // changed type from Float to Decimal
+  floorMaster          FloorMaster                 @relation(fields: [floornumberId], references: [floornumberId])
   nrPropertyCategory   NrPropertyCategoryMaster    @relation(fields: [nrPropertyCategoryId], references: [propertyCategoryId], onDelete: Restrict)
   nrSubCategory        NrPropertySubCategoryMaster @relation(fields: [nrSubCategoryId], references: [subCategoryId], onDelete: Restrict)
   occupancyStatus      OccupancyStatusMaster       @relation(fields: [occupancyStatusId], references: [occupancyStatusId])
