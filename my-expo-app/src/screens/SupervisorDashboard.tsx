@@ -1,11 +1,29 @@
-import React from 'react';
-import { View, Text, Animated } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, Animated, Alert, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 
 export default function SupervisorDashboard() {
   const { theme } = useTheme();
   const animatedValue = React.useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const onBackPress = () => {
+      Alert.alert('Exit App', 'Are you sure you want to exit?', [
+        {
+          text: 'Cancel',
+          onPress: () => null,
+          style: 'cancel',
+        },
+        { text: 'YES', onPress: () => BackHandler.exitApp() },
+      ]);
+      return true;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+    return () => subscription.remove();
+  }, []);
 
   React.useEffect(() => {
     Animated.timing(animatedValue, {

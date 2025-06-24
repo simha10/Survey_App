@@ -2,11 +2,23 @@ import 'react-native-gesture-handler';
 import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { View, Text } from 'react-native';
 import AppNavigator from './src/navigation/AppNavigator';
-import { ThemeProvider } from './src/context/ThemeContext';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { AuthProvider } from './src/context/AuthContext';
 
 import './global.css';
+
+function AppWrapper() {
+  const { theme } = useTheme();
+
+  return (
+    <View key={theme} className={theme === 'dark' ? 'dark flex-1' : 'flex-1'}>
+      <Text className="text-black dark:text-white">Current theme: {theme}</Text>
+      <AppNavigator />
+    </View>
+  );
+}
 
 export default function App() {
   return (
@@ -14,7 +26,7 @@ export default function App() {
       <SafeAreaProvider>
         <ThemeProvider>
           <AuthProvider>
-            <AppNavigator />
+            <AppWrapper />
           </AuthProvider>
         </ThemeProvider>
       </SafeAreaProvider>

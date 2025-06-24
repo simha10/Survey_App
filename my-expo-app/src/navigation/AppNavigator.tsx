@@ -2,6 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createStackNavigator } from '@react-navigation/stack';
+import { View } from 'react-native';
 import SideNav from '../components/SideNav';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -14,6 +15,7 @@ import SurveyorDashboard from '../screens/SurveyorDashboard';
 import AddSurveyForm from '../screens/AddSurveyForm';
 import { useAuth } from '../context/AuthContext';
 import CustomHeader from '../components/CustomHeader';
+import { useTheme } from '../context/ThemeContext';
 
 const Drawer = createDrawerNavigator();
 const Stack = createStackNavigator();
@@ -63,69 +65,72 @@ function AuthenticatedDrawer({ initialRouteName, userRole }: { initialRouteName:
 
 export default function AppNavigator() {
   const { userRole, isLoading } = useAuth();
+  const { theme } = useTheme();
 
   if (isLoading) {
     return <SplashScreen />;
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator>
-        {userRole ? (
-          <>
-            <Stack.Screen
-              name="AuthenticatedDrawer"
-              options={{ headerShown: false }}>
-              {(props) => (
-                <AuthenticatedDrawer
-                  {...props}
-                  userRole={userRole}
-                  initialRouteName={
-                    userRole === 'SUPERADMIN'
-                      ? 'SuperAdminDashboard'
-                      : userRole === 'ADMIN'
-                      ? 'AdminDashboard'
-                      : userRole === 'SUPERVISOR'
-                      ? 'SupervisorDashboard'
-                      : userRole === 'SURVEYOR'
-                      ? 'SurveyorDashboard'
-                      : 'ProfileScreen'
-                  }
-                />
-              )}
-            </Stack.Screen>
-            <Stack.Screen
-              name="AddSurveyForm"
-              component={AddSurveyForm}
-              options={{
-                headerShown: true,
-                header: () => <CustomHeader title="Add New Survey" />,
-              }}
-            />
-            <Stack.Screen
-              name="RegisterScreen"
-              component={RegisterScreen}
-              options={{
-                headerShown: true,
-                header: () => <CustomHeader title="Create New User" />,
-              }}
-            />
-          </>
-        ) : (
-          <>
-            <Stack.Screen
-              name="LoginScreen"
-              component={LoginScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="RegisterScreen"
-              component={RegisterScreen}
-              options={{ headerShown: false }}
-            />
-          </>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+    <View key={theme} className={theme === 'dark' ? 'dark flex-1' : 'flex-1'}>
+      <NavigationContainer>
+        <Stack.Navigator>
+          {userRole ? (
+            <>
+              <Stack.Screen
+                name="AuthenticatedDrawer"
+                options={{ headerShown: false }}>
+                {(props) => (
+                  <AuthenticatedDrawer
+                    {...props}
+                    userRole={userRole}
+                    initialRouteName={
+                      userRole === 'SUPERADMIN'
+                        ? 'SuperAdminDashboard'
+                        : userRole === 'ADMIN'
+                        ? 'AdminDashboard'
+                        : userRole === 'SUPERVISOR'
+                        ? 'SupervisorDashboard'
+                        : userRole === 'SURVEYOR'
+                        ? 'SurveyorDashboard'
+                        : 'ProfileScreen'
+                    }
+                  />
+                )}
+              </Stack.Screen>
+              <Stack.Screen
+                name="AddSurveyForm"
+                component={AddSurveyForm}
+                options={{
+                  headerShown: true,
+                  header: () => <CustomHeader title="Add New Survey" />,
+                }}
+              />
+              <Stack.Screen
+                name="RegisterScreen"
+                component={RegisterScreen}
+                options={{
+                  headerShown: true,
+                  header: () => <CustomHeader title="Create New User" />,
+                }}
+              />
+            </>
+          ) : (
+            <>
+              <Stack.Screen
+                name="LoginScreen"
+                component={LoginScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="RegisterScreen"
+                component={RegisterScreen}
+                options={{ headerShown: false }}
+              />
+            </>
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
+    </View>
   );
 }
