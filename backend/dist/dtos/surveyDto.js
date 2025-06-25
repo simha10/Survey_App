@@ -62,10 +62,33 @@ const OtherDetailsSchema = zod_1.z.object({
     builtupAreaOfGroundFloor: zod_1.z.number(),
     remarks: zod_1.z.string().optional(),
 });
+const ResidentialPropertyAssessmentSchema = zod_1.z.object({
+    floornumberId: zod_1.z.number(),
+    occupancyStatusId: zod_1.z.string().uuid(),
+    constructionNatureId: zod_1.z.string().uuid(),
+    coveredArea: zod_1.z.number(),
+    allRoomVerandaArea: zod_1.z.number(),
+    allBalconyKitchenArea: zod_1.z.number(),
+    allGarageArea: zod_1.z.number(),
+    carpetArea: zod_1.z.number(),
+});
+const NonResidentialPropertyAssessmentSchema = zod_1.z.object({
+    floornumberId: zod_1.z.number(),
+    nrPropertyCategoryId: zod_1.z.string().uuid(),
+    nrSubCategoryId: zod_1.z.string().uuid(),
+    establishmentName: zod_1.z.string(),
+    licenseNo: zod_1.z.string().max(20).optional(),
+    licenseExpiryDate: zod_1.z.string().datetime().optional(),
+    occupancyStatusId: zod_1.z.string().uuid(),
+    constructionNatureId: zod_1.z.string().uuid(),
+    builtupArea: zod_1.z.number(),
+});
 exports.CreateSurveyDtoSchema = zod_1.z.object({
     surveyDetails: SurveyDetailsSchema,
     propertyDetails: PropertyDetailsSchema,
     ownerDetails: OwnerDetailsSchema,
     locationDetails: LocationDetailsSchema,
     otherDetails: OtherDetailsSchema,
+    residentialPropertyAssessments: zod_1.z.array(ResidentialPropertyAssessmentSchema).optional(),
+    nonResidentialPropertyAssessments: zod_1.z.array(NonResidentialPropertyAssessmentSchema).optional(),
 });

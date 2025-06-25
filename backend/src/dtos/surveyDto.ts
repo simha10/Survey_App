@@ -66,6 +66,28 @@ const OtherDetailsSchema = z.object({
   remarks: z.string().optional(),
 });
 
+const ResidentialPropertyAssessmentSchema = z.object({
+  floornumberId: z.number(),
+  occupancyStatusId: z.string().uuid(),
+  constructionNatureId: z.string().uuid(),
+  coveredArea: z.number(),
+  allRoomVerandaArea: z.number(),
+  allBalconyKitchenArea: z.number(),
+  allGarageArea: z.number(),
+  carpetArea: z.number(),
+});
+
+const NonResidentialPropertyAssessmentSchema = z.object({
+  floornumberId: z.number(),
+  nrPropertyCategoryId: z.string().uuid(),
+  nrSubCategoryId: z.string().uuid(),
+  establishmentName: z.string(),
+  licenseNo: z.string().max(20).optional(),
+  licenseExpiryDate: z.string().datetime().optional(),
+  occupancyStatusId: z.string().uuid(),
+  constructionNatureId: z.string().uuid(),
+  builtupArea: z.number(),
+});
 
 export const CreateSurveyDtoSchema = z.object({
   surveyDetails: SurveyDetailsSchema,
@@ -73,6 +95,8 @@ export const CreateSurveyDtoSchema = z.object({
   ownerDetails: OwnerDetailsSchema,
   locationDetails: LocationDetailsSchema,
   otherDetails: OtherDetailsSchema,
+  residentialPropertyAssessments: z.array(ResidentialPropertyAssessmentSchema).optional(),
+  nonResidentialPropertyAssessments: z.array(NonResidentialPropertyAssessmentSchema).optional(),
 });
 
 export type CreateSurveyDto = z.infer<typeof CreateSurveyDtoSchema>; 

@@ -13,6 +13,7 @@ import AdminDashboard from '../screens/AdminDashboard';
 import SupervisorDashboard from '../screens/SupervisorDashboard';
 import SurveyorDashboard from '../screens/SurveyorDashboard';
 import AddSurveyForm from '../screens/AddSurveyForm';
+import FloorDetailsScreen from '../screens/FloorDetailsScreen';
 import { useAuth } from '../context/AuthContext';
 import CustomHeader from '../components/CustomHeader';
 import { useTheme } from '../context/ThemeContext';
@@ -104,6 +105,14 @@ export default function AppNavigator() {
                 options={{
                   headerShown: true,
                   header: () => <CustomHeader title="Add New Survey" />,
+                }}
+              />
+              <Stack.Screen
+                name="FloorDetailsScreen"
+                component={FloorDetailsScreen}
+                options={{
+                  headerShown: true,
+                  header: () => <CustomHeader title="Floor Details" />,
                 }}
               />
               <Stack.Screen

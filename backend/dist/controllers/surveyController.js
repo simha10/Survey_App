@@ -53,12 +53,23 @@ const submitSurvey = (req, res) => __awaiter(void 0, void 0, void 0, function* (
         if (!uploadedById) {
             return res.status(401).json({ message: 'User not authenticated' });
         }
+        // Optionally, enforce at least one floor-wise assessment if required
+        // if (!surveyData.residentialPropertyAssessments?.length && !surveyData.nonResidentialPropertyAssessments?.length) {
+        //   return res.status(400).json({ message: 'At least one floor-wise assessment is required.' });
+        // }
         const newSurvey = yield surveyService.createSurvey(surveyData, uploadedById);
         res.status(201).json(newSurvey);
     }
     catch (error) {
         if (error instanceof Error) {
-            return res.status(400).json({ message: 'Invalid request body', errors: JSON.parse(error.message) });
+            let errors;
+            try {
+                errors = JSON.parse(error.message);
+            }
+            catch (_b) {
+                errors = error.message;
+            }
+            return res.status(400).json({ message: 'Invalid request body', errors });
         }
         res.status(500).json({ message: 'Error submitting survey', error });
     }

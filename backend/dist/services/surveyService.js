@@ -13,7 +13,7 @@ exports.createSurvey = void 0;
 const client_1 = require("@prisma/client");
 const prisma = new client_1.PrismaClient();
 const createSurvey = (surveyData, uploadedById) => __awaiter(void 0, void 0, void 0, function* () {
-    const { surveyDetails, propertyDetails, ownerDetails, locationDetails, otherDetails } = surveyData;
+    const { surveyDetails, propertyDetails, ownerDetails, locationDetails, otherDetails, residentialPropertyAssessments, nonResidentialPropertyAssessments } = surveyData;
     return prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
         const newSurvey = yield tx.surveyDetails.create({
             data: Object.assign(Object.assign({}, surveyDetails), { uploadedById, propertyDetails: {
@@ -24,12 +24,18 @@ const createSurvey = (surveyData, uploadedById) => __awaiter(void 0, void 0, voi
                     create: Object.assign(Object.assign({}, locationDetails), { propertyLatitude: locationDetails.propertyLatitude, propertyLongitude: locationDetails.propertyLongitude }),
                 }, otherDetails: {
                     create: otherDetails,
-                } }),
+                }, residentialPropertyAssessments: residentialPropertyAssessments && residentialPropertyAssessments.length > 0
+                    ? { create: residentialPropertyAssessments }
+                    : undefined, nonResidentialPropertyAssessments: nonResidentialPropertyAssessments && nonResidentialPropertyAssessments.length > 0
+                    ? { create: nonResidentialPropertyAssessments }
+                    : undefined }),
             include: {
                 propertyDetails: true,
                 ownerDetails: true,
                 locationDetails: true,
                 otherDetails: true,
+                residentialPropertyAssessments: true,
+                nonResidentialPropertyAssessments: true,
             },
         });
         return newSurvey;

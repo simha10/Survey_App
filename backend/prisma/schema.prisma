@@ -41,7 +41,7 @@ enum RespondentStatus {
   OCCUPIER
   TENANT
   EMPLOYEE
-  OTHER
+  OTHER   
 }
 
 enum RoadType {
@@ -195,6 +195,15 @@ model DisposalTypeMaster {
   isActive         Boolean        @default(false)
   description      String?        @db.Text
   otherDetails     OtherDetails[]
+}
+
+model FloorMaster {
+  floornumberId   Int      @id @default(autoincrement())
+  floorNumberName String   @db.VarChar(50)
+  isActive        Boolean  @default(true)
+  description     String?  @db.Text
+  residentialPropertyAssessments    ResidentialPropertyAssessment[]
+  nonResidentialPropertyAssessments NonResidentialPropertyAssessment[]
 }
 
 model NrPropertyCategoryMaster {
@@ -542,14 +551,7 @@ model OtherDetails {
   disposalType                DisposalTypeMaster @relation(fields: [disposalTypeId], references: [disposalTypeId])
 }
 
-model FloorMaster {
-  floornumberId   Int      @id @default(autoincrement())
-  floorNumberName String   @db.VarChar(50)
-  isActive        Boolean  @default(true)
-  description     String?  @db.Text
-  residentialPropertyAssessments    ResidentialPropertyAssessment[]
-  nonResidentialPropertyAssessments NonResidentialPropertyAssessment[]
-}
+
 
 model ResidentialPropertyAssessment {
   floorAssessmentId     String                   @id @default(uuid())
