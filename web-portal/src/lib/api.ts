@@ -13,7 +13,7 @@ export interface ApiResponse<T = any> {
 export interface LoginRequest {
   username: string;
   password: string;
-  role: 'SUPERADMIN' | 'ADMIN' | 'SUPERVISOR' | 'SURVEYOR';
+  role: 'SUPERADMIN' | 'ADMIN';
 }
 
 export interface LoginResponse {
@@ -33,6 +33,11 @@ export interface User {
   isActive: boolean;
   role?: string; // Direct role field from backend
   createdAt?: string; // isCreatedAt from backend
+  userRoleMaps?: Array<{
+    role: {
+      roleName: string;
+    };
+  }>;
 }
 
 // Create axios instance
@@ -101,6 +106,11 @@ export const userApi = {
 
   changePassword: async (data: any): Promise<any> => {
     const response = await apiClient.put('/user/change-password', data);
+    return response.data;
+  },
+
+  register: async (userData: any): Promise<any> => {
+    const response = await apiClient.post('/user/register', userData);
     return response.data;
   },
 
@@ -257,6 +267,201 @@ export const surveyorApi = {
 
   getProfile: async (userId: string): Promise<any> => {
     const response = await apiClient.get(`/surveyor/profile/${userId}`);
+    return response.data;
+  },
+};
+
+// QC API
+export const qcApi = {
+  createQC: async (data: any): Promise<any> => {
+    const response = await apiClient.post('/qc/create', data);
+    return response.data;
+  },
+
+  updateQC: async (qcRecordId: string, data: any): Promise<any> => {
+    const response = await apiClient.put(`/qc/${qcRecordId}`, data);
+    return response.data;
+  },
+
+  getPendingSurveys: async (params?: any): Promise<any> => {
+    const response = await apiClient.get('/qc/pending', { params });
+    return response.data;
+  },
+
+  getQCStats: async (params?: any): Promise<any> => {
+    const response = await apiClient.get('/qc/stats', { params });
+    return response.data;
+  },
+
+  bulkApprove: async (data: any): Promise<any> => {
+    const response = await apiClient.post('/qc/bulk-approve', data);
+    return response.data;
+  },
+
+  bulkReject: async (data: any): Promise<any> => {
+    const response = await apiClient.post('/qc/bulk-reject', data);
+    return response.data;
+  },
+
+  getQCBySurvey: async (surveyUniqueCode: string): Promise<any> => {
+    const response = await apiClient.get(`/qc/survey/${surveyUniqueCode}`);
+    return response.data;
+  },
+
+  getQCByUser: async (userId: string): Promise<any> => {
+    const response = await apiClient.get(`/qc/user/${userId}`);
+    return response.data;
+  },
+};
+
+// Survey API
+export const surveyApi = {
+  getAllSurveys: async (params?: any): Promise<any> => {
+    const response = await apiClient.get('/surveys', { params });
+    return response.data;
+  },
+
+  getSurveyById: async (surveyUniqueCode: string): Promise<any> => {
+    const response = await apiClient.get(`/surveys/${surveyUniqueCode}`);
+    return response.data;
+  },
+
+  syncSurvey: async (surveyUniqueCode: string): Promise<any> => {
+    const response = await apiClient.post(`/surveys/${surveyUniqueCode}/sync`);
+    return response.data;
+  },
+
+  bulkSync: async (data: any): Promise<any> => {
+    const response = await apiClient.post('/surveys/bulk-sync', data);
+    return response.data;
+  },
+
+  getSurveyStats: async (params?: any): Promise<any> => {
+    const response = await apiClient.get('/surveys/stats', { params });
+    return response.data;
+  },
+
+  getSurveysByWard: async (wardId: string): Promise<any> => {
+    const response = await apiClient.get(`/surveys/ward/${wardId}`);
+    return response.data;
+  },
+
+  getSurveysByUser: async (userId: string): Promise<any> => {
+    const response = await apiClient.get(`/surveys/user/${userId}`);
+    return response.data;
+  },
+
+  getSurveysByStatus: async (status: string): Promise<any> => {
+    const response = await apiClient.get(`/surveys/status/${status}`);
+    return response.data;
+  },
+
+  searchSurveys: async (params: any): Promise<any> => {
+    const response = await apiClient.get('/surveys/search', { params });
+    return response.data;
+  },
+};
+
+// Reports API
+export const reportsApi = {
+  getDashboardStats: async (params?: any): Promise<any> => {
+    const response = await apiClient.get('/reports/dashboard', { params });
+    return response.data;
+  },
+
+  getSurveyAnalytics: async (params?: any): Promise<any> => {
+    const response = await apiClient.get('/reports/survey-analytics', { params });
+    return response.data;
+  },
+
+  getUserAnalytics: async (params?: any): Promise<any> => {
+    const response = await apiClient.get('/reports/user-analytics', { params });
+    return response.data;
+  },
+
+  getWardAnalytics: async (params?: any): Promise<any> => {
+    const response = await apiClient.get('/reports/ward-analytics', { params });
+    return response.data;
+  },
+
+  getQCAnalytics: async (params?: any): Promise<any> => {
+    const response = await apiClient.get('/reports/qc-analytics', { params });
+    return response.data;
+  },
+
+  exportReport: async (format: string, params?: any): Promise<any> => {
+    const response = await apiClient.get(`/reports/export/${format}`, { 
+      params,
+      responseType: 'blob'
+    });
+    return response.data;
+  },
+
+  getSystemHealth: async (): Promise<any> => {
+    const response = await apiClient.get('/reports/system-health');
+    return response.data;
+  },
+};
+
+// Master Data API
+export const masterDataApi = {
+  // ULB Master Data
+  getAllUlbs: async (): Promise<any> => {
+    const response = await apiClient.get('/master-data/ulbs');
+    return response.data;
+  },
+
+  getUlbById: async (ulbId: string): Promise<any> => {
+    const response = await apiClient.get(`/master-data/ulbs/${ulbId}`);
+    return response.data;
+  },
+
+  // Zone Master Data
+  getAllZones: async (): Promise<any> => {
+    const response = await apiClient.get('/master-data/zones');
+    return response.data;
+  },
+
+  getZonesByUlb: async (ulbId: string): Promise<any> => {
+    const response = await apiClient.get(`/master-data/ulbs/${ulbId}/zones`);
+    return response.data;
+  },
+
+  // Ward Master Data
+  getAllWards: async (): Promise<any> => {
+    const response = await apiClient.get('/master-data/wards');
+    return response.data;
+  },
+
+  getAllWardsWithStatus: async (): Promise<any> => {
+    const response = await apiClient.get('/master-data/wards/with-status');
+    return response.data;
+  },
+
+  getWardsByZone: async (zoneId: string): Promise<any> => {
+    const response = await apiClient.get(`/master-data/zones/${zoneId}/wards`);
+    return response.data;
+  },
+
+  updateWardStatus: async (wardId: string, data: any): Promise<any> => {
+    const response = await apiClient.put(`/master-data/wards/${wardId}/status`, data);
+    return response.data;
+  },
+
+  // Mohalla Master Data
+  getAllMohallas: async (): Promise<any> => {
+    const response = await apiClient.get('/master-data/mohallas');
+    return response.data;
+  },
+
+  getMohallasByWard: async (wardId: string): Promise<any> => {
+    const response = await apiClient.get(`/master-data/wards/${wardId}/mohallas`);
+    return response.data;
+  },
+
+  // Ward Status Master Data
+  getAllWardStatuses: async (): Promise<any> => {
+    const response = await apiClient.get('/master-data/ward-statuses');
     return response.data;
   },
 };

@@ -28,6 +28,7 @@ interface AuthContextType {
   logout: () => void;
   updateUser: (userData: Partial<AuthUser>) => void;
   hasRole: (roles: string | string[]) => boolean;
+  hasWebPortalAccess: () => boolean;
 }
 
 // Create context
@@ -70,7 +71,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
             userId: profile.userId,
             username: profile.username,
             role: profile.userRoleMaps[0]?.role?.roleName || "NO_ROLE",
-            name: profile.name,
+            name: profile.name || undefined,
             mobileNumber: profile.mobileNumber,
             isActive: profile.isActive,
           };
@@ -118,7 +119,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         userId: profile.userId,
         username: profile.username,
         role: profile.role,
-        name: profile.name,
+        name: profile.name || undefined,
         mobileNumber: profile.mobileNumber,
         isActive: profile.isActive,
       };
@@ -161,6 +162,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     return roleArray.includes(user.role);
   };
 
+  // NEW: Web portal access checking function
+  const hasWebPortalAccess = (): boolean => {
+    return hasRole(["SUPERADMIN", "ADMIN"]);
+  };
+
   const value: AuthContextType = {
     user,
     isLoading,
@@ -169,6 +175,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     logout,
     updateUser,
     hasRole,
+    hasWebPortalAccess,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

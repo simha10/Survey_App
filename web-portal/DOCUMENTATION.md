@@ -26,7 +26,7 @@ This document outlines the architecture, features, and technical specifications 
 - **Core Functionality:**
   1.  **Quality Control (QC) Workflow:** A multi-level process for reviewing and validating survey data submitted by surveyors.
   2.  **Ward Management:** Assigning wards and mohallas to surveyors and supervisors. Managing surveyor access to these wards.
-  3.  **User Management:** Creating, updating, and managing system users and their roles.
+  3.  **User Management:** Creating, updating, and managing system users and their roles. (UI for create/edit user is now implemented and styled; ready for end-to-end testing)
   4.  **Detailed Dashboards:** Access to in-depth, interactive dashboards with filtering, drill-down capabilities, and detailed reports.
 
 ---
@@ -53,5 +53,15 @@ Based on the project requirements and for consistency with the mobile applicatio
 - **Responsiveness:** The entire portal will be designed to be fully responsive, ensuring a seamless experience on desktops, tablets, and mobile browsers.
 
 ---
+
+## 5. Current Development Status & Notes
+
+- **Ward Management & Assignment:** The admin panel now includes a tabbed interface for ward management and assignment, with dynamic imports for code splitting. UI is scaffolded and under development.
+- **User Management:** The create/edit user UI is implemented and styled; ready for end-to-end testing.
+- **QC Workflow:** The structure for multi-level QC review is present; further UI and backend integration is ongoing.
+- **Error Handling:** Improved error and loading state handling is being added.
+- **Dependencies:** Ensure all required packages (e.g., @radix-ui/react-slot, class-variance-authority, utils) are installed and available.
+- **Known Issues:** Document any current module resolution or build errors and their solutions (e.g., restarting dev server, checking file paths).
+- **Next Steps:** Complete assignment management, finalize QC workflow, and enhance reporting/dashboard features.
 
 This document will be updated continuously as the project evolves.

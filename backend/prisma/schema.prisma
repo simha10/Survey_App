@@ -94,6 +94,21 @@ enum RolePermission {
   SURVEYOR
 }
 
+enum SyncStatusEnum {
+  PENDING
+  SYNCED
+  FAILED
+  CONFLICT
+}
+
+enum QCStatusEnum {
+  PENDING
+  APPROVED
+  REJECTED
+  DUPLICATE
+  NEEDS_REVISION
+}
+
 // --------------
 // Master Tables
 // --------------
@@ -294,6 +309,8 @@ model UsersMaster {
   supervisors                   Supervisors[]
   admins                        Admins[]
   uploadedSurveys               SurveyDetails[]       @relation("UsersMasterToSurveyDetails")
+  qcRecords                     QCRecord[]
+  auditLogs                     AuditLog[]
 }
 
 model RolePermissionMaster {
@@ -467,6 +484,12 @@ model SurveyDetails {
   mapId                             Int
   gisId                             String                             @db.VarChar(12)
   subGisId                          String?                            @db.VarChar(15)
+  isSynced                          Boolean                            @default(false)
+  syncStatus                        SyncStatusEnum                     @default(PENDING)
+  lastSyncAttempt                   DateTime?
+  syncErrorMessage                  String?                            @db.Text
+  createdAt                         DateTime                           @default(now())
+  updatedAt                         DateTime                           @updatedAt
   uploadedBy                        UsersMaster                        @relation("UsersMasterToSurveyDetails", fields: [uploadedById], references: [userId], onDelete: Restrict)
   ulb                               UlbMaster                          @relation(fields: [ulbId], references: [ulbId])
   zone                              ZoneMaster                         @relation(fields: [zoneId], references: [zoneId])
@@ -481,8 +504,12 @@ model SurveyDetails {
   nonResidentialPropertyAssessments NonResidentialPropertyAssessment[]
   propertyAttachments               PropertyAttachmentDetails[]
   surveyStatusMaps                  SurveyStatusMapping[]
+  qcRecords                         QCRecord[]
 
   @@index([uploadedById])
+  @@index([isSynced])
+  @@index([syncStatus])
+  @@index([createdAt])
 }
 
 model PropertyDetails {
@@ -551,8 +578,6 @@ model OtherDetails {
   disposalType                DisposalTypeMaster @relation(fields: [disposalTypeId], references: [disposalTypeId])
 }
 
-
-
 model ResidentialPropertyAssessment {
   floorAssessmentId     String                   @id @default(uuid())
   surveyUniqueCode      String
@@ -606,4 +631,37 @@ model PropertyAttachmentDetails {
   image9Url        String?       @db.VarChar(50)
   image10Url       String?       @db.VarChar(50)
   survey           SurveyDetails @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
+}
+
+// NEW: QC Record Model for Quality Control Workflow
+model QCRecord {
+  qcRecordId       String        @id @default(uuid())
+  surveyUniqueCode String
+  qcLevel          Int           // 1, 2, 3, etc. for different QC levels
+  qcStatus         QCStatusEnum
+  reviewedById     String
+  remarks          String?       @db.Text
+  reviewedAt       DateTime      @default(now())
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  
+  survey           SurveyDetails @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode], onDelete: Cascade)
+  reviewedBy       UsersMaster   @relation(fields: [reviewedById], references: [userId], onDelete: Restrict)
+  
+  @@unique([surveyUniqueCode, qcLevel])
+  @@index([surveyUniqueCode])
+  @@index([reviewedById])
+  @@index([qcStatus])
+  @@index([qcLevel])
+}
+
+// NEW: Audit Log Table for tracking status changes and assignments
+model AuditLog {
+  actionId   String      @id @default(uuid())
+  userId     String
+  action     String
+  old_value  String?
+  new_value  String?
+  createdAt  DateTime    @default(now())
+  user       UsersMaster @relation(fields: [userId], references: [userId])
 }

@@ -24,6 +24,8 @@ This document summarizes the current status of the Survey Application, including
   - DTOs, validation, and transaction logic in place
 - **Error Handling & Validation:**
   - Consistent error responses, Zod validation, and transaction support
+- **User Management Endpoints:**
+  - Endpoints for user creation, editing, status update, and role assignment are live and integrated with the web portal.
 
 ### 🔄 In Progress
 
@@ -31,6 +33,8 @@ This document summarizes the current status of the Survey Application, including
   - Basic docs exist, but need updates for new endpoints and flows
 - **Survey CRUD Operations:**
   - Read/update/delete endpoints for surveys (currently only create is implemented)
+- **QC Workflow:**
+  - Multi-level QC review and approval endpoints being developed
 
 ### 📋 Pending
 
@@ -59,6 +63,8 @@ This document summarizes the current status of the Survey Application, including
   - Main survey form and floor-wise property assessment flow fully implemented
   - Data submission to backend, confirmation, and reset logic
   - Error handling for submission
+- **User Management Integration:**
+  - Ready for end-to-end testing with backend and web portal user management features.
 
 ### 🔄 In Progress
 
@@ -83,6 +89,8 @@ This document summarizes the current status of the Survey Application, including
 ### ✅ Completed
 
 - **Project scaffolding and initial setup**
+- **User Management UI:**
+  - Admin UI for user creation, editing, status management, and role assignment is implemented and styled. End-to-end flow is ready for testing.
 
 ### 🔄 In Progress
 
@@ -97,8 +105,6 @@ This document summarizes the current status of the Survey Application, including
   - Dashboards for survey review, approval, and analytics
 - **Master Data Management:**
   - CRUD for ULBs, zones, wards, mohallas, etc.
-- **User Management:**
-  - Admin UI for user/role management
 - **Documentation & User Guides:**
   - Complete user and developer documentation
 
@@ -137,4 +143,4 @@ This document summarizes the current status of the Survey Application, including
 
 ---
 
-**The project is ready for end-to-end testing of the mobile survey flow. Web portal and advanced features are the next major milestones.**
+**The project is ready for end-to-end testing of user management and the mobile survey flow. Web portal advanced features and analytics are the next major milestones.**

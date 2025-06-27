@@ -1,6 +1,6 @@
 "use client";
 
-import React, { ReactNode } from "react";
+import React, { ReactNode, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import { useRouter } from "next/navigation";
 
@@ -9,6 +9,7 @@ interface ProtectedRouteProps {
   requiredRoles?: string[];
   fallback?: ReactNode;
   redirectTo?: string;
+  requireWebPortalAccess?: boolean;
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
@@ -16,15 +17,33 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredRoles = [],
   fallback,
   redirectTo = "/login",
+  requireWebPortalAccess = false,
 }) => {
-  const { user, isLoading, isAuthenticated, hasRole } = useAuth();
+  const { user, isLoading, isAuthenticated, hasRole, hasWebPortalAccess } =
+    useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.push("/login");
+      } else if (requireWebPortalAccess && !hasWebPortalAccess()) {
+        router.push("/access-denied");
+      }
+    }
+  }, [
+    isAuthenticated,
+    isLoading,
+    requireWebPortalAccess,
+    hasWebPortalAccess,
+    router,
+  ]);
 
   // Show loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
       </div>
     );
   }
@@ -34,7 +53,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     if (fallback) {
       return <>{fallback}</>;
     }
-    router.push(redirectTo);
     return null;
   }
 
@@ -58,6 +76,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         </div>
       </div>
     );
+  }
+
+  // Check if user has web portal access
+  if (requireWebPortalAccess && !hasWebPortalAccess()) {
+    return null;
   }
 
   // User is authenticated and has required roles

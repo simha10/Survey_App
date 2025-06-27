@@ -46,7 +46,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           />
         </svg>
       ),
-      roles: ["SUPERADMIN", "ADMIN", "SUPERVISOR", "SURVEYOR"],
+      roles: ["SUPERADMIN", "ADMIN"],
     },
     {
       name: "User Management",
@@ -86,7 +86,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           />
         </svg>
       ),
-      roles: ["SUPERADMIN", "ADMIN", "SUPERVISOR"],
+      roles: ["SUPERADMIN", "ADMIN"],
     },
     {
       name: "QC Management",
@@ -106,11 +106,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           />
         </svg>
       ),
-      roles: ["SUPERADMIN", "ADMIN", "SUPERVISOR"],
+      roles: ["SUPERADMIN", "ADMIN"],
     },
     {
-      name: "Surveyor Assignments",
-      href: "/assignments",
+      name: "Survey Management",
+      href: "/surveys",
       icon: (
         <svg
           className="h-5 w-5"
@@ -122,14 +122,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={2}
-            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
           />
         </svg>
       ),
-      roles: ["SUPERADMIN", "ADMIN", "SUPERVISOR"],
+      roles: ["SUPERADMIN", "ADMIN"],
     },
     {
-      name: "Reports",
+      name: "Reports & Analytics",
       href: "/reports",
       icon: (
         <svg
@@ -146,7 +146,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           />
         </svg>
       ),
-      roles: ["SUPERADMIN", "ADMIN", "SUPERVISOR"],
+      roles: ["SUPERADMIN", "ADMIN"],
     },
     {
       name: "Profile",
@@ -166,7 +166,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           />
         </svg>
       ),
-      roles: ["SUPERADMIN", "ADMIN", "SUPERVISOR", "SURVEYOR"],
+      roles: ["SUPERADMIN", "ADMIN"],
     },
   ];
 

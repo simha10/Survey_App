@@ -13,6 +13,9 @@ const surveyRoutes_1 = __importDefault(require("./routes/surveyRoutes"));
 const authMiddleware_1 = require("./middleware/authMiddleware");
 const wardRoutes_1 = __importDefault(require("./routes/wardRoutes"));
 const userRoutes_1 = __importDefault(require("./routes/userRoutes"));
+const qcRoutes_1 = __importDefault(require("./routes/qcRoutes"));
+const reportsRoutes_1 = __importDefault(require("./routes/reportsRoutes"));
+const masterDataRoutes_1 = __importDefault(require("./routes/masterDataRoutes"));
 dotenv_1.default.config();
 // Initialize Express app
 const app = (0, express_1.default)();
@@ -55,13 +58,16 @@ app.use((req, res, next) => {
 });
 // Routes
 app.use('/auth', authRoutes_1.default);
-// Protected routes
+// Protected routes - Web Portal Only (ADMIN/SUPERADMIN)
+app.use('/ward', authMiddleware_1.authenticateJWT, authMiddleware_1.restrictToWebPortal, wardRoutes_1.default);
+app.use('/user', authMiddleware_1.authenticateJWT, authMiddleware_1.restrictToWebPortal, userRoutes_1.default);
+app.use('/qc', authMiddleware_1.authenticateJWT, authMiddleware_1.restrictToWebPortal, qcRoutes_1.default);
+app.use('/reports', authMiddleware_1.authenticateJWT, authMiddleware_1.restrictToWebPortal, reportsRoutes_1.default);
+app.use('/master-data', authMiddleware_1.authenticateJWT, authMiddleware_1.restrictToWebPortal, masterDataRoutes_1.default);
+// Protected routes - All Authenticated Users
 app.use('/surveyors', authMiddleware_1.authenticateJWT, surveyorRoutes_1.default);
 app.use('/surveys', surveyRoutes_1.default);
 app.use('/surveyor', surveyorRoutes_1.default);
-app.use('/ward', wardRoutes_1.default);
-app.use('/user', userRoutes_1.default);
-// Add other routes (e.g., surveyRoutes, userRoutes) here when implemented
 // Health check route
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', message: 'Server is running' });

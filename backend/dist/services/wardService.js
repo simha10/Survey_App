@@ -105,6 +105,16 @@ function assignWardToSurveyor(dto, assignedById) {
                         });
                     }
                 }
+                if (surveyorId) {
+                    yield prisma.auditLog.create({
+                        data: {
+                            userId: surveyorId,
+                            action: 'ASSIGN_WARD_TO_SURVEYOR',
+                            old_value: existingAssignment ? JSON.stringify(existingAssignment) : null,
+                            new_value: JSON.stringify(assignment),
+                        }
+                    });
+                }
                 return assignment;
             }));
             return {
@@ -153,6 +163,16 @@ function assignWardToSupervisor(dto, assignedById) {
                         });
                     }
                     assignments.push({ supervisorId, wardId, isActive });
+                }
+                if (supervisorId) {
+                    yield prisma.auditLog.create({
+                        data: {
+                            userId: supervisorId,
+                            action: 'ASSIGN_WARD_TO_SUPERVISOR',
+                            old_value: null,
+                            new_value: JSON.stringify(assignments),
+                        }
+                    });
                 }
                 return assignments;
             }));
@@ -220,6 +240,16 @@ function bulkWardAssignment(dto, assignedById) {
                         },
                     });
                 }
+                if (surveyorId) {
+                    yield prisma.auditLog.create({
+                        data: {
+                            userId: surveyorId,
+                            action: 'BULK_WARD_ASSIGNMENT',
+                            old_value: null,
+                            new_value: JSON.stringify(createdAssignments),
+                        }
+                    });
+                }
                 return createdAssignments;
             }));
             return {
@@ -252,6 +282,16 @@ function updateWardAssignment(dto, updatedById) {
                 where: { assignmentId },
                 data: { isActive },
             });
+            if (updatedById) {
+                yield prisma.auditLog.create({
+                    data: {
+                        userId: updatedById,
+                        action: 'UPDATE_WARD_ASSIGNMENT',
+                        old_value: JSON.stringify(assignment),
+                        new_value: JSON.stringify(result),
+                    }
+                });
+            }
             return {
                 assignmentId,
                 surveyorId: assignment.userId,
@@ -318,6 +358,16 @@ function toggleSurveyorAccess(dto, actionById) {
                         data: { isActive: false },
                     });
                 }
+                if (actionById) {
+                    yield prisma.auditLog.create({
+                        data: {
+                            userId: actionById,
+                            action: 'TOGGLE_SURVEYOR_ACCESS',
+                            old_value: JSON.stringify({ surveyorId, wardId, isActive }),
+                            new_value: JSON.stringify({ surveyorId, wardId, isActive }),
+                        }
+                    });
+                }
                 return { surveyorId, wardId, isActive, actionBy, reason };
             }));
             return Object.assign(Object.assign({}, result), { status: `Surveyor access ${isActive ? 'enabled' : 'disabled'} successfully` });
@@ -374,6 +424,16 @@ function getWardAssignments(dto) {
                 const supervisorWardIds = supervisorWards.map(sw => sw.wardId);
                 filteredAssignments = assignments.filter(a => supervisorWardIds.includes(a.wardId));
             }
+            if (surveyorId) {
+                yield prisma.auditLog.create({
+                    data: {
+                        userId: surveyorId,
+                        action: 'GET_WARD_ASSIGNMENTS',
+                        old_value: null,
+                        new_value: JSON.stringify({ assignments: filteredAssignments, total: filteredAssignments.length }),
+                    }
+                });
+            }
             return {
                 assignments: filteredAssignments,
                 total: filteredAssignments.length,
@@ -409,6 +469,16 @@ function updateWardStatus(dto, updatedById) {
                     isActive: true,
                 },
             });
+            if (updatedById) {
+                yield prisma.auditLog.create({
+                    data: {
+                        userId: updatedById,
+                        action: 'UPDATE_WARD_STATUS',
+                        old_value: JSON.stringify({ wardId, statusId, statusName: status.statusName }),
+                        new_value: JSON.stringify({ wardId, statusId, statusName: status.statusName }),
+                    }
+                });
+            }
             return {
                 wardId,
                 statusId,
@@ -440,6 +510,16 @@ function assignSupervisorToWard(dto, assignedById) {
                 where: { userId: supervisorId },
                 data: { wardId },
             });
+            if (supervisorId) {
+                yield prisma.auditLog.create({
+                    data: {
+                        userId: supervisorId,
+                        action: 'ASSIGN_SUPERVISOR_TO_WARD',
+                        old_value: null,
+                        new_value: JSON.stringify({ supervisorId, wardId, isActive }),
+                    }
+                });
+            }
             return {
                 supervisorId,
                 wardId,
@@ -488,6 +568,16 @@ function removeSupervisorFromWard(dto, removedById) {
                 where: { userId: supervisorId },
                 data: { wardId: null },
             });
+            if (removedById) {
+                yield prisma.auditLog.create({
+                    data: {
+                        userId: removedById,
+                        action: 'REMOVE_SUPERVISOR_FROM_WARD',
+                        old_value: JSON.stringify({ supervisorId, wardId }),
+                        new_value: JSON.stringify({ supervisorId, wardId }),
+                    }
+                });
+            }
             return {
                 supervisorId,
                 wardId,

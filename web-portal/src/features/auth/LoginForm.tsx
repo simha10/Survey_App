@@ -15,15 +15,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError }) => {
   const [formData, setFormData] = useState<LoginRequest>({
     username: "",
     password: "",
-    role: "SURVEYOR",
+    role: "ADMIN",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const roles = [
     { value: "SUPERADMIN", label: "Super Admin" },
     { value: "ADMIN", label: "Admin" },
-    { value: "SUPERVISOR", label: "Supervisor" },
-    { value: "SURVEYOR", label: "Surveyor" },
   ];
 
   const validateForm = (): boolean => {

@@ -15,6 +15,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.authenticateJWT = authenticateJWT;
 exports.restrictToRoles = restrictToRoles;
 exports.restrictToSurveyor = restrictToSurveyor;
+exports.restrictToWebPortal = restrictToWebPortal;
+exports.hasWebPortalAccess = hasWebPortalAccess;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const client_1 = require("@prisma/client");
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
@@ -70,4 +72,18 @@ function restrictToSurveyor(req, res, next) {
         }
         next();
     });
+}
+// NEW: Web Portal Access Control
+function restrictToWebPortal(req, res, next) {
+    const user = req.user;
+    if (!user || !user.roles || !user.roles.some(role => ['SUPERADMIN', 'ADMIN'].includes(role))) {
+        return res.status(403).json({
+            error: 'Web portal access denied. Only ADMIN and SUPERADMIN users can access the web portal.'
+        });
+    }
+    next();
+}
+// NEW: Check if user has web portal access (for frontend use)
+function hasWebPortalAccess(userRoles) {
+    return userRoles.some(role => ['SUPERADMIN', 'ADMIN'].includes(role));
 }

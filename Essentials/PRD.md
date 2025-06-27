@@ -20,23 +20,23 @@ This system ensures that the **correct data about properties** — including the
 
 ### ✅ A Mobile App (used by surveyors & field staff)
 
-* To conduct property surveys
-* To work even in **offline mode**
-* To **store, review, and sync** collected data
+- To conduct property surveys
+- To work even in **offline mode**
+- To **store, review, and sync** collected data
 
 ### ✅ A Web Portal (used by admin and QC staff)
 
-* To **review and verify** the submitted survey data
-* To identify **duplicate or invalid submissions**
-* To **approve**, **edit**, or **reject** survey data
-* To **manage surveyors and users**
-* To **analyze reports**, track survey progress, and download data
+- To **review and verify** the submitted survey data
+- To identify **duplicate or invalid submissions**
+- To **approve**, **edit**, or **reject** survey data
+- To **manage surveyors and users** (User management UI for create/edit is now implemented and ready for testing)
+- To **analyze reports**, track survey progress, and download data
 
 ### ✅ A Secure, Role-Based Backend System
 
-* That controls **who can access what** depending on their role
-* Stores data in a central database
-* Validates and processes information coming from both app and web
+- That controls **who can access what** depending on their role
+- Stores data in a central database
+- Validates and processes information coming from both app and web
 
 ---
 
@@ -63,18 +63,19 @@ This system ensures that the **correct data about properties** — including the
 
 The app is the **primary tool for field data collection**. It will:
 
-* Allow surveyors to login securely
-* Show them **only the areas (wards) they are assigned to**
-* Allow data collection for each property:
+- Allow surveyors to login securely
+- Show them **only the areas (wards) they are assigned to**
+- Allow data collection for each property:
 
-  * Owner details
-  * Property usage
-  * Floor-wise details
-  * Utilities (sewer, water, etc.)
-* Store data **offline** if there's no internet
-* Sync data to the server once online
-* Fetch old property data if available, for reference
-* Allow surveyors to track their own progress
+  - Owner details
+  - Property usage
+  - Floor-wise details
+  - Utilities (sewer, water, etc.)
+
+- Store data **offline** if there's no internet
+- Sync data to the server once online
+- Fetch old property data if available, for reference
+- Allow surveyors to track their own progress
 
 ---
 
@@ -82,13 +83,13 @@ The app is the **primary tool for field data collection**. It will:
 
 The website is **essential for office-based management and final decisions**. It is used to:
 
-* View and analyze collected data from all surveyors
-* Perform **multi-level QC checks** before confirming a property
-* Detect and resolve **duplicate surveys** using GIS IDs
-* Allow searching, editing, and verifying of records
-* Export data into Excel for auditing
-* Track who surveyed which property and when
-* Manage user permissions and roles
+- View and analyze collected data from all surveyors
+- Perform **multi-level QC checks** before confirming a property
+- Detect and resolve **duplicate surveys** using GIS IDs
+- Allow searching, editing, and verifying of records
+- Export data into Excel for auditing
+- Track who surveyed which property and when
+- Manage user permissions and roles
 
 ---
 
@@ -96,60 +97,66 @@ The website is **essential for office-based management and final decisions**. It
 
 ### 🔐 User Management (Based on Roles)
 
-* Login with credentials (username/password)
-* Role-based access: only see features allowed by your role
+- Login with credentials (username/password)
+- Role-based access: only see features allowed by your role
 
 ### 📍 Area Assignment
 
-* Admins assign surveyors to specific zones and wards
-* Surveyors **cannot survey outside their assigned area**
+- Admins assign surveyors to specific zones and wards
+- Surveyors **cannot survey outside their assigned area**
 
 ### 🏠 Property Survey
 
-* Property Type selection (residential, commercial, mixed, others)
-* Detailed step-by-step form with:
+- Property Type selection (residential, commercial, mixed, others)
+- Detailed step-by-step form with:
 
-  * Survey details
-  * Property details
-  * Owner details
-  * Location details
-  * Other property conditions (utilities, water, etc.)
-  * Floor-wise usage and data
+  - Survey details
+  - Property details
+  - Owner details
+  - Location details
+  - Other property conditions (utilities, water, etc.)
+  - Floor-wise usage and data
 
 ### 📡 Offline Survey Support
 
-* Save data locally when offline
-* Show previous data for reference when possible
-* Sync data with the server when online
+- Save data locally when offline
+- Show previous data for reference when possible
+- Sync data with the server when online
 
 ### 🧹 Review, Update & Deletion
 
-* Before syncing, surveyor can:
+- Before syncing, surveyor can:
 
-  * Edit surveys
-  * Delete incorrect ones
-  * Add another property
+  - Edit surveys
+  - Delete incorrect ones
+  - Add another property
 
 ### 👀 QC and Duplicate Handling (Web Portal)
 
-* Detect same GIS ID in multiple surveys
-* Compare and confirm the correct survey
-* Mark duplicates and remove unnecessary entries
-* Perform multiple levels of QC
-* Add missing office-level info (if needed)
+- Detect same GIS ID in multiple surveys
+- Compare and confirm the correct survey
+- Mark duplicates and remove unnecessary entries
+- Perform multiple levels of QC
+- Add missing office-level info (if needed)
+
+### 📋 Pending
+
+- Assignment Enforcement: Fetch and enforce assigned wards/mohallas from backend (after web portal is ready)
+- Advanced Error Handling & Loading States: Improve user feedback and resilience
+- Automated Testing: Add unit and integration tests
 
 ---
 
 ## 7. ⚠️ **Project Constraints & Rules**
 
-* **Only Admins** can assign wards and create users
-* **Surveyors can’t work outside their assigned wards**
-* **GIS ID** is used to uniquely identify a property (added manually on field)
-* Data should be editable until it passes final QC
-* If a property is surveyed twice, only one should survive QC
-* The system must be able to scale to thousands of records
-* Security is critical — no unauthorized access allowed
-* Should support local languages (if needed in future)
+- **Only Admins** can assign wards and create users
+- **Surveyors can't work outside their assigned wards**
+- **GIS ID** is used to uniquely identify a property (added manually on field)
+- Data should be editable until it passes final QC
+- If a property is surveyed twice, only one should survive QC
+- The system must be able to scale to thousands of records
+- Security is critical — no unauthorized access allowed
+- Should support local languages (if needed in future)
 
 ---
 
@@ -159,14 +166,23 @@ The app is only for **data collection**. But the data is **useless without revie
 
 The web portal enables:
 
-* Office staff to clean and finalize data
-* Multi-level quality checks
-* Reports and analytics
-* Administration and role management
-* Data corrections which cannot be done from mobile
+- Office staff to clean and finalize data
+- Multi-level quality checks
+- Reports and analytics
+- Administration and role management
+- Data corrections which cannot be done from mobile
 
 **Without the website, no survey can be trusted or finalized.**
-So it’s not optional — it’s a **core component** of this system.
+So it's not optional — it's a **core component** of this system.
 
 ---
 
+## Web Portal Status
+
+- User management UI (create/edit user) is now implemented and styled. The web portal is ready for end-to-end user management testing.
+- Ward Management & Assignment: UI for assigning surveyors to wards/mohallas is scaffolded and under development in the web portal.
+- QC Workflow: Initial backend and UI structure for Quality Control (QC) is present; further enhancements are ongoing.
+- Error Handling: Improved error feedback and loading states are being integrated.
+- Tech Stack: Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui, and React Query are being used for the web portal.
+- Known Issues: Some module resolution and dependency issues are being addressed (e.g., missing utils, Radix UI).
+- Next Steps: Complete assignment management, finalize QC workflow, and enhance reporting/dashboard features.

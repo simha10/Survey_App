@@ -67,3 +67,4 @@ exports.RemoveSupervisorFromWardSchema = zod_1.z.object({
     wardId: zod_1.z.string().uuid(),
     reason: zod_1.z.string().optional(),
 });
+// Update or add DTOs as needed for new endpoints and audit logging. 

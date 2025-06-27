@@ -65,3 +65,19 @@ export async function restrictToSurveyor(req: Request, res: Response, next: Next
   }
   next();
 }
+
+// NEW: Web Portal Access Control
+export function restrictToWebPortal(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  const user = req.user;
+  if (!user || !user.roles || !user.roles.some(role => ['SUPERADMIN', 'ADMIN'].includes(role))) {
+    return res.status(403).json({ 
+      error: 'Web portal access denied. Only ADMIN and SUPERADMIN users can access the web portal.' 
+    });
+  }
+  next();
+}
+
+// NEW: Check if user has web portal access (for frontend use)
+export function hasWebPortalAccess(userRoles: string[]): boolean {
+  return userRoles.some(role => ['SUPERADMIN', 'ADMIN'].includes(role));
+}

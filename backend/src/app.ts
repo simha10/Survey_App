@@ -5,9 +5,12 @@ import { PrismaClient } from '@prisma/client';
 import authRoutes from './routes/authRoutes';
 import surveyorRoutes from './routes/surveyorRoutes';
 import surveyRoutes from './routes/surveyRoutes';
-import { authenticateJWT } from './middleware/authMiddleware';
+import { authenticateJWT, restrictToWebPortal } from './middleware/authMiddleware';
 import wardRoutes from './routes/wardRoutes';
 import userRoutes from './routes/userRoutes';
+import qcRoutes from './routes/qcRoutes';
+import reportsRoutes from './routes/reportsRoutes';
+import masterDataRoutes from './routes/masterDataRoutes';
 
 dotenv.config();
 
@@ -57,13 +60,17 @@ app.use((req, res, next) => {
 // Routes
 app.use('/auth', authRoutes);
 
-// Protected routes
+// Protected routes - Web Portal Only (ADMIN/SUPERADMIN)
+app.use('/ward', authenticateJWT, restrictToWebPortal, wardRoutes);
+app.use('/user', authenticateJWT, restrictToWebPortal, userRoutes);
+app.use('/qc', authenticateJWT, restrictToWebPortal, qcRoutes);
+app.use('/reports', authenticateJWT, restrictToWebPortal, reportsRoutes);
+app.use('/master-data', authenticateJWT, restrictToWebPortal, masterDataRoutes);
+
+// Protected routes - All Authenticated Users
 app.use('/surveyors', authenticateJWT, surveyorRoutes);
 app.use('/surveys', surveyRoutes);
 app.use('/surveyor', surveyorRoutes);
-app.use('/ward', wardRoutes);
-app.use('/user', userRoutes);
-// Add other routes (e.g., surveyRoutes, userRoutes) here when implemented
 
 // Health check route
 app.get('/health', (req, res) => {

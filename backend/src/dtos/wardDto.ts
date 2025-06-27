@@ -81,4 +81,6 @@ export const RemoveSupervisorFromWardSchema = z.object({
   wardId: z.string().uuid(),
   reason: z.string().optional(),
 });
-export type RemoveSupervisorFromWardDto = z.infer<typeof RemoveSupervisorFromWardSchema>; 
+export type RemoveSupervisorFromWardDto = z.infer<typeof RemoveSupervisorFromWardSchema>;
+
+// Update or add DTOs as needed for new endpoints and audit logging. 

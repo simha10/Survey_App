@@ -109,6 +109,9 @@ const LoginPage: React.FC = () => {
             Sign in to your account
           </h2>
           <p className="mt-2 text-sm text-gray-600">Survey Management Portal</p>
+          <p className="mt-1 text-xs text-blue-600 font-medium">
+            Admin Access Only
+          </p>
         </div>
 
         {/* Login Form */}

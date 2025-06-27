@@ -107,6 +107,17 @@ export async function assignWardToSurveyor(dto: AssignWardToSurveyorDto, assigne
         }
       }
 
+      if (surveyorId) {
+        await prisma.auditLog.create({
+          data: {
+            userId: surveyorId,
+            action: 'ASSIGN_WARD_TO_SURVEYOR',
+            old_value: existingAssignment ? JSON.stringify(existingAssignment) : null,
+            new_value: JSON.stringify(assignment),
+          }
+        });
+      }
+
       return assignment;
     });
 
@@ -160,6 +171,17 @@ export async function assignWardToSupervisor(dto: AssignWardToSupervisorDto, ass
         }
 
         assignments.push({ supervisorId, wardId, isActive });
+      }
+
+      if (supervisorId) {
+        await prisma.auditLog.create({
+          data: {
+            userId: supervisorId,
+            action: 'ASSIGN_WARD_TO_SUPERVISOR',
+            old_value: null,
+            new_value: JSON.stringify(assignments),
+          }
+        });
       }
 
       return assignments;
@@ -241,6 +263,17 @@ export async function bulkWardAssignment(dto: BulkWardAssignmentDto, assignedByI
         });
       }
 
+      if (surveyorId) {
+        await prisma.auditLog.create({
+          data: {
+            userId: surveyorId,
+            action: 'BULK_WARD_ASSIGNMENT',
+            old_value: null,
+            new_value: JSON.stringify(createdAssignments),
+          }
+        });
+      }
+
       return createdAssignments;
     });
 
@@ -274,6 +307,17 @@ export async function updateWardAssignment(dto: UpdateWardAssignmentDto, updated
       where: { assignmentId },
       data: { isActive },
     });
+
+    if (updatedById) {
+      await prisma.auditLog.create({
+        data: {
+          userId: updatedById,
+          action: 'UPDATE_WARD_ASSIGNMENT',
+          old_value: JSON.stringify(assignment),
+          new_value: JSON.stringify(result),
+        }
+      });
+    }
 
     return {
       assignmentId,
@@ -348,6 +392,17 @@ export async function toggleSurveyorAccess(dto: ToggleSurveyorAccessDto, actionB
         });
       }
 
+      if (actionById) {
+        await prisma.auditLog.create({
+          data: {
+            userId: actionById,
+            action: 'TOGGLE_SURVEYOR_ACCESS',
+            old_value: JSON.stringify({ surveyorId, wardId, isActive }),
+            new_value: JSON.stringify({ surveyorId, wardId, isActive }),
+          }
+        });
+      }
+
       return { surveyorId, wardId, isActive, actionBy, reason };
     });
 
@@ -407,6 +462,17 @@ export async function getWardAssignments(dto: GetWardAssignmentsDto) {
       filteredAssignments = assignments.filter(a => supervisorWardIds.includes(a.wardId));
     }
 
+    if (surveyorId) {
+      await prisma.auditLog.create({
+        data: {
+          userId: surveyorId,
+          action: 'GET_WARD_ASSIGNMENTS',
+          old_value: null,
+          new_value: JSON.stringify({ assignments: filteredAssignments, total: filteredAssignments.length }),
+        }
+      });
+    }
+
     return {
       assignments: filteredAssignments,
       total: filteredAssignments.length,
@@ -443,6 +509,17 @@ export async function updateWardStatus(dto: UpdateWardStatusDto, updatedById: st
       },
     });
 
+    if (updatedById) {
+      await prisma.auditLog.create({
+        data: {
+          userId: updatedById,
+          action: 'UPDATE_WARD_STATUS',
+          old_value: JSON.stringify({ wardId, statusId, statusName: status.statusName }),
+          new_value: JSON.stringify({ wardId, statusId, statusName: status.statusName }),
+        }
+      });
+    }
+
     return {
       wardId,
       statusId,
@@ -474,6 +551,17 @@ export async function assignSupervisorToWard(dto: AssignSupervisorToWardDto, ass
       where: { userId: supervisorId },
       data: { wardId },
     });
+
+    if (supervisorId) {
+      await prisma.auditLog.create({
+        data: {
+          userId: supervisorId,
+          action: 'ASSIGN_SUPERVISOR_TO_WARD',
+          old_value: null,
+          new_value: JSON.stringify({ supervisorId, wardId, isActive }),
+        }
+      });
+    }
 
     return {
       supervisorId,
@@ -526,6 +614,17 @@ export async function removeSupervisorFromWard(dto: RemoveSupervisorFromWardDto,
       where: { userId: supervisorId },
       data: { wardId: null },
     });
+
+    if (removedById) {
+      await prisma.auditLog.create({
+        data: {
+          userId: removedById,
+          action: 'REMOVE_SUPERVISOR_FROM_WARD',
+          old_value: JSON.stringify({ supervisorId, wardId }),
+          new_value: JSON.stringify({ supervisorId, wardId }),
+        }
+      });
+    }
 
     return {
       supervisorId,
