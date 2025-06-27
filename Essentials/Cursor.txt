@@ -1,71 +1,90 @@
-You're working on a full-stack GIS Survey application using:
+You're working on a full-stack React Native + Node.js + Prisma project for a GIS Survey Application. The backend uses Express and Prisma ORM with PostgreSQL. Authentication is handled with JWT. AsyncStorage is used for client-side persistence. The frontend follows a modular folder structure with Screens, Components, Services, and Constants directories.
 
-- Frontend: React Native (Expo)
-- Backend: Node.js with Express
-- ORM: Prisma (PostgreSQL)
-- Auth: JWT
-- Validation: Zod
-- Password Hashing: bcrypt
-- Local Storage: AsyncStorage (React Native)
-
----
-
-## 🎯 Current Status
-
-- Login, Register, and User Dashboard functionality is completed.
-- Next feature to build is the **Survey Pane**, which allows surveyors or supervisors to fill and sync survey data.
-- Database schema is already created using Prisma (schema included below).
-- Form fields are divided into 5 logical blocks:  
-  1. Survey Details  
-  2. Property Details  
-  3. Owner Details  
-  4. Location Details  
-  5. Other Details
+### ✅ Existing Features:
+- Login
+- Register
+- Dashboards
+- Profile
+- Logout
+- Survey Form
 
 ---
 
-## 🧾 Survey Form Requirements (Frontend)
+## 🔧 New Feature Requirements: Floor Details Integration
 
-1. After login, the user (Surveyor or Supervisor) is shown a dashboard with **4 clickable cards**:
-   - Residential
-   - Non-Residential
-   - Mixed
-   - Sync Data
+You are now extending the Survey workflow to support **Floor-Level Details** for Residential and Non-Residential property assessments.
 
-2. When a user clicks on a card, they are shown a button at the bottom called **“Add Survey”**. On clicking, a detailed form appears.
+### 🧱 Step-by-Step Feature Breakdown
 
-3. The form:
-   - Follows the **5-block structure**.
-   - Fields marked with `*` are **mandatory**.
-   - Fields not applicable to Residential surveys (like Plantation, Pollution, etc.) must be **conditionally hidden**.
-   - Must be labeled clearly (**no placeholders**).
-   - Fields use appropriate inputs:
-     - Dropdowns for enums (populated from master tables via API)
-     - TextInputs for open fields
-     - Checkboxes or toggles where needed
+#### 1. **Survey Form Extension**
+- Add a `Save` button at the bottom of the Survey Form screen.
+- On clicking “Save,” navigate to a new intermediate pane screen.
+- Save the partially completed survey to AsyncStorage.
+- Mark its status as **ongoing** (not yet submitted).
 
-4. On clicking “Save Survey”:
-   - The full survey object is stored in **AsyncStorage**
-   - Syncing to backend happens **only when the user manually pushes via Sync Data**
+#### 2. **Intermediate Pane (Survey Summary Screen)**
+This screen displays:
+- Survey metadata (GIS ID, Ward, Type, Respondent, etc.)
+- Four key actions:
+  - **Edit Survey**
+  - **Add Residential Floor Details**
+  - **Add Non-Residential Floor Details**
+  - **Delete Survey**
+- **Submit Survey** button at the bottom
 
----
+#### 3. **Survey Type Logic**
+- If `Survey Type` is `RESIDENTIAL`, show only Residential Floor Details option.
+- If `NON_RESIDENTIAL`, show only Non-Residential Floor Details option.
+- If `MIX`, show both options.
 
-## ⚙️ Survey Submission (Backend)
+#### 4. **Floor Details Flow**
+- Clicking on either Floor Details button navigates to a **Floor Details Dashboard screen**.
+- This dashboard:
+  - Lists already added floor entries as cards
+  - Each card has **Edit** and **Delete** options
+  - Includes a button to **Add New Floor Detail**
 
-- Create an Express API `POST /api/surveys`
-- Only users with role `SURVEYOR` or `SUPERVISOR` are allowed to submit.
-- Validate JWT token, extract `userId`, and ensure the role is valid.
-- Validate the form data with Zod
-- Insert data into `SurveyDetails` and its related tables:
-  - `PropertyDetails`
-  - `OwnerDetails`
-  - `LocationDetails`
-  - `OtherDetails`
-- Use the `uploadedById` field to track who submitted
+#### 5. **Floor Detail Forms**
+Use the exact field structure below for the two forms:
 
 ---
 
-## 📁 Existing File Structure 
+### 🏢 Residential Floor Details Form
+Fields:
+- *Floor Number: Dropdown (from Floor Number Master)
+- *Occupancy Status: Dropdown (from Occupancy Status Master)
+- *Occupancy Nature: Dropdown (from Occupancy Nature Master)
+- *Covered Area: TextInput
+- Total Rooms/Veranda Area: TextInput
+- Total Balcony/Kitchen Area: TextInput
+- All Garage Area: TextInput
+
+---
+
+### 🏬 Non-Residential Floor Details Form
+Fields:
+- *Floor Number: Dropdown (from Floor Number Master)
+- *Property Category: Dropdown (from NR Property Category Master)
+- *Property Sub Category: Dropdown (from NR Property Sub Category Master)
+- *Establishment Name: TextInput
+- License Number: TextInput
+- License Expiry Date: Date Picker
+- *Occupancy Status: Dropdown (from Occupancy Status Master)
+- *Occupancy Nature: Dropdown (from Occupancy Nature Master)
+- *Built-up Area: TextInput
+
+---
+
+### 🧠 Business Logic Rules
+- Floor Details must be tied to the specific `surveyUniqueCode`.
+- A survey should stay on the same intermediate screen (Survey Summary) **until submitted or deleted**.
+- `AsyncStorage` must persist the ongoing survey, so the user returns to the last survey until it’s complete.
+- Floor Details Dashboard must reflect the count of added floors with edit/delete capabilities.
+- Once submitted, floor data is synced to the backend via `/api/floorDetails` or a similar route.
+
+---
+
+### 📁 Folder Structure
 
 Survey_App
 ├── backend/
@@ -179,75 +198,30 @@ Survey_App
 │   └── tsconfig.json
 └── PROJECT_STATUS.md
 
+---
+
+## ✅ Generate the following:
+
+1. React Native **SurveySummaryPane** screen with 4 actions and Submit button.
+2. **ResidentialFloorForm** and **NonResidentialFloorForm** screens using provided fields.
+3. **FloorDetailsDashboard** screen to list added floor entries for a survey.
+4. Backend Express routes and controllers to:
+   - Save floor details (`POST /api/floorDetails`)
+   - Edit/delete floors (`PUT/DELETE`)
+   - Handle relational integrity via `surveyUniqueCode`
+5. AsyncStorage utility to:
+   - Store ongoing survey info
+   - Retrieve and navigate to last unsubmitted survey on app launch
+6. Zod schema for validating both types of floor detail inputs
+7. Prisma schema changes if needed (ensure model names are correct as per `schema.prisma`)
 
 ---
 
-## 📄 Form Field Definitions
+💡 Note:
+- Ensure enum-based dropdowns use master data from backend (`GET /api/masters`)
+- All form fields must match database field names from `schema.prisma`
+- Add inline comments to explain screen behaviors
 
-(Use these to generate form blocks and validation)
-
-### 📦 Survey Details Block
-- *ULB: Pre-filled (assigned ULB)
-- *Zone: Pre-filled
-- *Ward: Pre-filled
-- *Mohalla: Dropdown (filtered by Ward)
-- *Entry Date & Time: Auto-timestamp
-- Parcel ID: Text
-- *Map ID: Text
-- *GIS ID: Text
-- Sub-GIS ID: Text
-
-### 🏡 Property Details Block
-- *Response Type: Dropdown (enum)
-- *Old House No: Text
-- Electricity Consumer Name: Text
-- Water Sewerage Connection No: Text
-- *Respondent Name: Text
-- *Respondent Status: Dropdown (enum)
-
-### 👤 Owner Details Block
-- *Owner Name: Text
-- *Father/Husband Name: Text
-- Mobile Number: Text
-- Aadhar Number: Text
-
-### 📍 Location Details Block
-- Latitude: Text
-- Longitude: Text
-- *Assessment Year: Pre-filled
-- *Property Type: Dropdown (enum)
-- Building Name: Text
-- *Road Type: Dropdown (enum)
-- *Construction Year: Dropdown (last 50 years)
-- *Construction Type: Dropdown (enum)
-- Address/Road Name: Text
-- *Locality: Text
-- *PIN Code: Text
-- Landmark: Text
-- Four Way-East/West/North/South: Text
-- New Ward: Pre-filled
-
-### 🔧 Other Details Block
-- *Source of Water: Dropdown (enum)
-- *Rain Water Harvesting: Dropdown (YES/NO)
-- *Plantation Available: Dropdown (YES/NO) — Hide for Residential
-- *Parking Available: Dropdown (YES/NO) — Hide for Residential
-- *Pollution Created: Dropdown (YES/NO) — Hide for Residential
-- *Pollution Measurement: Text — Hide for Residential
-- *Water Supply within 200m: Checkbox
-- *Sewerage Line within 100m: Checkbox
-- *Disposal Type: Dropdown (enum)
-- *Total Plot Area: Text
-- *Built-up Area of Ground Floor: Text
-- Remarks: Text
-
----
-
-## 🔐 Role Constraint
-
-Enforce this on backend and optionally on frontend UI:
-- ✅ Only `SURVEYOR` and `SUPERVISOR` can submit surveys
-- ❌ Admins or other roles should not see survey entry UI
 
 ---
 
@@ -296,7 +270,7 @@ enum RespondentStatus {
   OCCUPIER
   TENANT
   EMPLOYEE
-  OTHER
+  OTHER   
 }
 
 enum RoadType {
@@ -452,6 +426,15 @@ model DisposalTypeMaster {
   otherDetails     OtherDetails[]
 }
 
+model FloorMaster {
+  floorNumberId   String   @id @default(uuid())
+  floorNumberName String   @db.VarChar(50)
+  isActive        Boolean  @default(true)
+  description     String?  @db.Text
+  residentialPropertyAssessments    ResidentialPropertyAssessment[]
+  nonResidentialPropertyAssessments NonResidentialPropertyAssessment[]
+}
+
 model NrPropertyCategoryMaster {
   propertyCategoryId                String                             @id @default(uuid())
   propertyCategoryNumber            Int
@@ -524,6 +507,7 @@ model WardStatusMaster {
 model UsersMaster {
   userId                        String                @id @default(uuid())
   username                      String                @db.Char(50)
+  name                          String?               @db.VarChar(100)
   password                      String                @db.VarChar(200)
   mobileNumber                  String?               @db.VarChar(20)
   isCreatedAt                   DateTime              @default(now())
@@ -796,10 +780,12 @@ model OtherDetails {
   disposalType                DisposalTypeMaster @relation(fields: [disposalTypeId], references: [disposalTypeId])
 }
 
+
+
 model ResidentialPropertyAssessment {
   floorAssessmentId     String                   @id @default(uuid())
   surveyUniqueCode      String
-  floorNumber           String                   @db.VarChar(50)
+  floorNumberId         String
   occupancyStatusId     String
   constructionNatureId  String
   coveredArea           Decimal                  @db.Decimal(10, 2) // changed type from Float to Decimal
@@ -808,6 +794,7 @@ model ResidentialPropertyAssessment {
   allGarageArea         Decimal                  @db.Decimal(10, 2) // changed type from Float to Decimal
   carpetArea            Decimal                  @db.Decimal(10, 2) // changed type from Float to Decimal
   survey                SurveyDetails            @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
+  floorMaster           FloorMaster              @relation(fields: [floorNumberId], references: [floorNumberId])
   occupancyStatus       OccupancyStatusMaster    @relation(fields: [occupancyStatusId], references: [occupancyStatusId])
   constructionNature    ConstructionNatureMaster @relation(fields: [constructionNatureId], references: [constructionNatureId])
 }
@@ -815,7 +802,7 @@ model ResidentialPropertyAssessment {
 model NonResidentialPropertyAssessment {
   floorAssessmentId    String                      @id @default(uuid())
   surveyUniqueCode     String
-  floorNumber          String                      @db.VarChar(50)
+  floorNumberId        String
   nrPropertyCategoryId String
   nrSubCategoryId      String
   establishmentName    String                      @db.Text
@@ -824,6 +811,7 @@ model NonResidentialPropertyAssessment {
   occupancyStatusId    String
   constructionNatureId String
   builtupArea          Decimal                     @db.Decimal(10, 2) // changed type from Float to Decimal
+  floorMaster          FloorMaster                 @relation(fields: [floorNumberId], references: [floorNumberId])
   nrPropertyCategory   NrPropertyCategoryMaster    @relation(fields: [nrPropertyCategoryId], references: [propertyCategoryId], onDelete: Restrict)
   nrSubCategory        NrPropertySubCategoryMaster @relation(fields: [nrSubCategoryId], references: [subCategoryId], onDelete: Restrict)
   occupancyStatus      OccupancyStatusMaster       @relation(fields: [occupancyStatusId], references: [occupancyStatusId])
@@ -850,14 +838,5 @@ model PropertyAttachmentDetails {
 }
 
 ---
-
-## ✅ Output Expected
-
-Generate:
-1. React Native form UI (`AddSurveyForm.tsx`)
-2. AsyncStorage utils to save survey data locally
-3. Express route/controller to receive & validate survey
-4. Zod validation schema for backend
-5. API service method (`api.ts`) to post survey to backend
 
 Use modular, commented, maintainable code.

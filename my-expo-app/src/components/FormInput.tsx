@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { View, Text, TextInput, StyleSheet, TextInputProps } from 'react-native';
 
 interface FormInputProps extends TextInputProps {
@@ -6,17 +6,19 @@ interface FormInputProps extends TextInputProps {
   required?: boolean;
 }
 
-const FormInput: React.FC<FormInputProps> = ({ label, required, ...props }) => {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.label}>
-        {label}
-        {required && <Text style={styles.required}> *</Text>}
-      </Text>
-      <TextInput style={styles.input} {...props} />
-    </View>
-  );
-};
+const FormInput = forwardRef<TextInput, FormInputProps>(({ label, required, ...props }, ref) => (
+  <View style={styles.container}>
+    <Text style={styles.label}>
+      {label}
+      {required && <Text style={styles.required}> *</Text>}
+    </Text>
+    <TextInput
+      ref={ref}
+      style={styles.input}
+      {...props}
+    />
+  </View>
+));
 
 const styles = StyleSheet.create({
   container: {

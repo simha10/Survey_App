@@ -1,66 +1,32 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import RNPickerSelect, { PickerSelectProps } from 'react-native-picker-select';
+import React, { forwardRef } from 'react';
+import { View, Text } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 
-interface FormDropdownProps extends PickerSelectProps {
+interface FormDropdownProps {
   label: string;
   required?: boolean;
+  items: { label: string; value: string }[];
+  value: string;
+  onValueChange: (value: string) => void;
 }
 
-const FormDropdown: React.FC<FormDropdownProps> = ({ label, required, items, ...props }) => {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.label}>
-        {label}
-        {required && <Text style={styles.required}> *</Text>}
-      </Text>
-      <RNPickerSelect
-        items={items}
-        style={pickerSelectStyles}
-        {...props}
-      />
-    </View>
-  );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 16,
-  },
-  label: {
-    marginBottom: 8,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151', // gray-700
-  },
-  required: {
-    color: '#EF4444', // red-500
-  },
-});
-
-const pickerSelectStyles = StyleSheet.create({
-  inputIOS: {
-    fontSize: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    color: '#111827',
-    paddingRight: 30, // to ensure the text is never behind the icon
-    backgroundColor: '#F9FAFB',
-  },
-  inputAndroid: {
-    fontSize: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    color: '#111827',
-    paddingRight: 30, // to ensure the text is never behind the icon
-    backgroundColor: '#F9FAFB',
-  },
-});
+const FormDropdown = forwardRef<Picker, FormDropdownProps>(({ label, required, items, value, onValueChange }, ref) => (
+  <View style={{ marginBottom: 12 }}>
+    <Text style={{ fontWeight: 'bold', marginBottom: 4 }}>
+      {label} {required ? '*' : ''}
+    </Text>
+    <Picker
+      ref={ref}
+      selectedValue={value}
+      onValueChange={onValueChange}
+      style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 6 }}
+    >
+      <Picker.Item label="Select an item..." value="" />
+      {items.map((item) => (
+        <Picker.Item key={item.value} label={item.label} value={item.value} />
+      ))}
+    </Picker>
+  </View>
+));
 
 export default FormDropdown; 

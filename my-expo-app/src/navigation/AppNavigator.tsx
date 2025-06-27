@@ -12,8 +12,12 @@ import SuperAdminDashboard from '../screens/SuperAdminDashboard';
 import AdminDashboard from '../screens/AdminDashboard';
 import SupervisorDashboard from '../screens/SupervisorDashboard';
 import SurveyorDashboard from '../screens/SurveyorDashboard';
-import AddSurveyForm from '../screens/AddSurveyForm';
-import FloorDetailsScreen from '../screens/FloorDetailsScreen';
+import SurveyForm from '../screens/SurveyForm';
+import SurveyIntermediate from '../screens/SurveyIntermediate';
+import ResidentialIntermediate from '../screens/ResidentialIntermediate';
+import NonResidentialIntermediate from '../screens/NonResidentialIntermediate';
+import ResidentialFloorDetail from '../screens/ResidentialFloorDetail';
+import NonResidentialFloorDetail from '../screens/NonResidentialFloorDetail';
 import { useAuth } from '../context/AuthContext';
 import CustomHeader from '../components/CustomHeader';
 import { useTheme } from '../context/ThemeContext';
@@ -100,19 +104,51 @@ export default function AppNavigator() {
                 )}
               </Stack.Screen>
               <Stack.Screen
-                name="AddSurveyForm"
-                component={AddSurveyForm}
+                name="SurveyForm"
+                component={SurveyForm}
                 options={{
                   headerShown: true,
                   header: () => <CustomHeader title="Add New Survey" />,
                 }}
               />
               <Stack.Screen
-                name="FloorDetailsScreen"
-                component={FloorDetailsScreen}
+                name="SurveyIntermediate"
+                component={SurveyIntermediate}
                 options={{
                   headerShown: true,
-                  header: () => <CustomHeader title="Floor Details" />,
+                  header: () => <CustomHeader title="Survey Summary" />,
+                }}
+              />
+              <Stack.Screen
+                name="ResidentialIntermediate"
+                component={ResidentialIntermediate}
+                options={{
+                  headerShown: true,
+                  header: () => <CustomHeader title="Residential Floor Details" />,
+                }}
+              />
+              <Stack.Screen
+                name="NonResidentialIntermediate"
+                component={NonResidentialIntermediate}
+                options={{
+                  headerShown: true,
+                  header: () => <CustomHeader title="Non-Residential Floor Details" />,
+                }}
+              />
+              <Stack.Screen
+                name="ResidentialFloorDetail"
+                component={ResidentialFloorDetail}
+                options={{
+                  headerShown: true,
+                  header: () => <CustomHeader title="Residential Floor Detail" />,
+                }}
+              />
+              <Stack.Screen
+                name="NonResidentialFloorDetail"
+                component={NonResidentialFloorDetail}
+                options={{
+                  headerShown: true,
+                  header: () => <CustomHeader title="Non-Residential Floor Detail" />,
                 }}
               />
               <Stack.Screen
