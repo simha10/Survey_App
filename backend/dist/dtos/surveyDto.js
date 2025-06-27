@@ -62,26 +62,30 @@ const OtherDetailsSchema = zod_1.z.object({
     builtupAreaOfGroundFloor: zod_1.z.number(),
     remarks: zod_1.z.string().optional(),
 });
+// Residential Floor Details
+// All fields marked * are mandatory as per requirements
 const ResidentialPropertyAssessmentSchema = zod_1.z.object({
-    floornumberId: zod_1.z.number(),
-    occupancyStatusId: zod_1.z.string().uuid(),
-    constructionNatureId: zod_1.z.string().uuid(),
-    coveredArea: zod_1.z.number(),
-    allRoomVerandaArea: zod_1.z.number(),
-    allBalconyKitchenArea: zod_1.z.number(),
-    allGarageArea: zod_1.z.number(),
-    carpetArea: zod_1.z.number(),
+    floorNumberId: zod_1.z.string().uuid(), // Floor Number (from Floor Number Master)
+    occupancyStatusId: zod_1.z.string().uuid(), // Occupancy Status (from Occupancy Status Master)
+    constructionNatureId: zod_1.z.string().uuid(), // Construction Nature (from Construction Nature Master)
+    coveredArea: zod_1.z.number(), // Covered Area (manual entry)
+    allRoomVerandaArea: zod_1.z.number(), // Total Rooms/Veranda Area (manual entry)
+    allBalconyKitchenArea: zod_1.z.number(), // Total Balcony/Kitchen Area (manual entry)
+    allGarageArea: zod_1.z.number(), // All Garage Area (manual entry)
+    carpetArea: zod_1.z.number(), // Carpet Area (manual entry)
 });
+// Non-Residential Floor Details
+// All fields marked * are mandatory as per requirements
 const NonResidentialPropertyAssessmentSchema = zod_1.z.object({
-    floornumberId: zod_1.z.number(),
-    nrPropertyCategoryId: zod_1.z.string().uuid(),
-    nrSubCategoryId: zod_1.z.string().uuid(),
-    establishmentName: zod_1.z.string(),
-    licenseNo: zod_1.z.string().max(20).optional(),
-    licenseExpiryDate: zod_1.z.string().datetime().optional(),
-    occupancyStatusId: zod_1.z.string().uuid(),
-    constructionNatureId: zod_1.z.string().uuid(),
-    builtupArea: zod_1.z.number(),
+    floorNumberId: zod_1.z.string().uuid(), // Floor Number (from Floor Number Master)
+    nrPropertyCategoryId: zod_1.z.string().uuid(), // Property Category (from NR Property Category Master)
+    nrSubCategoryId: zod_1.z.string().uuid(), // Property Sub Category (from NR Property Sub Category Master)
+    establishmentName: zod_1.z.string(), // Establishment Name (manual entry)
+    licenseNo: zod_1.z.string().max(20).optional(), // License Number (manual entry, optional)
+    licenseExpiryDate: zod_1.z.string().datetime().optional(), // License Expiry Date (manual entry, optional)
+    occupancyStatusId: zod_1.z.string().uuid(), // Occupancy Status (from Occupancy Status Master)
+    constructionNatureId: zod_1.z.string().uuid(), // Construction Nature (from Construction Nature Master)
+    builtupArea: zod_1.z.number(), // Built-up Area (manual entry)
 });
 exports.CreateSurveyDtoSchema = zod_1.z.object({
     surveyDetails: SurveyDetailsSchema,

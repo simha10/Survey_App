@@ -76,7 +76,7 @@ const ResidentialPropertyAssessmentSchema = z.object({
   allRoomVerandaArea: z.number(), // Total Rooms/Veranda Area (manual entry)
   allBalconyKitchenArea: z.number(), // Total Balcony/Kitchen Area (manual entry)
   allGarageArea: z.number(), // All Garage Area (manual entry)
-  // Note: carpetArea removed as not in requirements
+  carpetArea: z.number(), // Carpet Area (manual entry)
 });
 
 // Non-Residential Floor Details
