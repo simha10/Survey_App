@@ -66,27 +66,31 @@ const OtherDetailsSchema = z.object({
   remarks: z.string().optional(),
 });
 
+// Residential Floor Details
+// All fields marked * are mandatory as per requirements
 const ResidentialPropertyAssessmentSchema = z.object({
-  floornumberId: z.number(),
-  occupancyStatusId: z.string().uuid(),
-  constructionNatureId: z.string().uuid(),
-  coveredArea: z.number(),
-  allRoomVerandaArea: z.number(),
-  allBalconyKitchenArea: z.number(),
-  allGarageArea: z.number(),
-  carpetArea: z.number(),
+  floorNumberId: z.string().uuid(), // Floor Number (from Floor Number Master)
+  occupancyStatusId: z.string().uuid(), // Occupancy Status (from Occupancy Status Master)
+  constructionNatureId: z.string().uuid(), // Construction Nature (from Construction Nature Master)
+  coveredArea: z.number(), // Covered Area (manual entry)
+  allRoomVerandaArea: z.number(), // Total Rooms/Veranda Area (manual entry)
+  allBalconyKitchenArea: z.number(), // Total Balcony/Kitchen Area (manual entry)
+  allGarageArea: z.number(), // All Garage Area (manual entry)
+  // Note: carpetArea removed as not in requirements
 });
 
+// Non-Residential Floor Details
+// All fields marked * are mandatory as per requirements
 const NonResidentialPropertyAssessmentSchema = z.object({
-  floornumberId: z.number(),
-  nrPropertyCategoryId: z.string().uuid(),
-  nrSubCategoryId: z.string().uuid(),
-  establishmentName: z.string(),
-  licenseNo: z.string().max(20).optional(),
-  licenseExpiryDate: z.string().datetime().optional(),
-  occupancyStatusId: z.string().uuid(),
-  constructionNatureId: z.string().uuid(),
-  builtupArea: z.number(),
+  floorNumberId: z.string().uuid(), // Floor Number (from Floor Number Master)
+  nrPropertyCategoryId: z.string().uuid(), // Property Category (from NR Property Category Master)
+  nrSubCategoryId: z.string().uuid(), // Property Sub Category (from NR Property Sub Category Master)
+  establishmentName: z.string(), // Establishment Name (manual entry)
+  licenseNo: z.string().max(20).optional(), // License Number (manual entry, optional)
+  licenseExpiryDate: z.string().datetime().optional(), // License Expiry Date (manual entry, optional)
+  occupancyStatusId: z.string().uuid(), // Occupancy Status (from Occupancy Status Master)
+  constructionNatureId: z.string().uuid(), // Construction Nature (from Construction Nature Master)
+  builtupArea: z.number(), // Built-up Area (manual entry)
 });
 
 export const CreateSurveyDtoSchema = z.object({

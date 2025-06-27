@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (role: string, token: string, user: object) => {
     try {
-        await SecureStore.setItemAsync('authToken', token);
+        await AsyncStorage.setItem('userToken', token);
         await AsyncStorage.setItem('user', JSON.stringify({ ...user, role }));
         setUserRole(role);
     } catch (e) {
@@ -44,7 +44,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
-      await SecureStore.deleteItemAsync('authToken');
+      await AsyncStorage.removeItem('userToken');
       await AsyncStorage.removeItem('user');
       setUserRole(null);
     } catch (e) {

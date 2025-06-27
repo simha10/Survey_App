@@ -1,0 +1,24 @@
+Residential Floor Details
+-------------------------
+
+*Floor Number: Dropdown Menu - Options from Floor Number Master
+*Occupancy Status: Dropdown Menu - Options from Occupancy Status Master
+*Occupancy Nature: Dropdown Menu - Options from Occupancy Nature Master
+*Covered Area: Text Box for Surveyor to enter
+Total Rooms/Veranda Area: Text Box for Surveyor to enter
+Total Balcony/Kitchen Area: Text Box for Surveyor to enter
+All Garage Area: Text Box for Surveyor to enter
+Carpet Area: 80% of Builtup Area Of Ground Floor from the Survey - Should get calculated and filled in without requiring for the Surveyor to enter
+
+Non-Residential Floor Details
+-----------------------------
+
+*Floor Number: Dropdown Menu - Options from Floor Number Master
+*Property Category: Dropdown Menu - Options from NR Property Category Master
+*Property Sub Category: Dropdown Menu - Options from NR Property Sub Category Master
+*Establishment Name: Text Box for Surveyor to enter
+Establishment Municipal Corporation License Number: Text Box for Surveyor to enter
+License Expiry date: A calendar to choose Year, Month and Date
+*Occupancy Status: Dropdown Menu - Options from Occupancy Status Master
+*Occupancy Nature: Dropdown Menu - Options from Occupancy Nature Master
+*Built-up Area: Text Box for Surveyor to enter

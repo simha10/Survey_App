@@ -29,4 +29,34 @@ export const submitSurvey = async (surveyData: SurveyData): Promise<any> => {
     console.error('Error submitting survey:', error);
     throw error;
   }
-}; 
+};
+
+export const fetchMasterData = async () => {
+  // Dummy master data for development/testing
+  return {
+    floorNumbers: [
+      { floorNumberId: '1', floorNumberName: 'Ground Floor' },
+      { floorNumberId: '2', floorNumberName: 'First Floor' },
+      { floorNumberId: '3', floorNumberName: 'Second Floor' },
+    ],
+    occupancyStatuses: [
+      { occupancyStatusId: '1', occupancyStatusName: 'Self Occupied' },
+      { occupancyStatusId: '2', occupancyStatusName: 'Rented' },
+      { occupancyStatusId: '3', occupancyStatusName: 'Mix' },
+    ],
+    constructionNatures: [
+      { constructionNatureId: '1', constructionNatureName: 'Pucckaa RCC/RB Roof' },
+      { constructionNatureId: '2', constructionNatureName: 'Other Pucckaa' },
+      { constructionNatureId: '3', constructionNatureName: 'Kucchhaa' },
+    ],
+    nrPropertyCategories: [
+      { propertyCategoryId: '1', propertyCategoryName: 'Shops' },
+      { propertyCategoryId: '2', propertyCategoryName: 'Offices' },
+    ],
+    nrPropertySubCategories: [
+      { subCategoryId: '1', subCategoryName: 'Retail', propertyCategoryId: '1' },
+      { subCategoryId: '2', subCategoryName: 'Wholesale', propertyCategoryId: '1' },
+      { subCategoryId: '3', subCategoryName: 'Corporate', propertyCategoryId: '2' },
+    ],
+  };
+};

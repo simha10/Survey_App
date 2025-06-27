@@ -14,7 +14,6 @@ function AppWrapper() {
 
   return (
     <View key={theme} className={theme === 'dark' ? 'dark flex-1' : 'flex-1'}>
-      <Text className="text-black dark:text-white">Current theme: {theme}</Text>
       <AppNavigator />
     </View>
   );
