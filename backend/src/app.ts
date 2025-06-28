@@ -5,6 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import authRoutes from './routes/authRoutes';
 import surveyorRoutes from './routes/surveyorRoutes';
 import surveyRoutes from './routes/surveyRoutes';
+import masterDataRoutes from './routes/masterDataRoutes';
 import { authenticateJWT, restrictToWebPortal } from './middleware/authMiddleware';
 import wardRoutes from './routes/wardRoutes';
 import userRoutes from './routes/userRoutes';
@@ -22,6 +23,8 @@ const corsOptions = {
     'http://127.0.0.1:3000', // Alternative localhost
     'http://localhost:3001', // Alternative port
     'http://127.0.0.1:3001', // Alternative port
+    'http://localhost:8081', // Expo development server
+    'http://127.0.0.1:8081', // Expo development server
   ],
   credentials: true, // Allow cookies and authorization headers
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -56,6 +59,9 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/auth', authRoutes);
+
+// Master data routes (public for now, can be protected later if needed)
+app.use('/master-data', masterDataRoutes);
 
 // Protected routes - Web Portal Only (ADMIN/SUPERADMIN)
 app.use('/ward', authenticateJWT, restrictToWebPortal, wardRoutes);

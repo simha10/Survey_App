@@ -63,7 +63,7 @@ export type GetWardAssignmentsDto = z.infer<typeof GetWardAssignmentsSchema>;
 // Ward Status DTOs
 export const UpdateWardStatusSchema = z.object({
   wardId: z.string().uuid(),
-  statusId: z.string().uuid(),
+  wardStatusId: z.number().int().positive(),
   reason: z.string().optional(),
 });
 export type UpdateWardStatusDto = z.infer<typeof UpdateWardStatusSchema>;
