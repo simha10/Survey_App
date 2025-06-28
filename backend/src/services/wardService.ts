@@ -481,13 +481,13 @@ export async function getWardAssignments(dto: GetWardAssignmentsDto) {
 
 // 7. Update Ward Status
 export async function updateWardStatus(dto: UpdateWardStatusDto, updatedById: string) {
-  const { wardId, statusId, reason } = dto;
+  const { wardId, wardStatusId, reason } = dto;
 
   try {
     // Validate ward and status exist
     const [ward, status] = await Promise.all([
       prisma.wardMaster.findUnique({ where: { wardId } }),
-      prisma.wardStatusMaster.findUnique({ where: { statusId } }),
+      prisma.wardStatusMaster.findUnique({ where: { wardStatusId } }),
     ]);
 
     if (!ward || !status) {
@@ -495,11 +495,11 @@ export async function updateWardStatus(dto: UpdateWardStatusDto, updatedById: st
     }
 
     const result = await prisma.wardStatusMapping.upsert({
-      where: { wardId_statusId: { wardId, statusId } },
+      where: { wardId_wardStatusId: { wardId, wardStatusId } },
       update: { isActive: true, changedById: updatedById },
       create: {
         wardId,
-        statusId,
+        wardStatusId,
         changedById: updatedById,
         isActive: true,
       },
@@ -510,15 +510,15 @@ export async function updateWardStatus(dto: UpdateWardStatusDto, updatedById: st
         data: {
           userId: updatedById,
           action: 'UPDATE_WARD_STATUS',
-          old_value: JSON.stringify({ wardId, statusId, statusName: status.statusName }),
-          new_value: JSON.stringify({ wardId, statusId, statusName: status.statusName }),
+          old_value: JSON.stringify({ wardId, wardStatusId, statusName: status.statusName }),
+          new_value: JSON.stringify({ wardId, wardStatusId, statusName: status.statusName }),
         }
       });
     }
 
     return {
       wardId,
-      statusId,
+      wardStatusId,
       statusName: status.statusName,
       reason,
       status: 'Ward status updated successfully',

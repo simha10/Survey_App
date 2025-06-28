@@ -19,9 +19,9 @@ import { fetchMasterData } from '../services/surveyService';
 
 interface FloorDetail {
   id: string;
-  floorNumberId: string;
-  occupancyStatusId: string;
-  constructionNatureId: string;
+  floorNumberId: number;
+  occupancyStatusId: number;
+  constructionNatureId: number;
   coveredArea: string;
   allRoomVerandaArea: string;
   allBalconyKitchenArea: string;
@@ -30,9 +30,9 @@ interface FloorDetail {
 }
 
 interface MasterData {
-  floorNumbers: Array<{ floorNumberId: string; floorNumberName: string }>;
-  occupancyStatuses: Array<{ occupancyStatusId: string; occupancyStatusName: string }>;
-  constructionNatures: Array<{ constructionNatureId: string; constructionNatureName: string }>;
+  floorNumbers: Array<{ floorNumberId: number; floorNumberName: string }>;
+  occupancyStatuses: Array<{ occupancyStatusId: number; occupancyStatusName: string }>;
+  constructionNatures: Array<{ constructionNatureId: number; constructionNatureName: string }>;
 }
 
 type Navigation = {
@@ -54,9 +54,9 @@ export default function ResidentialFloorDetail() {
   // Form state
   const [formData, setFormData] = useState<FloorDetail>({
     id: '',
-    floorNumberId: '',
-    occupancyStatusId: '',
-    constructionNatureId: '',
+    floorNumberId: 0,
+    occupancyStatusId: 0,
+    constructionNatureId: 0,
     coveredArea: '',
     allRoomVerandaArea: '',
     allBalconyKitchenArea: '',
@@ -107,14 +107,22 @@ export default function ResidentialFloorDetail() {
 
   const handleInputChange = (field: keyof FloorDetail, value: string) => {
     setFormData(prev => {
-      const updated = { ...prev, [field]: value };
+      const newData = { ...prev };
+      
+      // Handle number fields
+      if (field === 'floorNumberId' || field === 'occupancyStatusId' || 
+          field === 'constructionNatureId') {
+        newData[field] = parseInt(value) || 0;
+      } else {
+        newData[field] = value;
+      }
       
       // Auto-calculate carpet area when covered area changes
       if (field === 'coveredArea') {
-        updated.carpetArea = calculateCarpetArea();
+        newData.carpetArea = calculateCarpetArea();
       }
       
-      return updated;
+      return newData;
     });
   };
 
@@ -218,10 +226,10 @@ export default function ResidentialFloorDetail() {
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.floorNumberId}
-                onValueChange={(value) => handleInputChange('floorNumberId', value)}
+                onValueChange={(value) => handleInputChange('floorNumberId', value.toString())}
                 style={styles.picker}
               >
-                <Picker.Item label="Select Floor Number" value="" />
+                <Picker.Item label="Select Floor Number" value={0} />
                 {masterData.floorNumbers.map((floor) => (
                   <Picker.Item
                     key={floor.floorNumberId}
@@ -239,10 +247,10 @@ export default function ResidentialFloorDetail() {
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.occupancyStatusId}
-                onValueChange={(value) => handleInputChange('occupancyStatusId', value)}
+                onValueChange={(value) => handleInputChange('occupancyStatusId', value.toString())}
                 style={styles.picker}
               >
-                <Picker.Item label="Select Occupancy Status" value="" />
+                <Picker.Item label="Select Occupancy Status" value={0} />
                 {masterData.occupancyStatuses.map((status) => (
                   <Picker.Item
                     key={status.occupancyStatusId}
@@ -260,10 +268,10 @@ export default function ResidentialFloorDetail() {
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.constructionNatureId}
-                onValueChange={(value) => handleInputChange('constructionNatureId', value)}
+                onValueChange={(value) => handleInputChange('constructionNatureId', value.toString())}
                 style={styles.picker}
               >
-                <Picker.Item label="Select Construction Nature" value="" />
+                <Picker.Item label="Select Construction Nature" value={0} />
                 {masterData.constructionNatures.map((nature) => (
                   <Picker.Item
                     key={nature.constructionNatureId}

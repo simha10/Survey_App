@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ScrollView, View, Text, StyleSheet, Button, Alert, findNodeHandle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FormInput from '../components/FormInput';
@@ -6,6 +6,7 @@ import FormDropdown from '../components/FormDropdown';
 import { saveSurveyLocally } from '../utils/storage';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { fetchAllMasterData } from '../services/masterDataService';
 
 export default function SurveyForm({ route }: any) {
   let { surveyType } = route.params as { surveyType: string };
@@ -16,7 +17,11 @@ export default function SurveyForm({ route }: any) {
   const scrollViewRef = useRef<ScrollView>(null);
   const fieldRefs = useRef<{ [key: string]: View | null }>({});
 
-  // Dummy master data arrays with UUIDs
+  // State for master data
+  const [masterData, setMasterData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Dummy master data arrays for ULB, Zone, Ward, and Mohalla (as requested)
   const ulbOptions = [
     { label: 'Lucknow', value: '00000000-0000-0000-0000-000000000001' },
   ];
@@ -31,51 +36,108 @@ export default function SurveyForm({ route }: any) {
     { label: 'Aliganj', value: '00000000-0000-0000-0000-000000000005' },
     { label: 'Gomti Nagar', value: '00000000-0000-0000-0000-000000000006' },
   ];
-  const responseTypeOptions = [
-    { label: 'Old Property', value: '10000000-0000-0000-0000-000000000001' },
-    { label: 'New Property', value: '10000000-0000-0000-0000-000000000002' },
-    { label: 'Door Lock', value: '10000000-0000-0000-0000-000000000003' },
-    { label: 'Access Denied', value: '10000000-0000-0000-0000-000000000004' },
-  ];
-  const respondentStatusOptions = [
-    { label: 'Owner', value: '20000000-0000-0000-0000-000000000001' },
-    { label: 'Occupier', value: '20000000-0000-0000-0000-000000000002' },
-    { label: 'Tenant', value: '20000000-0000-0000-0000-000000000003' },
-    { label: 'Employee', value: '20000000-0000-0000-0000-000000000004' },
-    { label: 'Other', value: '20000000-0000-0000-0000-000000000005' },
-  ];
-  const propertyTypeOptions = [
-    { label: 'House', value: '30000000-0000-0000-0000-000000000001' },
-    { label: 'Flat', value: '30000000-0000-0000-0000-000000000002' },
-    { label: 'Plot/Land', value: '30000000-0000-0000-0000-000000000003' },
-  ];
-  const roadTypeOptions = [
-    { label: 'Width < 3m', value: '40000000-0000-0000-0000-000000000001' },
-    { label: 'Width 3-11m', value: '40000000-0000-0000-0000-000000000002' },
-    { label: 'Width 12-24m', value: '40000000-0000-0000-0000-000000000003' },
-    { label: 'Width > 24m', value: '40000000-0000-0000-0000-000000000004' },
-  ];
-  const constructionTypeOptions = [
-    { label: 'Constructed', value: '50000000-0000-0000-0000-000000000001' },
-    { label: 'Not Constructed', value: '50000000-0000-0000-0000-000000000002' },
-    { label: 'Under Construction', value: '50000000-0000-0000-0000-000000000003' },
-  ];
-  const waterSourceOptions = [
-    { label: 'Own', value: '60000000-0000-0000-0000-000000000001' },
-    { label: 'Municipal', value: '60000000-0000-0000-0000-000000000002' },
-    { label: 'Public Tap < 100 Yards', value: '60000000-0000-0000-0000-000000000003' },
-    { label: 'Public Tap > 100 Yards', value: '60000000-0000-0000-0000-000000000004' },
-  ];
-  const disposalTypeOptions = [
-    { label: 'Sewerage', value: '70000000-0000-0000-0000-000000000001' },
-    { label: 'Septic Tank', value: '70000000-0000-0000-0000-000000000002' },
-  ];
 
-  // Dummy UUIDs for SurveyTypeMaster (replace with real UUIDs from your DB/seed)
-  const SURVEY_TYPE_UUIDS = {
-    Residential: '11111111-1111-1111-1111-111111111111',
-    'Non-Residential': '22222222-2222-2222-2222-222222222222',
-    Mixed: '33333333-3333-3333-3333-333333333333',
+  // Fetch master data on component mount
+  useEffect(() => {
+    const loadMasterData = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchAllMasterData();
+        setMasterData(data);
+      } catch (error) {
+        console.error('Error loading master data:', error);
+        Alert.alert('Error', 'Failed to load master data. Using fallback data.');
+        // Set fallback data
+        setMasterData({
+          responseTypes: [
+            { responseTypeId: 1, responseTypeName: 'OLD PROPERTY' },
+            { responseTypeId: 2, responseTypeName: 'NEW PROPERTY' },
+            { responseTypeId: 3, responseTypeName: 'DOOR LOCK' },
+            { responseTypeId: 4, responseTypeName: 'ACCESS DENIED' },
+          ],
+          propertyTypes: [
+            { propertyTypeId: 1, propertyTypeName: 'HOUSE' },
+            { propertyTypeId: 2, propertyTypeName: 'FLAT' },
+            { propertyTypeId: 3, propertyTypeName: 'PLOT LAND' },
+          ],
+          respondentStatuses: [
+            { respondentStatusId: 1, respondentStatusName: 'OWNER' },
+            { respondentStatusId: 2, respondentStatusName: 'OCCUPIER' },
+            { respondentStatusId: 3, respondentStatusName: 'TENANT' },
+            { respondentStatusId: 4, respondentStatusName: 'EMPLOYEE' },
+            { respondentStatusId: 5, respondentStatusName: 'OTHER' },
+          ],
+          roadTypes: [
+            { roadTypeId: 1, roadTypeName: 'WIDTH LESS THAN 3M' },
+            { roadTypeId: 2, roadTypeName: 'WIDTH 3 TO 11M' },
+            { roadTypeId: 3, roadTypeName: 'WIDTH 12 TO 24M' },
+            { roadTypeId: 4, roadTypeName: 'WIDTH MORE THAN 24M' },
+          ],
+          constructionTypes: [
+            { constructionTypeId: 1, constructionTypeName: 'CONSTRUCTED' },
+            { constructionTypeId: 2, constructionTypeName: 'NOT CONSTRUCTED' },
+            { constructionTypeId: 3, constructionTypeName: 'UNDER CONSTRUCTION' },
+          ],
+          waterSources: [
+            { waterSourceId: 1, waterSourceName: 'OWN' },
+            { waterSourceId: 2, waterSourceName: 'MUNICIPAL' },
+            { waterSourceId: 3, waterSourceName: 'PUBLIC TAP WITHIN 100 YARDS' },
+            { waterSourceId: 4, waterSourceName: 'PUBLIC TAP MORE THAN 100 YARDS' },
+          ],
+          disposalTypes: [
+            { disposalTypeId: 1, disposalTypeName: 'SEWERAGE' },
+            { disposalTypeId: 2, disposalTypeName: 'SEPTIC TANK' },
+          ],
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMasterData();
+  }, []);
+
+  // Transform master data to dropdown options format
+  const responseTypeOptions = masterData?.responseTypes?.map((item: any) => ({
+    label: item.responseTypeName,
+    value: item.responseTypeId,
+  })) || [];
+
+  const respondentStatusOptions = masterData?.respondentStatuses?.map((item: any) => ({
+    label: item.respondentStatusName,
+    value: item.respondentStatusId,
+  })) || [];
+
+  const propertyTypeOptions = masterData?.propertyTypes?.map((item: any) => ({
+    label: item.propertyTypeName,
+    value: item.propertyTypeId,
+  })) || [];
+
+  const roadTypeOptions = masterData?.roadTypes?.map((item: any) => ({
+    label: item.roadTypeName,
+    value: item.roadTypeId,
+  })) || [];
+
+  const constructionTypeOptions = masterData?.constructionTypes?.map((item: any) => ({
+    label: item.constructionTypeName,
+    value: item.constructionTypeId,
+  })) || [];
+
+  const waterSourceOptions = masterData?.waterSources?.map((item: any) => ({
+    label: item.waterSourceName,
+    value: item.waterSourceId,
+  })) || [];
+
+  const disposalTypeOptions = masterData?.disposalTypes?.map((item: any) => ({
+    label: item.disposalTypeName,
+    value: item.disposalTypeId,
+  })) || [];
+
+  // Integer IDs for SurveyTypeMaster (replace with real IDs from your DB/seed)
+  const SURVEY_TYPE_IDS = {
+    Residential: 1,
+    'Non-Residential': 2,
+    Mixed: 3,
   };
 
   // State aligned with backend DTO
@@ -88,12 +150,12 @@ export default function SurveyForm({ route }: any) {
     mapId: '',
     gisId: '',
     subGisId: '',
-    responseTypeId: '',
+    responseTypeId: 0,
     oldHouseNumber: '',
     electricityConsumerName: '',
     waterSewerageConnectionNumber: '',
     respondentName: '',
-    respondentStatusId: '',
+    respondentStatusId: 0,
     ownerName: '',
     fatherHusbandName: '',
     mobileNumber: '',
@@ -101,11 +163,11 @@ export default function SurveyForm({ route }: any) {
     propertyLatitude: '',
     propertyLongitude: '',
     assessmentYear: '',
-    propertyTypeId: '',
+    propertyTypeId: 0,
     buildingName: '',
-    roadTypeId: '',
+    roadTypeId: 0,
     constructionYear: '',
-    constructionTypeId: '',
+    constructionTypeId: 0,
     addressRoadName: '',
     locality: '',
     pinCode: '',
@@ -115,7 +177,7 @@ export default function SurveyForm({ route }: any) {
     fourWayNorth: '',
     fourWaySouth: '',
     newWard: '',
-    waterSourceId: '',
+    waterSourceId: 0,
     rainWaterHarvestingSystem: '',
     plantation: '',
     parking: '',
@@ -123,13 +185,13 @@ export default function SurveyForm({ route }: any) {
     pollutionMeasurementTaken: '',
     waterSupplyWithin200Meters: '',
     sewerageLineWithin100Meters: '',
-    disposalTypeId: '',
+    disposalTypeId: 0,
     totalPlotArea: '',
     builtupAreaOfGroundFloor: '',
     remarks: '',
   });
 
-  const handleInputChange = (name: string, value: string | boolean) => {
+  const handleInputChange = (name: string, value: string | boolean | number) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -167,28 +229,28 @@ export default function SurveyForm({ route }: any) {
       );
     }
 
-    const firstMissingField = requiredFields.find(field => !formData[field.key]);
+    const firstMissingField = requiredFields.find(field => {
+      const value = formData[field.key];
+      // Check for number fields (non-zero) or string fields (non-empty)
+      if (typeof value === 'number') {
+        return value === 0;
+      } else {
+        return !value;
+      }
+    });
 
     if (firstMissingField) {
-      const fieldRef = fieldRefs.current[firstMissingField.key];
-      
-      if (fieldRef && scrollViewRef.current) {
-        const reactNodeHandle = findNodeHandle(scrollViewRef.current);
-        if (reactNodeHandle) {
-          fieldRef.measureLayout(
-            reactNodeHandle,
-            (x, y) => {
-              scrollViewRef.current?.scrollTo({ y, animated: true });
-            },
-            () => {} // onError
-          );
-        }
+      Alert.alert('Validation Error', `${firstMissingField.label} is required.`);
+      // Scroll to the field
+      if (fieldRefs.current[firstMissingField.key]) {
+        fieldRefs.current[firstMissingField.key]?.measureLayout(
+          scrollViewRef.current as any,
+          (x, y) => {
+            scrollViewRef.current?.scrollTo({ y, animated: true });
+          },
+          () => {}
+        );
       }
-
-      Alert.alert(
-        'Missing Information',
-        `Please fill out the "${firstMissingField.label}" field.`
-      );
       return false;
     }
 
@@ -221,7 +283,7 @@ export default function SurveyForm({ route }: any) {
           zoneId: formData.zoneId,
           wardId: formData.wardId,
           mohallaId: formData.mohallaId,
-          surveyTypeId: SURVEY_TYPE_UUIDS[surveyTypeKey],
+          surveyTypeId: SURVEY_TYPE_IDS[surveyTypeKey],
           entryDate: new Date().toISOString(),
           parcelId: formData.parcelId ? Number(formData.parcelId) : undefined,
           mapId: Number(formData.mapId),
@@ -306,6 +368,16 @@ export default function SurveyForm({ route }: any) {
     { label: 'Yes', value: 'YES' },
     { label: 'No', value: 'NO' },
   ];
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading master data...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -630,6 +702,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F3F4F6',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -647,10 +728,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 12,
+    color: '#374151',
+    marginBottom: 16,
   },
   buttonContainer: {
-    margin: 16,
+    padding: 16,
   },
 });
