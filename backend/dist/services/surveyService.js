@@ -21,7 +21,7 @@ const createSurvey = (surveyData, uploadedById) => __awaiter(void 0, void 0, voi
                 }, ownerDetails: {
                     create: ownerDetails,
                 }, locationDetails: {
-                    create: Object.assign(Object.assign({}, locationDetails), { propertyLatitude: locationDetails.propertyLatitude, propertyLongitude: locationDetails.propertyLongitude }),
+                    create: Object.assign(Object.assign({}, locationDetails), { propertyLatitude: locationDetails.propertyLatitude, propertyLongitude: locationDetails.propertyLongitude, newWardNumber: locationDetails.newWardNumber }),
                 }, otherDetails: {
                     create: otherDetails,
                 }, residentialPropertyAssessments: residentialPropertyAssessments && residentialPropertyAssessments.length > 0

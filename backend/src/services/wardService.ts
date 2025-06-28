@@ -73,7 +73,6 @@ export async function assignWardToSurveyor(dto: AssignWardToSurveyorDto, assigne
       await tx.surveyors.update({
         where: { userId: surveyorId },
         data: {
-          wardNumber: ward.wardNumber,
           wardMohallaMapId,
           zoneWardMapId,
           ulbZoneMapId,
@@ -250,12 +249,9 @@ export async function bulkWardAssignment(dto: BulkWardAssignmentDto, assignedByI
       // Update surveyor's primary ward info (use first assignment)
       if (assignments.length > 0) {
         const firstAssignment = assignments[0];
-        const ward = await tx.wardMaster.findUnique({ where: { wardId: firstAssignment.wardId } });
-        
         await tx.surveyors.update({
           where: { userId: surveyorId },
           data: {
-            wardNumber: ward?.wardNumber,
             wardMohallaMapId: firstAssignment.wardMohallaMapId,
             zoneWardMapId: firstAssignment.zoneWardMapId,
             ulbZoneMapId: firstAssignment.ulbZoneMapId,

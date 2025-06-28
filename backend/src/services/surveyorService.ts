@@ -57,7 +57,6 @@ export async function assignWard(dto: AssignWardDto, assignedById: string) {
       await tx.surveyors.update({
         where: { userId },
         data: {
-          wardNumber: ward.wardNumber,
           wardMohallaMapId,
           zoneWardMapId,
           ulbZoneMapId,
@@ -258,7 +257,6 @@ export async function getSurveyorProfile(userId: string) {
       userId: surveyor.userId,
       surveyorName: surveyor.surveyorName,
       username: surveyor.username,
-      wardNumber: surveyor.wardNumber,
       isActive: surveyor.user.isActive,
       ward: surveyor.wardMohallaMap?.ward || null,
       mohalla: surveyor.wardMohallaMap?.mohalla || null,

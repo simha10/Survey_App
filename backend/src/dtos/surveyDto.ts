@@ -48,7 +48,7 @@ const LocationDetailsSchema = z.object({
   fourWayWest: z.string().optional(),
   fourWayNorth: z.string().optional(),
   fourWaySouth: z.string().optional(),
-  newWard: z.string().max(20),
+  newWardNumber: z.string().max(20),
 });
 
 const OtherDetailsSchema = z.object({

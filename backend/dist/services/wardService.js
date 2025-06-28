@@ -75,7 +75,6 @@ function assignWardToSurveyor(dto, assignedById) {
                 yield tx.surveyors.update({
                     where: { userId: surveyorId },
                     data: {
-                        wardNumber: ward.wardNumber,
                         wardMohallaMapId,
                         zoneWardMapId,
                         ulbZoneMapId,
@@ -229,11 +228,9 @@ function bulkWardAssignment(dto, assignedById) {
                 // Update surveyor's primary ward info (use first assignment)
                 if (assignments.length > 0) {
                     const firstAssignment = assignments[0];
-                    const ward = yield tx.wardMaster.findUnique({ where: { wardId: firstAssignment.wardId } });
                     yield tx.surveyors.update({
                         where: { userId: surveyorId },
                         data: {
-                            wardNumber: ward === null || ward === void 0 ? void 0 : ward.wardNumber,
                             wardMohallaMapId: firstAssignment.wardMohallaMapId,
                             zoneWardMapId: firstAssignment.zoneWardMapId,
                             ulbZoneMapId: firstAssignment.ulbZoneMapId,

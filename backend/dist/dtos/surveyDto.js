@@ -46,7 +46,7 @@ const LocationDetailsSchema = zod_1.z.object({
     fourWayWest: zod_1.z.string().optional(),
     fourWayNorth: zod_1.z.string().optional(),
     fourWaySouth: zod_1.z.string().optional(),
-    newWard: zod_1.z.string().max(20),
+    newWardNumber: zod_1.z.string().max(20),
 });
 const OtherDetailsSchema = zod_1.z.object({
     waterSourceId: zod_1.z.string().uuid(),

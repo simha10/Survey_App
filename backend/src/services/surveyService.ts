@@ -22,6 +22,7 @@ export const createSurvey = async (surveyData: CreateSurveyDto, uploadedById: st
             ...locationDetails,
             propertyLatitude: locationDetails.propertyLatitude,
             propertyLongitude: locationDetails.propertyLongitude,
+            newWardNumber: locationDetails.newWardNumber,
           },
         },
         otherDetails: {

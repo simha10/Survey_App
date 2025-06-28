@@ -66,7 +66,6 @@ function assignWard(dto, assignedById) {
                 yield tx.surveyors.update({
                     where: { userId },
                     data: {
-                        wardNumber: ward.wardNumber,
                         wardMohallaMapId,
                         zoneWardMapId,
                         ulbZoneMapId,
@@ -260,7 +259,6 @@ function getSurveyorProfile(userId) {
                 userId: surveyor.userId,
                 surveyorName: surveyor.surveyorName,
                 username: surveyor.username,
-                wardNumber: surveyor.wardNumber,
                 isActive: surveyor.user.isActive,
                 ward: ((_a = surveyor.wardMohallaMap) === null || _a === void 0 ? void 0 : _a.ward) || null,
                 mohalla: ((_b = surveyor.wardMohallaMap) === null || _b === void 0 ? void 0 : _b.mohalla) || null,
