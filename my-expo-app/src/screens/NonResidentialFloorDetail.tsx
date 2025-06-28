@@ -20,23 +20,23 @@ import { fetchMasterData } from '../services/surveyService';
 
 interface FloorDetail {
   id: string;
-  floorNumberId: string;
-  nrPropertyCategoryId: string;
-  nrSubCategoryId: string;
+  floorNumberId: number;
+  nrPropertyCategoryId: number;
+  nrSubCategoryId: number;
   establishmentName: string;
   licenseNo: string;
   licenseExpiryDate: string;
-  occupancyStatusId: string;
-  constructionNatureId: string;
+  occupancyStatusId: number;
+  constructionNatureId: number;
   builtupArea: string;
 }
 
 interface MasterData {
-  floorNumbers: Array<{ floorNumberId: string; floorNumberName: string }>;
-  occupancyStatuses: Array<{ occupancyStatusId: string; occupancyStatusName: string }>;
-  constructionNatures: Array<{ constructionNatureId: string; constructionNatureName: string }>;
-  nrPropertyCategories: Array<{ propertyCategoryId: string; propertyCategoryName: string }>;
-  nrPropertySubCategories: Array<{ subCategoryId: string; subCategoryName: string; propertyCategoryId: string }>;
+  floorNumbers: Array<{ floorNumberId: number; floorNumberName: string }>;
+  occupancyStatuses: Array<{ occupancyStatusId: number; occupancyStatusName: string }>;
+  constructionNatures: Array<{ constructionNatureId: number; constructionNatureName: string }>;
+  nrPropertyCategories: Array<{ propertyCategoryId: number; propertyCategoryName: string }>;
+  nrPropertySubCategories: Array<{ subCategoryId: number; subCategoryName: string; propertyCategoryId: number }>;
 }
 
 type Navigation = {
@@ -61,14 +61,14 @@ export default function NonResidentialFloorDetail() {
   // Form state
   const [formData, setFormData] = useState<FloorDetail>({
     id: '',
-    floorNumberId: '',
-    nrPropertyCategoryId: '',
-    nrSubCategoryId: '',
+    floorNumberId: 0,
+    nrPropertyCategoryId: 0,
+    nrSubCategoryId: 0,
     establishmentName: '',
     licenseNo: '',
     licenseExpiryDate: '',
-    occupancyStatusId: '',
-    constructionNatureId: '',
+    occupancyStatusId: 0,
+    constructionNatureId: 0,
     builtupArea: '',
   });
 
@@ -109,7 +109,20 @@ export default function NonResidentialFloorDetail() {
   };
 
   const handleInputChange = (field: keyof FloorDetail, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const newData = { ...prev };
+      
+      // Handle number fields
+      if (field === 'floorNumberId' || field === 'nrPropertyCategoryId' || 
+          field === 'nrSubCategoryId' || field === 'occupancyStatusId' || 
+          field === 'constructionNatureId') {
+        newData[field] = parseInt(value) || 0;
+      } else {
+        newData[field] = value;
+      }
+      
+      return newData;
+    });
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
@@ -241,10 +254,10 @@ export default function NonResidentialFloorDetail() {
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.floorNumberId}
-                onValueChange={(value) => handleInputChange('floorNumberId', value)}
+                onValueChange={(value) => handleInputChange('floorNumberId', value.toString())}
                 style={styles.picker}
               >
-                <Picker.Item label="Select Floor Number" value="" />
+                <Picker.Item label="Select Floor Number" value={0} />
                 {masterData.floorNumbers.map((floor) => (
                   <Picker.Item
                     key={floor.floorNumberId}
@@ -263,13 +276,13 @@ export default function NonResidentialFloorDetail() {
               <Picker
                 selectedValue={formData.nrPropertyCategoryId}
                 onValueChange={(value) => {
-                  handleInputChange('nrPropertyCategoryId', value);
+                  handleInputChange('nrPropertyCategoryId', value.toString());
                   // Reset sub category when category changes
-                  handleInputChange('nrSubCategoryId', '');
+                  handleInputChange('nrSubCategoryId', '0');
                 }}
                 style={styles.picker}
               >
-                <Picker.Item label="Select Property Category" value="" />
+                <Picker.Item label="Select Property Category" value={0} />
                 {masterData.nrPropertyCategories.map((category) => (
                   <Picker.Item
                     key={category.propertyCategoryId}
@@ -287,11 +300,11 @@ export default function NonResidentialFloorDetail() {
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.nrSubCategoryId}
-                onValueChange={(value) => handleInputChange('nrSubCategoryId', value)}
+                onValueChange={(value) => handleInputChange('nrSubCategoryId', value.toString())}
                 style={styles.picker}
                 enabled={!!formData.nrPropertyCategoryId}
               >
-                <Picker.Item label="Select Property Sub Category" value="" />
+                <Picker.Item label="Select Property Sub Category" value={0} />
                 {getFilteredSubCategories().map((subCategory) => (
                   <Picker.Item
                     key={subCategory.subCategoryId}
@@ -344,10 +357,10 @@ export default function NonResidentialFloorDetail() {
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.occupancyStatusId}
-                onValueChange={(value) => handleInputChange('occupancyStatusId', value)}
+                onValueChange={(value) => handleInputChange('occupancyStatusId', value.toString())}
                 style={styles.picker}
               >
-                <Picker.Item label="Select Occupancy Status" value="" />
+                <Picker.Item label="Select Occupancy Status" value={0} />
                 {masterData.occupancyStatuses.map((status) => (
                   <Picker.Item
                     key={status.occupancyStatusId}
@@ -365,10 +378,10 @@ export default function NonResidentialFloorDetail() {
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.constructionNatureId}
-                onValueChange={(value) => handleInputChange('constructionNatureId', value)}
+                onValueChange={(value) => handleInputChange('constructionNatureId', value.toString())}
                 style={styles.picker}
               >
-                <Picker.Item label="Select Construction Nature" value="" />
+                <Picker.Item label="Select Construction Nature" value={0} />
                 {masterData.constructionNatures.map((nature) => (
                   <Picker.Item
                     key={nature.constructionNatureId}
