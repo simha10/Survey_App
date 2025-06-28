@@ -10,179 +10,83 @@ Absolutely, bro. Here's a **clean, simple and complete PRD (Product Requirement 
 
 ## 1. 📌 **What Is This Project?**
 
-This project is designed to **digitize the manual property survey process** carried out in municipalities. It aims to collect detailed information about every property (residential, commercial, or mixed) in a city or ward through a mobile app and verify it through multiple levels using a web portal.
-
-This system ensures that the **correct data about properties** — including their usage, construction status, ownership, and tax relevance — is collected, verified, and stored in one centralized system.
+This project digitizes the manual property survey process for municipalities. It collects detailed property data via a mobile app and verifies it through a web portal. The system ensures correct, centralized property data collection, verification, and storage.
 
 ---
 
 ## 2. 🎯 **What Needs to Be Developed?**
 
-### ✅ A Mobile App (used by surveyors & field staff)
+### ✅ Mobile App (Surveyors & Supervisors)
 
-- To conduct property surveys
-- To work even in **offline mode**
-- To **store, review, and sync** collected data
+- Surveyors conduct property surveys, view assignments, and sync data.
+- Supervisors view assigned wards/mohallas and monitor surveyor progress via a dashboard.
+- All assignment and dashboard features are implemented in the app.
+- **Surveyors and supervisors do NOT have web portal access.**
 
-### ✅ A Web Portal (used by admin and QC staff)
+### ✅ Web Portal (Admins & QC)
 
-- To **review and verify** the submitted survey data
-- To identify **duplicate or invalid submissions**
-- To **approve**, **edit**, or **reject** survey data
-- To **manage surveyors and users** (User management UI for create/edit is now implemented and ready for testing)
-- To **analyze reports**, track survey progress, and download data
+- Admins assign wards/mohallas to surveyors and supervisors.
+- QC staff review, approve, or reject survey data.
+- User management, analytics, and reporting.
+- **Only admins and QC have portal access.**
 
-### ✅ A Secure, Role-Based Backend System
+### ✅ Secure, Role-Based Backend
 
-- That controls **who can access what** depending on their role
-- Stores data in a central database
-- Validates and processes information coming from both app and web
+- Centralized data storage and validation.
+- Assignment logic supports multiple wards/mohallas per user, cross-ULB assignments, and robust enforcement.
 
 ---
 
 ## 3. 👥 **Who Will Use This System?**
 
-1. **Super Admin (Top-level control)**
-   Can add admins and oversee everything
-
-2. **Admin (Office Team)**
-   Can add/remove surveyors and supervisors, monitor progress, and manage zones
-
-3. **Supervisor (Field QC)**
-   Manages the surveyors on field, helps in identifying GIS IDs, and reviews submissions
-
-4. **Surveyor (Field Staff)**
-   Conducts property surveys through the mobile app in assigned wards only
-
-5. **QC Team (Office Web Portal)**
-   Verifies collected data and performs multi-level approval
+- **Super Admin/Admin:** Assigns users, manages data, reviews progress (web portal only).
+- **Supervisor:** Monitors surveyor progress in assigned areas (mobile app only).
+- **Surveyor:** Conducts surveys in assigned areas (mobile app only).
+- **QC Team:** Reviews and approves survey data (web portal only).
 
 ---
 
-## 4. 📲 **Role of the Mobile App**
+## 4. 📲 **Mobile App Features**
 
-The app is the **primary tool for field data collection**. It will:
-
-- Allow surveyors to login securely
-- Show them **only the areas (wards) they are assigned to**
-- Allow data collection for each property:
-
-  - Owner details
-  - Property usage
-  - Floor-wise details
-  - Utilities (sewer, water, etc.)
-
-- Store data **offline** if there's no internet
-- Sync data to the server once online
-- Fetch old property data if available, for reference
-- Allow surveyors to track their own progress
+- Secure login for surveyors and supervisors.
+- Surveyors see only their assigned wards/mohallas and can only survey in those areas.
+- Supervisors see a dashboard of all their assigned wards/mohallas, with surveyor lists and progress.
+- Friendly, styled UI for all assignment and dashboard states (including errors/no assignments).
+- Offline support and data sync.
 
 ---
 
-## 5. 💻 **Role of the Web Portal**
+## 5. 💻 **Web Portal Features**
 
-The website is **essential for office-based management and final decisions**. It is used to:
-
-- View and analyze collected data from all surveyors
-- Perform **multi-level QC checks** before confirming a property
-- Detect and resolve **duplicate surveys** using GIS IDs
-- Allow searching, editing, and verifying of records
-- Export data into Excel for auditing
-- Track who surveyed which property and when
-- Manage user permissions and roles
+- Admins assign/unassign wards/mohallas to users.
+- QC workflow for multi-level review and approval.
+- Analytics and reporting dashboards.
+- User management (create/edit/deactivate users).
+- **No access for surveyors/supervisors.**
 
 ---
 
-## 6. ✅ **What Functionalities Are Required?**
+## 6. ✅ **Assignment & Dashboard Logic**
 
-### 🔐 User Management (Based on Roles)
-
-- Login with credentials (username/password)
-- Role-based access: only see features allowed by your role
-
-### 📍 Area Assignment
-
-- Admins assign surveyors to specific zones and wards
-- Surveyors **cannot survey outside their assigned area**
-
-### 🏠 Property Survey
-
-- Property Type selection (residential, commercial, mixed, others)
-- Detailed step-by-step form with:
-
-  - Survey details
-  - Property details
-  - Owner details
-  - Location details
-  - Other property conditions (utilities, water, etc.)
-  - Floor-wise usage and data
-
-### 📡 Offline Survey Support
-
-- Save data locally when offline
-- Show previous data for reference when possible
-- Sync data with the server when online
-
-### 🧹 Review, Update & Deletion
-
-- Before syncing, surveyor can:
-
-  - Edit surveys
-  - Delete incorrect ones
-  - Add another property
-
-### 👀 QC and Duplicate Handling (Web Portal)
-
-- Detect same GIS ID in multiple surveys
-- Compare and confirm the correct survey
-- Mark duplicates and remove unnecessary entries
-- Perform multiple levels of QC
-- Add missing office-level info (if needed)
-
-### 📋 Pending
-
-- Assignment Enforcement: Fetch and enforce assigned wards/mohallas from backend (after web portal is ready)
-- Advanced Error Handling & Loading States: Improve user feedback and resilience
-- Automated Testing: Add unit and integration tests
+- All assignments are managed by admins via the web portal.
+- Surveyors and supervisors cannot change their own assignments.
+- Surveyor dashboard shows all assignments and a message if none exist.
+- Supervisor dashboard shows all assigned wards/mohallas, surveyors, and survey progress, or a message if none exist.
+- All dashboards are styled and user-friendly, even in error/no-data states.
 
 ---
 
 ## 7. ⚠️ **Project Constraints & Rules**
 
-- **Only Admins** can assign wards and create users
-- **Surveyors can't work outside their assigned wards**
-- **GIS ID** is used to uniquely identify a property (added manually on field)
-- Data should be editable until it passes final QC
-- If a property is surveyed twice, only one should survive QC
-- The system must be able to scale to thousands of records
-- Security is critical — no unauthorized access allowed
-- Should support local languages (if needed in future)
+- Only admins can manage assignments and users.
+- Surveyors can only survey in assigned areas.
+- Supervisors can only view progress in assigned areas.
+- All assignment and dashboard logic is robust and production-ready.
 
 ---
 
-## 8. 🔚 **Why Website Is a Must**
+## 8. **Current Status**
 
-The app is only for **data collection**. But the data is **useless without review and validation**.
-
-The web portal enables:
-
-- Office staff to clean and finalize data
-- Multi-level quality checks
-- Reports and analytics
-- Administration and role management
-- Data corrections which cannot be done from mobile
-
-**Without the website, no survey can be trusted or finalized.**
-So it's not optional — it's a **core component** of this system.
-
----
-
-## Web Portal Status
-
-- User management UI (create/edit user) is now implemented and styled. The web portal is ready for end-to-end user management testing.
-- Ward Management & Assignment: UI for assigning surveyors to wards/mohallas is scaffolded and under development in the web portal.
-- QC Workflow: Initial backend and UI structure for Quality Control (QC) is present; further enhancements are ongoing.
-- Error Handling: Improved error feedback and loading states are being integrated.
-- Tech Stack: Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui, and React Query are being used for the web portal.
-- Known Issues: Some module resolution and dependency issues are being addressed (e.g., missing utils, Radix UI).
-- Next Steps: Complete assignment management, finalize QC workflow, and enhance reporting/dashboard features.
+- Assignment logic, dashboards, and all major flows are implemented and tested.
+- Mobile app and web portal are ready for end-to-end testing.
+- Further enhancements (e.g., supervisor analytics, messaging) can be added as needed.

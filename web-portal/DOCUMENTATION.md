@@ -29,9 +29,24 @@ This document outlines the architecture, features, and technical specifications 
   3.  **User Management:** Creating, updating, and managing system users and their roles. (UI for create/edit user is now implemented and styled; ready for end-to-end testing)
   4.  **Detailed Dashboards:** Access to in-depth, interactive dashboards with filtering, drill-down capabilities, and detailed reports.
 
+### Secure Admin Panel (Authenticated)
+
+- **All assignment management (wards/mohallas to users) is admin-only**
+- QC workflow, user management, analytics, and reporting
+- **Surveyors and supervisors do NOT have portal access**
+
 ---
 
-## 3. Technology Stack
+## 3. Assignment & Dashboard Logic
+
+- **All assignments are managed by admins via the web portal**
+- **Surveyor and supervisor dashboards are in the mobile app only**
+- **Dashboards are styled for all states (assignments, no assignments, errors)**
+- **Supervisors can only view progress, not edit assignments**
+
+---
+
+## 4. Technology Stack
 
 Based on the project requirements and for consistency with the mobile application, the following technology stack is recommended:
 
@@ -44,7 +59,7 @@ Based on the project requirements and for consistency with the mobile applicatio
 
 ---
 
-## 4. Design & Layout
+## 5. Design & Layout
 
 - **Main Layout:** A modern dashboard layout will be implemented, featuring:
   - A **collapsible sidebar** for easy navigation between sections (e.g., Dashboard, Ward Management, User Management, QC Panel).

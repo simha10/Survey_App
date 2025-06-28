@@ -42,7 +42,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getSurveyorProfile = exports.removeWardAssignment = exports.getSurveyorAssignments = exports.toggleLogin = exports.assignWard = void 0;
+exports.getMyAssignments = exports.getSurveyorProfile = exports.removeWardAssignment = exports.getSurveyorAssignments = exports.toggleLogin = exports.assignWard = void 0;
 const surveyorService = __importStar(require("../services/surveyorService"));
 const surveyorDto_1 = require("../dtos/surveyorDto");
 const assignWard = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -131,3 +131,18 @@ const getSurveyorProfile = (req, res) => __awaiter(void 0, void 0, void 0, funct
     }
 });
 exports.getSurveyorProfile = getSurveyorProfile;
+const getMyAssignments = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const userId = req.user.userId;
+        const result = yield surveyorService.getSurveyorAssignments(userId);
+        return res.status(200).json(result);
+    }
+    catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ error: error.message });
+        }
+        console.error(error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+exports.getMyAssignments = getMyAssignments;
