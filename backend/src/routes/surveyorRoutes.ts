@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as surveyorController from '../controllers/surveyorController';
 import { authenticateJWT, restrictToRoles, restrictToSurveyor } from '../middleware/authMiddleware';
+import { getMyAssignments } from '../controllers/surveyorController';
 
 const router = Router();
 
@@ -18,5 +19,7 @@ router.post(
   restrictToSurveyor,
   surveyorController.toggleLogin
 );
+
+router.get('/my-assignments', authenticateJWT, restrictToRoles(['SURVEYOR']), getMyAssignments);
 
 export default router;

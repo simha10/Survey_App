@@ -31,6 +31,16 @@ export const submitSurvey = async (surveyData: SurveyData): Promise<any> => {
   }
 };
 
+export const fetchSurveyorAssignments = async () => {
+  const token = await AsyncStorage.getItem('userToken');
+  if (!token) throw new Error('No auth token found');
+  const response = await fetch(`${API_URL}/surveyor/my-assignments`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  if (!response.ok) throw new Error('Failed to fetch assignments');
+  return response.json();
+};
+
 export const fetchMasterData = async () => {
   // Dummy master data for development/testing
   return {

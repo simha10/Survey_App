@@ -26,6 +26,10 @@ This document summarizes the current status of the Survey Application, including
   - Consistent error responses, Zod validation, and transaction support
 - **User Management Endpoints:**
   - Endpoints for user creation, editing, status update, and role assignment are live and integrated with the web portal.
+- Robust assignment logic for surveyors and supervisors (multiple wards/mohallas, cross-ULB, admin-only management)
+- Surveyor and supervisor dashboard APIs for the mobile app
+- All major survey, property, and QC models implemented
+- Error handling and audit logging
 
 ### 🔄 In Progress
 
@@ -35,6 +39,8 @@ This document summarizes the current status of the Survey Application, including
   - Read/update/delete endpoints for surveys (currently only create is implemented)
 - **QC Workflow:**
   - Multi-level QC review and approval endpoints being developed
+- Further analytics and reporting endpoints
+- Supervisor dashboard optimizations (for large data)
 
 ### 📋 Pending
 
@@ -46,6 +52,9 @@ This document summarizes the current status of the Survey Application, including
   - Unit and integration tests for all modules
 - **Performance Optimization & Logging:**
   - Query optimization, logging, and monitoring
+- Advanced analytics and reporting
+- Automated testing
+- Performance optimization
 
 ---
 
@@ -65,6 +74,10 @@ This document summarizes the current status of the Survey Application, including
   - Error handling for submission
 - **User Management Integration:**
   - Ready for end-to-end testing with backend and web portal user management features.
+- Surveyor dashboard: shows all assignments, styled for errors/no assignments
+- Supervisor dashboard: shows all assigned wards/mohallas, surveyors, and progress, styled for errors/no assignments
+- Secure login, offline support, and data sync
+- All assignment and dashboard logic implemented and tested
 
 ### 🔄 In Progress
 
@@ -72,6 +85,7 @@ This document summarizes the current status of the Survey Application, including
   - Some dropdowns and master data (wards, mohallas, etc.) still use dummy data; needs real API integration
 - **Offline Support:**
   - Local storage for unsynced surveys (basic), needs robust sync logic
+- UI/UX polish and further analytics for supervisors
 
 ### 📋 Pending
 
@@ -81,6 +95,7 @@ This document summarizes the current status of the Survey Application, including
   - Improve user feedback and resilience
 - **Automated Testing:**
   - Add unit and integration tests
+- Push notifications, advanced supervisor features
 
 ---
 
@@ -91,6 +106,9 @@ This document summarizes the current status of the Survey Application, including
 - **Project scaffolding and initial setup**
 - **User Management UI:**
   - Admin UI for user creation, editing, status management, and role assignment is implemented and styled. End-to-end flow is ready for testing.
+- Admin-only assignment management UI (wards/mohallas to users)
+- QC workflow and user management
+- Analytics and reporting dashboards (basic)
 
 ### 🔄 In Progress
 
@@ -98,6 +116,8 @@ This document summarizes the current status of the Survey Application, including
   - Build UI for admins to assign wards/mohallas to surveyors
 - **QC Workflow:**
   - Design and implement multi-level QC review, approval, and duplicate detection
+- Advanced analytics and reporting
+- UI/UX polish
 
 ### 📋 Pending
 
@@ -107,6 +127,7 @@ This document summarizes the current status of the Survey Application, including
   - CRUD for ULBs, zones, wards, mohallas, etc.
 - **Documentation & User Guides:**
   - Complete user and developer documentation
+- Supervisor analytics, messaging, or future enhancements
 
 ---
 
@@ -140,6 +161,10 @@ This document summarizes the current status of the Survey Application, including
    - Add automated tests
 4. **Documentation:**
    - Update and complete API and user documentation
+
+- End-to-end testing of assignment flows and dashboards
+- Further analytics and supervisor features as needed
+- Documentation and onboarding for new team members
 
 ---
 

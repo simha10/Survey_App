@@ -87,3 +87,17 @@ export const getSurveyorProfile = async (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+export const getMyAssignments = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    const result = await surveyorService.getSurveyorAssignments(userId);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    if (error.status) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};

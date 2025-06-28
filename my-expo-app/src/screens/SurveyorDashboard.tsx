@@ -1,23 +1,44 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, BackHandler } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+  BackHandler,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { getLocalSurveys, clearLocalSurveys, getOngoingSurvey, isSurveyInProgress } from '../utils/storage';
-import { submitSurvey } from '../services/surveyService';
+import {
+  getLocalSurveys,
+  clearLocalSurveys,
+  getOngoingSurvey,
+  isSurveyInProgress,
+} from '../utils/storage';
+import { submitSurvey, fetchSurveyorAssignments } from '../services/surveyService';
 
 type Navigation = {
   navigate: (screen: string, params?: any) => void;
 };
 
-const Card = ({ title, onPress, disabled, subtitle }: { 
-  title: string; 
-  onPress: () => void; 
+const Card = ({
+  title,
+  onPress,
+  disabled,
+  subtitle,
+}: {
+  title: string;
+  onPress: () => void;
   disabled?: boolean;
   subtitle?: string;
 }) => {
   return (
-    <TouchableOpacity style={[styles.card, disabled && styles.disabledCard]} onPress={onPress} disabled={disabled}>
+    <TouchableOpacity
+      style={[styles.card, disabled && styles.disabledCard]}
+      onPress={onPress}
+      disabled={disabled}>
       <Text style={styles.cardText}>{title}</Text>
       {subtitle && <Text style={styles.cardSubtext}>{subtitle}</Text>}
     </TouchableOpacity>
@@ -29,6 +50,9 @@ export default function SurveyorDashboard() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [ongoingSurvey, setOngoingSurvey] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(true);
+  const [assignmentsError, setAssignmentsError] = useState<string | null>(null);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -55,6 +79,7 @@ export default function SurveyorDashboard() {
 
   useEffect(() => {
     checkOngoingSurvey();
+    fetchAssignments();
   }, []);
 
   const checkOngoingSurvey = async () => {
@@ -69,6 +94,20 @@ export default function SurveyorDashboard() {
     }
   };
 
+  const fetchAssignments = async () => {
+    setAssignmentsLoading(true);
+    setAssignmentsError(null);
+    try {
+      const data = await fetchSurveyorAssignments();
+      setAssignments(data.assignments || []);
+    } catch (err: any) {
+      setAssignmentsError('Failed to load assignments');
+      setAssignments([]);
+    } finally {
+      setAssignmentsLoading(false);
+    }
+  };
+
   const handleCardPress = (surveyType: string) => {
     if (ongoingSurvey) {
       Alert.alert(
@@ -77,10 +116,11 @@ export default function SurveyorDashboard() {
         [
           {
             text: 'Continue Ongoing',
-            onPress: () => navigation.navigate('SurveyIntermediate', {
-              surveyId: ongoingSurvey.id,
-              surveyType: ongoingSurvey.surveyType,
-            }),
+            onPress: () =>
+              navigation.navigate('SurveyIntermediate', {
+                surveyId: ongoingSurvey.id,
+                surveyType: ongoingSurvey.surveyType,
+              }),
           },
           {
             text: 'Start New',
@@ -143,7 +183,42 @@ export default function SurveyorDashboard() {
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Survey Dashboard</Text>
-      
+
+      {/* Assignments Section */}
+      <View className="mb-4">
+        <Text className="mb-2 text-lg font-bold">Your Assignments</Text>
+        {assignmentsLoading ? (
+          <ActivityIndicator size="small" color="#3B82F6" />
+        ) : (
+          <View className="w-full">
+            {assignmentsError ? (
+              <View className="mb-2 items-center rounded-lg bg-red-100 p-4">
+                <Text className="font-semibold text-red-700">{assignmentsError}</Text>
+              </View>
+            ) : assignments.length === 0 ? (
+              <View className="mb-2 items-center rounded-lg bg-yellow-100 p-4">
+                <Text className="text-yellow-700">No assignments for you.</Text>
+              </View>
+            ) : (
+              assignments.map((a, idx) => (
+                <View key={a.assignmentId || idx} className="mb-2 rounded-lg bg-indigo-100 p-4">
+                  <Text className="font-bold text-indigo-900">
+                    Ward: {a.ward?.wardName || a.wardId}
+                  </Text>
+                  <Text className="text-indigo-800">
+                    Mohalla: {a.mohalla?.mohallaName || a.mohallaId}
+                  </Text>
+                  <Text className="text-indigo-800">Assignment Type: {a.assignmentType}</Text>
+                  <Text className="text-indigo-800">
+                    Status: {a.isActive ? 'Active' : 'Inactive'}
+                  </Text>
+                </View>
+              ))
+            )}
+          </View>
+        )}
+      </View>
+
       {/* Ongoing Survey Alert */}
       {ongoingSurvey && (
         <View style={styles.ongoingSurveyCard}>
@@ -151,39 +226,40 @@ export default function SurveyorDashboard() {
           <Text style={styles.ongoingSurveyText}>
             You have an ongoing {ongoingSurvey.surveyType} survey
           </Text>
-          <TouchableOpacity 
-            style={styles.continueButton}
-            onPress={handleContinueOngoing}
-          >
+          <TouchableOpacity style={styles.continueButton} onPress={handleContinueOngoing}>
             <Text style={styles.continueButtonText}>Continue Survey</Text>
           </TouchableOpacity>
         </View>
       )}
 
       <View style={styles.grid}>
-        <Card 
-          title="Residential" 
-          onPress={() => handleCardPress('Residential')} 
-          subtitle={ongoingSurvey ? "Continue ongoing survey first" : "Start new residential survey"}
+        <Card
+          title="Residential"
+          onPress={() => handleCardPress('Residential')}
+          subtitle={
+            ongoingSurvey ? 'Continue ongoing survey first' : 'Start new residential survey'
+          }
         />
-        <Card 
-          title="Non-Residential" 
-          onPress={() => handleCardPress('Non-Residential')} 
-          subtitle={ongoingSurvey ? "Continue ongoing survey first" : "Start new non-residential survey"}
+        <Card
+          title="Non-Residential"
+          onPress={() => handleCardPress('Non-Residential')}
+          subtitle={
+            ongoingSurvey ? 'Continue ongoing survey first' : 'Start new non-residential survey'
+          }
         />
-        <Card 
-          title="Mixed" 
-          onPress={() => handleCardPress('Mixed')} 
-          subtitle={ongoingSurvey ? "Continue ongoing survey first" : "Start new mixed survey"}
+        <Card
+          title="Mixed"
+          onPress={() => handleCardPress('Mixed')}
+          subtitle={ongoingSurvey ? 'Continue ongoing survey first' : 'Start new mixed survey'}
         />
-        <Card 
-          title="Sync Data" 
-          onPress={handleSyncData} 
+        <Card
+          title="Sync Data"
+          onPress={handleSyncData}
           disabled={isSyncing}
-          subtitle={isSyncing ? "Syncing..." : "Sync all surveys to server"}
+          subtitle={isSyncing ? 'Syncing...' : 'Sync all surveys to server'}
         />
       </View>
-      
+
       {isSyncing && (
         <View style={styles.syncingOverlay}>
           <ActivityIndicator size="large" color="#ffffff" />
@@ -292,5 +368,5 @@ const styles = StyleSheet.create({
     color: 'white',
     marginTop: 10,
     fontSize: 16,
-  }
+  },
 });
