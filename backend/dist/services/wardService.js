@@ -446,22 +446,22 @@ function getWardAssignments(dto) {
 // 7. Update Ward Status
 function updateWardStatus(dto, updatedById) {
     return __awaiter(this, void 0, void 0, function* () {
-        const { wardId, statusId, reason } = dto;
+        const { wardId, wardStatusId, reason } = dto;
         try {
             // Validate ward and status exist
             const [ward, status] = yield Promise.all([
                 prisma.wardMaster.findUnique({ where: { wardId } }),
-                prisma.wardStatusMaster.findUnique({ where: { statusId } }),
+                prisma.wardStatusMaster.findUnique({ where: { wardStatusId } }),
             ]);
             if (!ward || !status) {
                 throw { status: 400, message: 'Invalid ward or status' };
             }
             const result = yield prisma.wardStatusMapping.upsert({
-                where: { wardId_statusId: { wardId, statusId } },
+                where: { wardId_wardStatusId: { wardId, wardStatusId } },
                 update: { isActive: true, changedById: updatedById },
                 create: {
                     wardId,
-                    statusId,
+                    wardStatusId,
                     changedById: updatedById,
                     isActive: true,
                 },
@@ -471,14 +471,14 @@ function updateWardStatus(dto, updatedById) {
                     data: {
                         userId: updatedById,
                         action: 'UPDATE_WARD_STATUS',
-                        old_value: JSON.stringify({ wardId, statusId, statusName: status.statusName }),
-                        new_value: JSON.stringify({ wardId, statusId, statusName: status.statusName }),
+                        old_value: JSON.stringify({ wardId, wardStatusId, statusName: status.statusName }),
+                        new_value: JSON.stringify({ wardId, wardStatusId, statusName: status.statusName }),
                     }
                 });
             }
             return {
                 wardId,
-                statusId,
+                wardStatusId,
                 statusName: status.statusName,
                 reason,
                 status: 'Ward status updated successfully',
