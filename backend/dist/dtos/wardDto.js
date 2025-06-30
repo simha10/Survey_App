@@ -53,7 +53,7 @@ exports.GetWardAssignmentsSchema = zod_1.z.object({
 // Ward Status DTOs
 exports.UpdateWardStatusSchema = zod_1.z.object({
     wardId: zod_1.z.string().uuid(),
-    statusId: zod_1.z.string().uuid(),
+    wardStatusId: zod_1.z.number().int().positive(),
     reason: zod_1.z.string().optional(),
 });
 // Supervisor Management DTOs

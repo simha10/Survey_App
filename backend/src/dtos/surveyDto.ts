@@ -7,7 +7,7 @@ const SurveyDetailsSchema = z.object({
   zoneId: z.string().uuid(),
   wardId: z.string().uuid(),
   mohallaId: z.string().uuid(),
-  surveyTypeId: z.string().uuid(),
+  surveyTypeId: z.number().int().positive(),
   entryDate: z.string().datetime(),
   parcelId: z.number().optional(),
   mapId: z.number(),
@@ -16,12 +16,12 @@ const SurveyDetailsSchema = z.object({
 });
 
 const PropertyDetailsSchema = z.object({
-  responseTypeId: z.string().uuid(),
+  responseTypeId: z.number().int().positive(),
   oldHouseNumber: z.string().max(15).optional(),
   electricityConsumerName: z.string().max(50).optional(),
   waterSewerageConnectionNumber: z.string().max(50).optional(),
   respondentName: z.string().max(50),
-  respondentStatusId: z.string().uuid(),
+  respondentStatusId: z.number().int().positive(),
 });
 
 const OwnerDetailsSchema = z.object({
@@ -35,11 +35,11 @@ const LocationDetailsSchema = z.object({
   propertyLatitude: z.number(),
   propertyLongitude: z.number(),
   assessmentYear: z.string().max(20),
-  propertyTypeId: z.string().uuid(),
+  propertyTypeId: z.number().int().positive(),
   buildingName: z.string().optional(),
-  roadTypeId: z.string().uuid(),
+  roadTypeId: z.number().int().positive(),
   constructionYear: z.string().max(20),
-  constructionTypeId: z.string().uuid(),
+  constructionTypeId: z.number().int().positive(),
   addressRoadName: z.string(),
   locality: z.string().optional(),
   pinCode: z.number(),
@@ -52,7 +52,7 @@ const LocationDetailsSchema = z.object({
 });
 
 const OtherDetailsSchema = z.object({
-  waterSourceId: z.string().uuid(),
+  waterSourceId: z.number().int().positive(),
   rainWaterHarvestingSystem: YesNoSchema.optional(),
   plantation: YesNoSchema.optional(),
   parking: YesNoSchema.optional(),
@@ -60,7 +60,7 @@ const OtherDetailsSchema = z.object({
   pollutionMeasurementTaken: z.string().optional(),
   waterSupplyWithin200Meters: YesNoSchema.optional(),
   sewerageLineWithin100Meters: YesNoSchema.optional(),
-  disposalTypeId: z.string().uuid(),
+  disposalTypeId: z.number().int().positive(),
   totalPlotArea: z.number(),
   builtupAreaOfGroundFloor: z.number(),
   remarks: z.string().optional(),
@@ -69,9 +69,9 @@ const OtherDetailsSchema = z.object({
 // Residential Floor Details
 // All fields marked * are mandatory as per requirements
 const ResidentialPropertyAssessmentSchema = z.object({
-  floorNumberId: z.string().uuid(), // Floor Number (from Floor Number Master)
-  occupancyStatusId: z.string().uuid(), // Occupancy Status (from Occupancy Status Master)
-  constructionNatureId: z.string().uuid(), // Construction Nature (from Construction Nature Master)
+  floorNumberId: z.number().int().positive(), // Floor Number (from Floor Number Master)
+  occupancyStatusId: z.number().int().positive(), // Occupancy Status (from Occupancy Status Master)
+  constructionNatureId: z.number().int().positive(), // Construction Nature (from Construction Nature Master)
   coveredArea: z.number(), // Covered Area (manual entry)
   allRoomVerandaArea: z.number(), // Total Rooms/Veranda Area (manual entry)
   allBalconyKitchenArea: z.number(), // Total Balcony/Kitchen Area (manual entry)
@@ -82,14 +82,14 @@ const ResidentialPropertyAssessmentSchema = z.object({
 // Non-Residential Floor Details
 // All fields marked * are mandatory as per requirements
 const NonResidentialPropertyAssessmentSchema = z.object({
-  floorNumberId: z.string().uuid(), // Floor Number (from Floor Number Master)
-  nrPropertyCategoryId: z.string().uuid(), // Property Category (from NR Property Category Master)
-  nrSubCategoryId: z.string().uuid(), // Property Sub Category (from NR Property Sub Category Master)
+  floorNumberId: z.number().int().positive(), // Floor Number (from Floor Number Master)
+  nrPropertyCategoryId: z.number().int().positive(), // Property Category (from NR Property Category Master)
+  nrSubCategoryId: z.number().int().positive(), // Property Sub Category (from NR Property Sub Category Master)
   establishmentName: z.string(), // Establishment Name (manual entry)
   licenseNo: z.string().max(20).optional(), // License Number (manual entry, optional)
   licenseExpiryDate: z.string().datetime().optional(), // License Expiry Date (manual entry, optional)
-  occupancyStatusId: z.string().uuid(), // Occupancy Status (from Occupancy Status Master)
-  constructionNatureId: z.string().uuid(), // Construction Nature (from Construction Nature Master)
+  occupancyStatusId: z.number().int().positive(), // Occupancy Status (from Occupancy Status Master)
+  constructionNatureId: z.number().int().positive(), // Construction Nature (from Construction Nature Master)
   builtupArea: z.number(), // Built-up Area (manual entry)
 });
 

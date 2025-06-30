@@ -176,7 +176,7 @@ model MohallaMaster {
 }
 
 model ResponseTypeMaster {
-  responseTypeId   String            @id @default(uuid())
+  responseTypeId   Int               @id @default(autoincrement())
   responseTypeName String            @db.VarChar(50)
   isActive         Boolean           @default(false)
   description      String?           @db.Text
@@ -184,7 +184,7 @@ model ResponseTypeMaster {
 }
 
 model PropertyTypeMaster {
-  propertyTypeId   String            @id @default(uuid())
+  propertyTypeId   Int               @id @default(autoincrement())
   propertyTypeName String            @db.Char(50)
   isActive         Boolean           @default(false)
   description      String?           @db.Text
@@ -192,7 +192,7 @@ model PropertyTypeMaster {
 }
 
 model RespondentStatusMaster {
-  respondentStatusId   String            @id @default(uuid())
+  respondentStatusId   Int               @id @default(autoincrement())
   respondentStatusName String            @db.VarChar(20)
   isActive             Boolean           @default(false)
   description          String?           @db.Text
@@ -200,7 +200,7 @@ model RespondentStatusMaster {
 }
 
 model RoadTypeMaster {
-  roadTypeId      String            @id @default(uuid())
+  roadTypeId      Int               @id @default(autoincrement())
   roadTypeName    String            @db.VarChar(50)
   isActive        Boolean           @default(false)
   description     String?           @db.Text
@@ -208,7 +208,7 @@ model RoadTypeMaster {
 }
 
 model ConstructionTypeMaster {
-  constructionTypeId   String            @id @default(uuid())
+  constructionTypeId   Int               @id @default(autoincrement())
   constructionTypeName String            @db.VarChar(50)
   isActive             Boolean           @default(false)
   description          String?           @db.Text
@@ -216,23 +216,23 @@ model ConstructionTypeMaster {
 }
 
 model WaterSourceMaster {
-  waterSourceId   String         @id @default(uuid())
-  waterSourceName String         @db.VarChar(50)
-  isActive        Boolean        @default(false)
-  description     String?        @db.Text
+  waterSourceId   Int           @id @default(autoincrement())
+  waterSourceName String        @db.VarChar(50)
+  isActive        Boolean       @default(false)
+  description     String?       @db.Text
   otherDetails    OtherDetails[]
 }
 
 model DisposalTypeMaster {
-  disposalTypeId   String         @id @default(uuid())
-  disposalTypeName String         @db.VarChar(50)
-  isActive         Boolean        @default(false)
-  description      String?        @db.Text
+  disposalTypeId   Int           @id @default(autoincrement())
+  disposalTypeName String        @db.VarChar(50)
+  isActive         Boolean       @default(false)
+  description      String?       @db.Text
   otherDetails     OtherDetails[]
 }
 
 model FloorMaster {
-  floorNumberId   String   @id @default(uuid())
+  floorNumberId   Int   @id @default(autoincrement())
   floorNumberName String   @db.VarChar(50)
   isActive        Boolean  @default(true)
   description     String?  @db.Text
@@ -241,9 +241,9 @@ model FloorMaster {
 }
 
 model NrPropertyCategoryMaster {
-  propertyCategoryId                String                             @id @default(uuid())
+  propertyCategoryId                Int                                @id @default(autoincrement())
   propertyCategoryNumber            Int
-  propertyCategoryName              String                             @db.VarChar(100)
+  propertyCategoryName              String                             @db.VarChar(200)
   isActive                          Boolean                            @default(false)
   description                       String?                            @db.Text
   createdAt                         DateTime                           @default(now())
@@ -252,13 +252,13 @@ model NrPropertyCategoryMaster {
 }
 
 model NrPropertySubCategoryMaster {
-  subCategoryId                     String                             @id @default(uuid())
+  subCategoryId                     Int                                @id @default(autoincrement())
   subCategoryNumber                 Int
   subCategoryName                   String                             @db.VarChar(100)
   isActive                          Boolean                            @default(false)
   description                       String?                            @db.Text
   createdAt                         DateTime                           @default(now())
-  propertyCategoryId                String
+  propertyCategoryId                Int
   propertyCategory                  NrPropertyCategoryMaster           @relation(fields: [propertyCategoryId], references: [propertyCategoryId], onDelete: Restrict)
   nonResidentialPropertyAssessments NonResidentialPropertyAssessment[]
 
@@ -267,7 +267,7 @@ model NrPropertySubCategoryMaster {
 }
 
 model ConstructionNatureMaster {
-  constructionNatureId              String                             @id @default(uuid())
+  constructionNatureId              Int                                @id @default(autoincrement())
   constructionNatureName            String                             @db.VarChar(50)
   isActive                          Boolean                            @default(false)
   description                       String?                            @db.Text
@@ -276,7 +276,7 @@ model ConstructionNatureMaster {
 }
 
 model SurveyTypeMaster {
-  surveyTypeId   String          @id @default(uuid())
+  surveyTypeId   Int             @id @default(autoincrement())
   surveyTypeName String          @db.Char(20)
   isActive       Boolean         @default(true)
   description    String?         @db.Text
@@ -284,7 +284,7 @@ model SurveyTypeMaster {
 }
 
 model OccupancyStatusMaster {
-  occupancyStatusId                 String                             @id @default(uuid())
+  occupancyStatusId                 Int                                @id @default(autoincrement())
   occupancyStatusName               String                             @db.VarChar(50)
   isActive                          Boolean                            @default(true)
   description                       String?                            @db.Text
@@ -293,20 +293,20 @@ model OccupancyStatusMaster {
 }
 
 model SurveyStatusMaster {
-  statusId                 String                @id @default(uuid())
-  statusName               String                @db.VarChar(50)
-  isActive                 Boolean               @default(true)
-  description              String?               @db.Text
-  surveyStatusMaps         SurveyStatusMapping[]
-  surveyStatusMapsReverted SurveyStatusMapping[] @relation("RevertedFrom")
+  surveyStatusId                    Int                @id @default(autoincrement())
+  statusName                        String             @db.VarChar(50)
+  isActive                          Boolean            @default(true)
+  description                       String?            @db.Text
+  surveyStatusMaps                  SurveyStatusMapping[]
+  surveyStatusMapsReverted          SurveyStatusMapping[] @relation("RevertedFrom")
 }
 
 model WardStatusMaster {
-  statusId       String              @id @default(uuid())
-  statusName     String              @db.VarChar(50)
-  isActive       Boolean             @default(true)
-  description    String?             @db.Text
-  wardStatusMaps WardStatusMapping[]
+  wardStatusId      Int                 @id @default(autoincrement())
+  statusName        String              @db.VarChar(50)
+  isActive          Boolean             @default(true)
+  description       String?             @db.Text
+  wardStatusMaps    WardStatusMapping[]
 }
 
 model UsersMaster {
@@ -406,31 +406,31 @@ model SurveyorAssignment {
 }
 
 model WardStatusMapping {
-  wardStatusId String           @id @default(uuid())
+  mappingId    String           @id @default(uuid())
   wardId       String
-  statusId     String
+  wardStatusId Int
   changedById  String
   isActive     Boolean          @default(true)
   ward         WardMaster       @relation(fields: [wardId], references: [wardId])
-  status       WardStatusMaster @relation(fields: [statusId], references: [statusId])
+  status       WardStatusMaster @relation(fields: [wardStatusId], references: [wardStatusId])
   changedBy    UsersMaster      @relation(fields: [changedById], references: [userId])
 
-  @@unique([wardId, statusId])
+  @@unique([wardId, wardStatusId])
 }
 
 model SurveyStatusMapping {
   statusMappingId  String              @id @default(uuid())
   surveyUniqueCode String
-  statusId         String
-  revertedFromId   String?
+  surveyStatusId   Int
+  revertedFromId   Int?
   changedById      String
   isActive         Boolean             @default(true)
   survey           SurveyDetails       @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
-  status           SurveyStatusMaster  @relation(fields: [statusId], references: [statusId])
-  revertedFrom     SurveyStatusMaster? @relation("RevertedFrom", fields: [revertedFromId], references: [statusId])
+  status           SurveyStatusMaster  @relation(fields: [surveyStatusId], references: [surveyStatusId])
+  revertedFrom     SurveyStatusMaster? @relation("RevertedFrom", fields: [revertedFromId], references: [surveyStatusId])
   changedBy        UsersMaster         @relation(fields: [changedById], references: [userId])
 
-  @@unique([surveyUniqueCode, statusId])
+  @@unique([surveyUniqueCode, surveyStatusId])
 }
 
 model UserRoleMapping {
@@ -504,7 +504,7 @@ model SurveyDetails {
   zoneId                            String
   wardId                            String
   mohallaId                         String
-  surveyTypeId                      String
+  surveyTypeId                      Int
   entryDate                         DateTime                           @db.Timestamp(0)
   parcelId                          Int?
   mapId                             Int
@@ -540,12 +540,12 @@ model SurveyDetails {
 
 model PropertyDetails {
   surveyUniqueCode              String                 @id
-  responseTypeId                String
+  responseTypeId                Int
   oldHouseNumber                String?                @db.VarChar(15)
   electricityConsumerName       String?                @db.VarChar(50)
   waterSewerageConnectionNumber String?                @db.VarChar(50)
   respondentName                String                 @db.Char(50)
-  respondentStatusId            String
+  respondentStatusId            Int
   survey                        SurveyDetails          @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
   responseType                  ResponseTypeMaster     @relation(fields: [responseTypeId], references: [responseTypeId])
   respondentStatus              RespondentStatusMaster @relation(fields: [respondentStatusId], references: [respondentStatusId])
@@ -565,11 +565,11 @@ model LocationDetails {
   propertyLatitude   Decimal                @db.Decimal(9, 6) // changed type from Float to Decimal
   propertyLongitude  Decimal                @db.Decimal(9, 6) // changed type from Float to Decimal
   assessmentYear     String                 @db.VarChar(20)
-  propertyTypeId     String
+  propertyTypeId     Int
   buildingName       String?                @db.Text
-  roadTypeId         String
+  roadTypeId         Int
   constructionYear   String                 @db.VarChar(20)
-  constructionTypeId String
+  constructionTypeId Int
   addressRoadName    String                 @db.Text
   locality           String?                @db.Text
   pinCode            Int
@@ -587,7 +587,7 @@ model LocationDetails {
 
 model OtherDetails {
   surveyUniqueCode            String             @id
-  waterSourceId               String
+  waterSourceId               Int
   rainWaterHarvestingSystem   String?            @db.Char(3)
   plantation                  String?            @db.Char(3)
   parking                     String?            @db.Char(3)
@@ -595,7 +595,7 @@ model OtherDetails {
   pollutionMeasurementTaken   String?            @db.Text
   waterSupplyWithin200Meters  String?            @db.Char(3)
   sewerageLineWithin100Meters String?            @db.Char(3)
-  disposalTypeId              String
+  disposalTypeId              Int
   totalPlotArea               Float              @db.DoublePrecision
   builtupAreaOfGroundFloor    Float              @db.DoublePrecision
   remarks                     String?            @db.Text
@@ -607,9 +607,9 @@ model OtherDetails {
 model ResidentialPropertyAssessment {
   floorAssessmentId     String                   @id @default(uuid())
   surveyUniqueCode      String
-  floorNumberId         String
-  occupancyStatusId     String
-  constructionNatureId  String
+  floorNumberId         Int
+  occupancyStatusId     Int
+  constructionNatureId  Int
   coveredArea           Decimal                  @db.Decimal(10, 2) // changed type from Float to Decimal
   allRoomVerandaArea    Decimal                  @db.Decimal(10, 2) // changed type from Float to Decimal
   allBalconyKitchenArea Decimal                  @db.Decimal(10, 2) // changed type from Float to Decimal
@@ -624,14 +624,14 @@ model ResidentialPropertyAssessment {
 model NonResidentialPropertyAssessment {
   floorAssessmentId    String                      @id @default(uuid())
   surveyUniqueCode     String
-  floorNumberId        String
-  nrPropertyCategoryId String
-  nrSubCategoryId      String
+  floorNumberId        Int
+  nrPropertyCategoryId Int
+  nrSubCategoryId      Int
   establishmentName    String                      @db.Text
   licenseNo            String?                     @db.VarChar(20)
   licenseExpiryDate    DateTime?
-  occupancyStatusId    String
-  constructionNatureId String
+  occupancyStatusId    Int
+  constructionNatureId Int
   builtupArea          Decimal                     @db.Decimal(10, 2) // changed type from Float to Decimal
   floorMaster          FloorMaster                 @relation(fields: [floorNumberId], references: [floorNumberId])
   nrPropertyCategory   NrPropertyCategoryMaster    @relation(fields: [nrPropertyCategoryId], references: [propertyCategoryId], onDelete: Restrict)

@@ -26,6 +26,12 @@ This document summarizes the current status of the Survey Application, including
   - Consistent error responses, Zod validation, and transaction support
 - **User Management Endpoints:**
   - Endpoints for user creation, editing, status update, and role assignment are live and integrated with the web portal.
+- **Master Data APIs:**
+  - Complete master data endpoints for ULBs, zones, wards, mohallas, categories, subcategories, and construction types
+  - Surveyor assignment endpoints for fetching assigned wards and mohallas
+- **Surveyor Dashboard APIs:**
+  - Surveyor assignments endpoint (`/surveyor/my-assignments`)
+  - Survey creation and management endpoints
 - Robust assignment logic for surveyors and supervisors (multiple wards/mohallas, cross-ULB, admin-only management)
 - Surveyor and supervisor dashboard APIs for the mobile app
 - All major survey, property, and QC models implemented
@@ -68,21 +74,35 @@ This document summarizes the current status of the Survey Application, including
 - **Authentication & UI:**
   - Login, registration, and profile screens
   - Modern UI/UX with light/dark mode
-- **Survey Flow:**
-  - Main survey form and floor-wise property assessment flow fully implemented
+- **Survey Flow - Complete Implementation:**
+  - Main survey form with property type selection (Residential/Non-Residential)
+  - SurveyIntermediate screen with survey summary and actions (edit, delete, submit, add floor details)
+  - ResidentialIntermediate and NonResidentialIntermediate screens for floor detail management
+  - Floor-wise property assessment flow fully implemented
   - Data submission to backend, confirmation, and reset logic
   - Error handling for submission
+- **API Integration:**
+  - Real master data integration for ULBs, zones, wards, mohallas, categories, subcategories
+  - Surveyor assignment fetching from backend
+  - Survey creation and submission to backend
+  - Authentication token management
 - **User Management Integration:**
   - Ready for end-to-end testing with backend and web portal user management features.
-- Surveyor dashboard: shows all assignments, styled for errors/no assignments
-- Supervisor dashboard: shows all assigned wards/mohallas, surveyors, and progress, styled for errors/no assignments
-- Secure login, offline support, and data sync
-- All assignment and dashboard logic implemented and tested
+- **Surveyor Dashboard:**
+  - Shows all assignments, styled for errors/no assignments
+  - Integration with backend assignment APIs
+- **Supervisor Dashboard:**
+  - Shows all assigned wards/mohallas, surveyors, and progress, styled for errors/no assignments
+- **Storage & Sync:**
+  - Secure login, offline support, and data sync
+  - AsyncStorage for local data persistence
+  - All assignment and dashboard logic implemented and tested
 
 ### 🔄 In Progress
 
-- **API Integration:**
-  - Some dropdowns and master data (wards, mohallas, etc.) still use dummy data; needs real API integration
+- **Floor Detail Screens:**
+  - ResidentialFloorDetail and NonResidentialFloorDetail screens need implementation
+  - Form validation and data handling for floor-specific inputs
 - **Offline Support:**
   - Local storage for unsynced surveys (basic), needs robust sync logic
 - UI/UX polish and further analytics for supervisors
@@ -137,29 +157,57 @@ This document summarizes the current status of the Survey Application, including
 
 - End-to-end flow for floor-wise property assessment (backend and mobile app)
 - DTOs, validation, and transaction logic for floor details
+- SurveyIntermediate screen with survey summary and floor management options
+- ResidentialIntermediate and NonResidentialIntermediate screens for floor detail listing and management
 - UI for adding multiple floors and submitting with main survey
+- Real master data integration for floor numbers and construction types
+
+### 🔄 In Progress
+
+- **Floor Detail Input Screens:**
+  - ResidentialFloorDetail and NonResidentialFloorDetail screens implementation
+  - Form validation and data handling for floor-specific property details
 
 ### 📋 Pending
 
-- Real master data integration for floor numbers (fetch from backend)
 - Web portal support for reviewing and editing floor-wise details
+
+---
+
+## Recent Implementations (Latest Updates)
+
+### ✅ Survey Flow Enhancement
+- **SurveyIntermediate Screen:** Complete survey summary with edit, delete, submit, and add floor details options
+- **ResidentialIntermediate Screen:** Lists residential floor details with edit/delete and add new floor functionality
+- **NonResidentialIntermediate Screen:** Lists non-residential floor details with edit/delete and add new floor functionality
+- **API Integration:** Real master data fetching for all dropdowns and form fields
+- **Surveyor Assignment API:** Integration with backend assignment endpoints
+
+### 🔄 Next Screen Implementations
+- **ResidentialFloorDetail Screen:** Form for adding/editing residential floor details
+- **NonResidentialFloorDetail Screen:** Form for adding/editing non-residential floor details
+- **Form Validation:** Enhanced validation for floor-specific inputs
+- **Data Persistence:** Improved local storage and sync logic
 
 ---
 
 ## Next Steps
 
-1. **Web Portal:**
+1. **Mobile App Floor Details:**
+   - Implement ResidentialFloorDetail and NonResidentialFloorDetail screens
+   - Add form validation and data handling for floor-specific inputs
+   - Complete the end-to-end survey flow with floor details
+2. **Web Portal:**
    - Build assignment management and QC workflow UIs
    - Implement dashboards for survey review and analytics
-2. **API & Backend:**
+3. **API & Backend:**
    - Add survey read/update/delete endpoints
    - Implement file upload and attachment support
    - Optimize queries and add logging/monitoring
-3. **Mobile App:**
-   - Integrate real master/assignment data from backend
+4. **Mobile App:**
    - Improve offline support and error handling
    - Add automated tests
-4. **Documentation:**
+5. **Documentation:**
    - Update and complete API and user documentation
 
 - End-to-end testing of assignment flows and dashboards
@@ -168,4 +216,4 @@ This document summarizes the current status of the Survey Application, including
 
 ---
 
-**The project is ready for end-to-end testing of user management and the mobile survey flow. Web portal advanced features and analytics are the next major milestones.**
+**The project has made significant progress with the complete survey flow implementation including intermediate screens and real API integration. The next major milestone is completing the floor detail input screens to finalize the end-to-end survey submission process.**
