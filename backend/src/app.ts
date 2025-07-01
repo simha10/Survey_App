@@ -9,6 +9,9 @@ import masterDataRoutes from './routes/masterDataRoutes';
 import { authenticateJWT, restrictToWebPortal } from './middleware/authMiddleware';
 import wardRoutes from './routes/wardRoutes';
 import userRoutes from './routes/userRoutes';
+import ulbRoutes from './routes/ulbRoutes';
+import zoneRoutes from './routes/zoneRoutes';
+import mohallaRoutes from './routes/mohallaRoutes';
 
 dotenv.config();
 
@@ -21,8 +24,6 @@ const corsOptions = {
   origin: [
     'http://localhost:3000', // Web portal
     'http://127.0.0.1:3000', // Alternative localhost
-    'http://localhost:3001', // Alternative port
-    'http://127.0.0.1:3001', // Alternative port
     'http://localhost:8081', // Expo development server
     'http://127.0.0.1:8081', // Expo development server
   ],
@@ -71,6 +72,18 @@ app.use('/api/user', authenticateJWT, restrictToWebPortal, userRoutes);
 app.use('/api/surveyors', authenticateJWT, surveyorRoutes);
 app.use('/api/surveys', surveyRoutes);
 app.use('/api/surveyor', surveyorRoutes);
+
+// Protected routes - ULBs
+app.use('/ulbs', ulbRoutes);
+
+// Protected routes - Zones
+app.use('/zones', zoneRoutes);
+
+// Protected routes - Wards
+app.use('/wards', wardRoutes);
+
+// Protected routes - Mohallas
+app.use('/mohallas', mohallaRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {

@@ -31,7 +31,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-900">
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onClose={toggleSidebar} />
 
