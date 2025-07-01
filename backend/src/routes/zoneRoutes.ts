@@ -1,4 +1,3 @@
-"use client";
 import express from 'express';
 import { authenticateJWT } from '../middleware/authMiddleware';
 import { getAllZones, getZonesByUlb } from '../controllers/zoneController';

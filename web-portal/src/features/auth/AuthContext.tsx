@@ -57,11 +57,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           // Verify token by fetching user profile
           const profile = await userApi.getProfile();
           console.log("Profile fetched:", profile);
-          console.log("UserRoleMaps:", profile.userRoleMaps);
 
-          // Check if user has roles assigned
-          if (!profile.userRoleMaps || profile.userRoleMaps.length === 0) {
-            console.warn("User has no roles assigned:", profile.userId);
+          // Check if user has a role assigned
+          if (!profile.role) {
+            console.warn("User has no role assigned:", profile.userId);
             localStorage.removeItem("auth_token");
             localStorage.removeItem("user_info");
             return;
@@ -70,7 +69,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           const authUser: AuthUser = {
             userId: profile.userId,
             username: profile.username,
-            role: profile.userRoleMaps[0]?.role?.roleName || "NO_ROLE",
+            role: profile.role,
             name: profile.name || undefined,
             mobileNumber: profile.mobileNumber,
             isActive: profile.isActive,

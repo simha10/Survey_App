@@ -12,6 +12,8 @@ import userRoutes from './routes/userRoutes';
 import ulbRoutes from './routes/ulbRoutes';
 import zoneRoutes from './routes/zoneRoutes';
 import mohallaRoutes from './routes/mohallaRoutes';
+import qcRoutes from './routes/qcRoutes';
+import reportsRoutes from './routes/reportsRoutes';
 
 dotenv.config();
 
@@ -74,16 +76,22 @@ app.use('/api/surveys', surveyRoutes);
 app.use('/api/surveyor', surveyorRoutes);
 
 // Protected routes - ULBs
-app.use('/ulbs', ulbRoutes);
+app.use('/api/ulbs', authenticateJWT, ulbRoutes);
 
 // Protected routes - Zones
-app.use('/zones', zoneRoutes);
+app.use('/api/zones', authenticateJWT, zoneRoutes);
 
-// Protected routes - Wards
-app.use('/wards', wardRoutes);
+// Protected routes - Wards (master data)
+app.use('/api/wards', authenticateJWT, wardRoutes);
 
 // Protected routes - Mohallas
-app.use('/mohallas', mohallaRoutes);
+app.use('/api/mohallas', authenticateJWT, mohallaRoutes);
+
+// Protected routes - QC
+app.use('/api/qc', authenticateJWT, qcRoutes);
+
+// Protected routes - Reports
+app.use('/api/reports', authenticateJWT, reportsRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {

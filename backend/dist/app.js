@@ -68,9 +68,6 @@ app.use('/api/user', authMiddleware_1.authenticateJWT, authMiddleware_1.restrict
 app.use('/api/surveyors', authMiddleware_1.authenticateJWT, surveyorRoutes_1.default);
 app.use('/api/surveys', surveyRoutes_1.default);
 app.use('/api/surveyor', surveyorRoutes_1.default);
-app.use('/surveyors', authMiddleware_1.authenticateJWT, surveyorRoutes_1.default);
-app.use('/surveys', surveyRoutes_1.default);
-app.use('/surveyor', surveyorRoutes_1.default);
 // Protected routes - ULBs
 app.use('/ulbs', ulbRoutes_1.default);
 // Protected routes - Zones
