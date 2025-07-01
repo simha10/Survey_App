@@ -71,7 +71,17 @@ Based on the project requirements and for consistency with the mobile applicatio
 
 ## 5. Current Development Status & Notes
 
-- **Ward Management & Assignment:** The admin panel now includes a tabbed interface for ward management and assignment, with dynamic imports for code splitting. UI is scaffolded and under development.
+- **Backend Modularization:** Master data APIs for ULB, Zone, Ward, and Mohalla are now modular, each with their own controller and route. Endpoints:
+  - `GET /ulbs` — all ULBs
+  - `GET /zones` — all Zones
+  - `GET /zones/ulb/:ulbId` — Zones by ULB
+  - `GET /wards` — all Wards
+  - `GET /wards/zone/:zoneId` — Wards by Zone
+  - `GET /wards/statuses` — all Ward Statuses
+  - `GET /mohallas` — all Mohallas
+  - `GET /mohallas/ward/:wardId` — Mohallas by Ward
+- **Frontend Integration:** The admin panel's Ward Management and Assignment tabs need to update their API calls to use these new endpoints.
+- **Assignment & Conflict Logic:** Backend service logic for assignment and conflict resolution exists; endpoint and UI integration are the next steps.
 - **User Management:** The create/edit user UI is implemented and styled; ready for end-to-end testing.
 - **QC Workflow:** The structure for multi-level QC review is present; further UI and backend integration is ongoing.
 - **Error Handling:** Improved error and loading state handling is being added.

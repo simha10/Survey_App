@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as wardController from '../controllers/wardController';
 import { authenticateJWT, restrictToRoles } from '../middleware/authMiddleware';
+import { getAllWards, getWardsByZone, getAllWardStatuses } from '../controllers/wardController';
 
 const router = Router();
 
@@ -129,5 +130,14 @@ router.get(
   authenticateJWT,
   wardController.getSupervisorsByWard
 );
+
+// Get all wards
+router.get('/', authenticateJWT, getAllWards);
+
+// Get wards by zone
+router.get('/zone/:zoneId', authenticateJWT, getWardsByZone);
+
+// Get all ward statuses
+router.get('/statuses', authenticateJWT, getAllWardStatuses);
 
 export default router; 

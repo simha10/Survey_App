@@ -65,20 +65,20 @@ const ProfilePage: React.FC = () => {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-gray-800">My Profile</h2>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+          <h2 className="text-2xl font-bold text-gray-100">My Profile</h2>
+          <button className="px-4 py-2 bg-blue-200 text-black rounded-md hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
             Edit Profile
           </button>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-500">
+            <label className="block text-sm font-medium text-blue-900">
               Username
             </label>
             <p className="mt-1 text-lg text-gray-900">{profile.username}</p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-500">
+            <label className="block text-sm font-medium text-blue-900">
               Full Name
             </label>
             <p className="mt-1 text-lg text-gray-900">
@@ -86,7 +86,7 @@ const ProfilePage: React.FC = () => {
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-500">
+            <label className="block text-sm font-medium text-blue-900">
               Role
             </label>
             <p className="mt-1 text-lg text-gray-900">
@@ -94,7 +94,7 @@ const ProfilePage: React.FC = () => {
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-500">
+            <label className="block text-sm font-medium text-blue-900">
               Mobile Number
             </label>
             <p className="mt-1 text-lg text-gray-900">
@@ -102,7 +102,7 @@ const ProfilePage: React.FC = () => {
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-500">
+            <label className="block text-sm font-medium text-blue-900">
               Status
             </label>
             <div className="mt-1">
@@ -118,7 +118,7 @@ const ProfilePage: React.FC = () => {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-500">
+            <label className="block text-sm font-medium text-blue-900">
               Member Since
             </label>
             <p className="mt-1 text-lg text-gray-900">

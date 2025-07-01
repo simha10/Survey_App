@@ -15,6 +15,7 @@ interface NavItem {
   href: string;
   icon: React.ReactNode;
   roles: string[];
+  children?: NavItem[];
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
@@ -47,6 +48,372 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         </svg>
       ),
       roles: ["SUPERADMIN", "ADMIN"],
+    },
+    {
+      name: "General Masters",
+      href: "#",
+      icon: (
+        <svg
+          className="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 6h16M4 10h16M4 14h16M4 18h16"
+          />
+        </svg>
+      ),
+      roles: ["SUPERADMIN", "ADMIN"],
+      children: [
+        {
+          name: "Zone Master",
+          href: "/masters/zone",
+          roles: ["SUPERADMIN", "ADMIN"],
+          icon: (
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 10h16M4 14h16M4 18h16"
+              />
+            </svg>
+          ),
+        },
+        {
+          name: "Ward Master",
+          href: "/masters/ward",
+          roles: ["SUPERADMIN", "ADMIN"],
+          icon: (
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 10h16M4 14h16M4 18h16"
+              />
+            </svg>
+          ),
+        },
+        {
+          name: "Mohalla Master",
+          href: "/masters/mohalla",
+          roles: ["SUPERADMIN", "ADMIN"],
+          icon: (
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 10h16M4 14h16M4 18h16"
+              />
+            </svg>
+          ),
+        },
+        {
+          name: "Home Links",
+          href: "/masters/home-links",
+          roles: ["SUPERADMIN", "ADMIN"],
+          icon: (
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 10h16M4 14h16M4 18h16"
+              />
+            </svg>
+          ),
+        },
+        {
+          name: "Vendor Ward Allotment",
+          href: "/masters/vendor-ward-allotment",
+          roles: ["SUPERADMIN", "ADMIN"],
+          icon: (
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 10h16M4 14h16M4 18h16"
+              />
+            </svg>
+          ),
+        },
+        {
+          name: "Discount Policy",
+          href: "/masters/discount-policy",
+          roles: ["SUPERADMIN", "ADMIN"],
+          icon: (
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 10h16M4 14h16M4 18h16"
+              />
+            </svg>
+          ),
+        },
+        {
+          name: "Tax Applicability",
+          href: "/masters/tax-applicability",
+          roles: ["SUPERADMIN", "ADMIN"],
+          icon: (
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 10h16M4 14h16M4 18h16"
+              />
+            </svg>
+          ),
+        },
+      ],
+    },
+    {
+      name: "Tax Masters",
+      href: "#",
+      roles: ["SUPERADMIN", "ADMIN"],
+      icon: (
+        <svg
+          className="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6"
+          />
+        </svg>
+      ),
+      children: [
+        {
+          name: "Assessment Year",
+          href: "/taxmasters/assessmentYear",
+          roles: ["SUPERADMIN", "ADMIN"],
+          icon: (
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6"
+              />
+            </svg>
+          ),
+        },
+        {
+          name: "Financial Year",
+          href: "/taxmasters/financialYear",
+          roles: ["SUPERADMIN", "ADMIN"],
+          icon: (
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6"
+              />
+            </svg>
+          ),
+        },
+        {
+          name: "Ward Rate",
+          href: "/taxmasters/wardRate",
+          roles: ["SUPERADMIN", "ADMIN"],
+          icon: (
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6"
+              />
+            </svg>
+          ),
+        },
+        {
+          name: "Building Age wise Discount",
+          href: "/taxmasters/BADiscount",
+          roles: ["SUPERADMIN", "ADMIN"],
+          icon: (
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6"
+              />
+            </svg>
+          ),
+        },
+        {
+          name: "Tax Lab",
+          href: "/taxmasters/taxLab",
+          roles: ["SUPERADMIN", "ADMIN"],
+          icon: (
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6"
+              />
+            </svg>
+          ),
+        },
+        {
+          name: "Surcharge",
+          href: "/taxmasters/surcharge",
+          roles: ["SUPERADMIN", "ADMIN"],
+          icon: (
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6"
+              />
+            </svg>
+          ),
+        },
+      ],
+    },
+    {
+      name: "MIS Reports",
+      href: "#",
+      icon: (
+        <svg
+          className="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M3 3h18v18H3V3z"
+          />
+        </svg>
+      ),
+      roles: ["SUPERADMIN", "ADMIN"],
+      children: [
+        {
+          name: "Property List",
+          href: "/mis-reports/property-list",
+          roles: ["SUPERADMIN", "ADMIN"],
+          icon: (
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 10h16M4 14h16M4 18h16"
+              />
+            </svg>
+          ),
+        },
+        {
+          name: "Search by GISID",
+          href: "/mis-reports/search-by-gisid",
+          roles: ["SUPERADMIN", "ADMIN"],
+          icon: (
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 10h16M4 14h16M4 18h16"
+              />
+            </svg>
+          ),
+        },
+      ],
     },
     {
       name: "User Management",
@@ -149,6 +516,26 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       roles: ["SUPERADMIN", "ADMIN"],
     },
     {
+      name: "Financial Year Closing",
+      href: "/financial-year-closing",
+      icon: (
+        <svg
+          className="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 8v4l3 3"
+          />
+        </svg>
+      ),
+      roles: ["SUPERADMIN", "ADMIN"],
+    },
+    {
       name: "Profile",
       href: "/profile",
       icon: (
@@ -212,25 +599,34 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </div>
 
           <nav className="flex-1 px-2 py-4 space-y-1">
-            {filteredNavigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                onClick={() => {
-                  if (window.innerWidth < 1024) {
-                    onClose();
-                  }
-                }}
-                className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
-                  isActive(item.href)
-                    ? "bg-gray-900 text-white"
-                    : "text-gray-300 hover:bg-gray-700 hover:text-white"
-                }`}
-              >
-                <span className="mr-3">{item.icon}</span>
-                {item.name}
-              </Link>
-            ))}
+            {filteredNavigation.map((item) =>
+              item.children ? (
+                <SidebarSubMenu
+                  key={item.name}
+                  item={item}
+                  pathname={pathname}
+                  onClose={onClose}
+                />
+              ) : (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={() => {
+                    if (window.innerWidth < 1024) {
+                      onClose();
+                    }
+                  }}
+                  className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
+                    isActive(item.href)
+                      ? "bg-gray-900 text-white"
+                      : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                  }`}
+                >
+                  <span className="mr-3">{item.icon}</span>
+                  {item.name}
+                </Link>
+              )
+            )}
           </nav>
 
           <div className="mt-auto p-2">
@@ -266,5 +662,58 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     </>
   );
 };
+
+function SidebarSubMenu({ item, pathname, onClose }: { item: NavItem; pathname: string; onClose: () => void }) {
+  return (
+    <div className="relative group">
+      <div
+        className={`group flex items-center w-full px-2 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
+          item.children?.some((child) => pathname.startsWith(child.href))
+            ? "bg-gray-900 text-white"
+            : "text-gray-300 hover:bg-gray-700 hover:text-white"
+        }`}
+        tabIndex={0}
+      >
+        <span className="mr-3">{item.icon}</span>
+        {item.name}
+        <svg
+          className={`ml-auto h-4 w-4 transition-transform`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 5l7 7-7 7"
+          />
+        </svg>
+      </div>
+      <div className="absolute left-full top-0 z-50 min-w-[180px] bg-gray-900 shadow-lg rounded-md opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto transition-opacity duration-200">
+        <div className="py-2">
+          {item.children?.map((child) => (
+            <Link
+              key={child.name}
+              href={child.href}
+              onClick={() => {
+                if (window.innerWidth < 1024) {
+                  onClose();
+                }
+              }}
+              className={`block px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+                pathname.startsWith(child.href)
+                  ? "bg-gray-800 text-white"
+                  : "text-gray-300 hover:bg-gray-700 hover:text-white"
+              }`}
+            >
+              {child.name}
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default Sidebar;
