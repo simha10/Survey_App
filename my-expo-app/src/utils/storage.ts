@@ -21,7 +21,18 @@ export interface SurveyData {
 export const saveSurveyLocally = async (survey: SurveyData): Promise<void> => {
   try {
     const existingSurveys = await getLocalSurveys();
-    const updatedSurveys = [...existingSurveys, survey];
+    const surveyIndex = existingSurveys.findIndex(s => s.id === survey.id);
+    let updatedSurveys;
+
+    if (surveyIndex > -1) {
+      // Update existing survey
+      updatedSurveys = [...existingSurveys];
+      updatedSurveys[surveyIndex] = survey;
+    } else {
+      // Add new survey
+      updatedSurveys = [...existingSurveys, survey];
+    }
+    
     const jsonValue = JSON.stringify(updatedSurveys);
     await AsyncStorage.setItem(SURVEYS_STORAGE_KEY, jsonValue);
   } catch (e) {

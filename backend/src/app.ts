@@ -9,6 +9,11 @@ import masterDataRoutes from './routes/masterDataRoutes';
 import { authenticateJWT, restrictToWebPortal } from './middleware/authMiddleware';
 import wardRoutes from './routes/wardRoutes';
 import userRoutes from './routes/userRoutes';
+import ulbRoutes from './routes/ulbRoutes';
+import zoneRoutes from './routes/zoneRoutes';
+import mohallaRoutes from './routes/mohallaRoutes';
+import qcRoutes from './routes/qcRoutes';
+import reportsRoutes from './routes/reportsRoutes';
 
 dotenv.config();
 
@@ -21,8 +26,6 @@ const corsOptions = {
   origin: [
     'http://localhost:3000', // Web portal
     'http://127.0.0.1:3000', // Alternative localhost
-    'http://localhost:3001', // Alternative port
-    'http://127.0.0.1:3001', // Alternative port
     'http://localhost:8081', // Expo development server
     'http://127.0.0.1:8081', // Expo development server
   ],
@@ -58,19 +61,37 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.use('/auth', authRoutes);
+app.use('/api/auth', authRoutes);
 
 // Master data routes (public for now, can be protected later if needed)
-app.use('/master-data', masterDataRoutes);
+app.use('/api/master-data', masterDataRoutes);
 
 // Protected routes - Web Portal Only (ADMIN/SUPERADMIN)
-app.use('/ward', authenticateJWT, restrictToWebPortal, wardRoutes);
-app.use('/user', authenticateJWT, restrictToWebPortal, userRoutes);
+app.use('/api/ward', authenticateJWT, restrictToWebPortal, wardRoutes);
+app.use('/api/user', authenticateJWT, restrictToWebPortal, userRoutes);
 
 // Protected routes - All Authenticated Users
-app.use('/surveyors', authenticateJWT, surveyorRoutes);
-app.use('/surveys', surveyRoutes);
-app.use('/surveyor', surveyorRoutes);
+app.use('/api/surveyors', authenticateJWT, surveyorRoutes);
+app.use('/api/surveys', surveyRoutes);
+app.use('/api/surveyor', surveyorRoutes);
+
+// Protected routes - ULBs
+app.use('/api/ulbs', authenticateJWT, ulbRoutes);
+
+// Protected routes - Zones
+app.use('/api/zones', authenticateJWT, zoneRoutes);
+
+// Protected routes - Wards (master data)
+app.use('/api/wards', authenticateJWT, wardRoutes);
+
+// Protected routes - Mohallas
+app.use('/api/mohallas', authenticateJWT, mohallaRoutes);
+
+// Protected routes - QC
+app.use('/api/qc', authenticateJWT, qcRoutes);
+
+// Protected routes - Reports
+app.use('/api/reports', authenticateJWT, reportsRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {

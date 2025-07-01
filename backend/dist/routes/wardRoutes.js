@@ -36,6 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const wardController = __importStar(require("../controllers/wardController"));
 const authMiddleware_1 = require("../middleware/authMiddleware");
+const wardController_1 = require("../controllers/wardController");
 const router = (0, express_1.Router)();
 // ========================================
 // WARD ASSIGNMENT ROUTES
@@ -80,4 +81,10 @@ router.get('/ward-mohalla-mappings', authMiddleware_1.authenticateJWT, wardContr
 router.get('/surveyors/:wardId', authMiddleware_1.authenticateJWT, wardController.getSurveyorsByWard);
 // Get supervisors by ward
 router.get('/supervisors/:wardId', authMiddleware_1.authenticateJWT, wardController.getSupervisorsByWard);
+// Get all wards
+router.get('/', authMiddleware_1.authenticateJWT, wardController_1.getAllWards);
+// Get wards by zone
+router.get('/zone/:zoneId', authMiddleware_1.authenticateJWT, wardController_1.getWardsByZone);
+// Get all ward statuses
+router.get('/statuses', authMiddleware_1.authenticateJWT, wardController_1.getAllWardStatuses);
 exports.default = router;

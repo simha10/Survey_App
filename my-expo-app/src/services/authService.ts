@@ -1,15 +1,14 @@
 // src/services/authService.ts
-import axios from 'axios';
+import api from '../api/axiosConfig';
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ;
 
 export async function login({ username, password, role }: { username: string; password: string; role: string }) {
   try {
     console.log('Attempting login:', { username, password, role });
-    const res = await axios.post(`${API_BASE_URL}/auth/login`, { username, password, role });
+    const res = await api.post('/auth/login', { username, password, role });
     console.log('Login response:', res.data);
-    await SecureStore.setItemAsync('authToken', res.data.token);
+    await AsyncStorage.setItem('userToken', res.data.token);
     await AsyncStorage.setItem('user', JSON.stringify(res.data.user));
     return res.data.user;
   } catch (err: any) {
@@ -28,9 +27,9 @@ export async function register(
   }
 ) {
   try {
-    const token = await SecureStore.getItemAsync('authToken');
-    const res = await axios.post(
-      `${API_BASE_URL}/auth/register`,
+    const token = await AsyncStorage.getItem('userToken');
+    const res = await api.post(
+      '/auth/register',
       data,
       { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -61,23 +60,23 @@ export async function getUlbZoneOptions() {
   ];
 }
 export async function logout() {
-    await SecureStore.deleteItemAsync('authToken');
+    await AsyncStorage.removeItem('userToken');
     await AsyncStorage.removeItem('user');
     return true;
   }
 // Optionally, fetch fresh profile data from backend
 export async function getProfile() {
-    try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const res = await axios.get(`${API_BASE_URL}/user/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      await AsyncStorage.setItem('user', JSON.stringify(res.data));
-      return res.data;
-    } catch (err) {
-      // fallback to cached user
-      const cached = await AsyncStorage.getItem('user');
-      if (cached) return JSON.parse(cached);
-      throw `Failed to load profile ${err}`;
-    }
+  try {
+    const token = await AsyncStorage.getItem('userToken');
+    const res = await api.get('/user/profile', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    await AsyncStorage.setItem('user', JSON.stringify(res.data));
+    return res.data;
+  } catch (err) {
+    // fallback to cached user
+    const cached = await AsyncStorage.getItem('user');
+    if (cached) return JSON.parse(cached);
+    throw `Failed to load profile ${err}`;
   }
+}

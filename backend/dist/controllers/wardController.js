@@ -42,9 +42,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getSupervisorsByWard = exports.getSurveyorsByWard = exports.getWardMohallaMappings = exports.getAvailableMohallas = exports.getAvailableWards = exports.removeSupervisorFromWard = exports.assignSupervisorToWard = exports.updateWardStatus = exports.getWardAssignments = exports.toggleSurveyorAccess = exports.updateWardAssignment = exports.bulkWardAssignment = exports.assignWardToSupervisor = exports.assignWardToSurveyor = void 0;
+exports.getAllWardStatuses = exports.getWardsByZone = exports.getAllWards = exports.getSupervisorsByWard = exports.getSurveyorsByWard = exports.getWardMohallaMappings = exports.getAvailableMohallas = exports.getAvailableWards = exports.removeSupervisorFromWard = exports.assignSupervisorToWard = exports.updateWardStatus = exports.getWardAssignments = exports.toggleSurveyorAccess = exports.updateWardAssignment = exports.bulkWardAssignment = exports.assignWardToSupervisor = exports.assignWardToSurveyor = void 0;
 const wardService = __importStar(require("../services/wardService"));
 const wardDto_1 = require("../dtos/wardDto");
+const client_1 = require("@prisma/client");
+const prisma = new client_1.PrismaClient();
 // 1. Assign Ward to Surveyor
 const assignWardToSurveyor = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -227,17 +229,15 @@ exports.removeSupervisorFromWard = removeSupervisorFromWard;
 // 10. Get Available Wards (for dropdowns)
 const getAvailableWards = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { PrismaClient } = require('@prisma/client');
-        const prisma = new PrismaClient();
         const wards = yield prisma.wardMaster.findMany({
             where: { isActive: true },
             select: {
                 wardId: true,
-                wardNumber: true,
+                newWardNumber: true,
                 wardName: true,
                 description: true,
             },
-            orderBy: { wardNumber: 'asc' },
+            orderBy: { newWardNumber: 'asc' },
         });
         return res.status(200).json({ wards });
     }
@@ -250,8 +250,6 @@ exports.getAvailableWards = getAvailableWards;
 // 11. Get Available Mohallas (for dropdowns)
 const getAvailableMohallas = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { PrismaClient } = require('@prisma/client');
-        const prisma = new PrismaClient();
         const mohallas = yield prisma.mohallaMaster.findMany({
             where: { isActive: true },
             select: {
@@ -272,15 +270,13 @@ exports.getAvailableMohallas = getAvailableMohallas;
 // 12. Get Ward-Mohalla Mappings
 const getWardMohallaMappings = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { PrismaClient } = require('@prisma/client');
-        const prisma = new PrismaClient();
         const mappings = yield prisma.wardMohallaMapping.findMany({
             where: { isActive: true },
             include: {
                 ward: {
                     select: {
                         wardId: true,
-                        wardNumber: true,
+                        newWardNumber: true,
                         wardName: true,
                     },
                 },
@@ -292,7 +288,7 @@ const getWardMohallaMappings = (req, res) => __awaiter(void 0, void 0, void 0, f
                 },
             },
             orderBy: [
-                { ward: { wardNumber: 'asc' } },
+                { ward: { newWardNumber: 'asc' } },
                 { mohalla: { mohallaName: 'asc' } },
             ],
         });
@@ -308,8 +304,6 @@ exports.getWardMohallaMappings = getWardMohallaMappings;
 const getSurveyorsByWard = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { wardId } = req.params;
-        const { PrismaClient } = require('@prisma/client');
-        const prisma = new PrismaClient();
         const surveyors = yield prisma.surveyorAssignment.findMany({
             where: { wardId, isActive: true },
             include: {
@@ -318,11 +312,6 @@ const getSurveyorsByWard = (req, res) => __awaiter(void 0, void 0, void 0, funct
                         userId: true,
                         username: true,
                         mobileNumber: true,
-                    },
-                },
-                surveyor: {
-                    select: {
-                        surveyorName: true,
                     },
                 },
             },
@@ -339,8 +328,6 @@ exports.getSurveyorsByWard = getSurveyorsByWard;
 const getSupervisorsByWard = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { wardId } = req.params;
-        const { PrismaClient } = require('@prisma/client');
-        const prisma = new PrismaClient();
         const supervisors = yield prisma.supervisors.findMany({
             where: { wardId },
             include: {
@@ -361,3 +348,72 @@ const getSupervisorsByWard = (req, res) => __awaiter(void 0, void 0, void 0, fun
     }
 });
 exports.getSupervisorsByWard = getSupervisorsByWard;
+const getAllWards = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const wards = yield prisma.wardMaster.findMany({
+            where: { isActive: true },
+            select: {
+                wardId: true,
+                newWardNumber: true,
+                wardName: true,
+                isActive: true,
+                description: true,
+            },
+            orderBy: { newWardNumber: 'asc' },
+        });
+        res.json(wards);
+    }
+    catch (error) {
+        console.error('Error fetching wards:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+exports.getAllWards = getAllWards;
+const getWardsByZone = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { zoneId } = req.params;
+        const mappings = yield prisma.zoneWardMapping.findMany({
+            where: { zoneId, isActive: true },
+            include: {
+                ward: {
+                    select: {
+                        wardId: true,
+                        newWardNumber: true,
+                        wardName: true,
+                        isActive: true,
+                        description: true,
+                    },
+                },
+            },
+            orderBy: {
+                ward: { newWardNumber: 'asc' },
+            },
+        });
+        const wards = mappings.map(m => m.ward);
+        res.json(wards);
+    }
+    catch (error) {
+        console.error('Error fetching wards by zone:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+exports.getWardsByZone = getWardsByZone;
+const getAllWardStatuses = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const statuses = yield prisma.wardStatusMaster.findMany({
+            where: { isActive: true },
+            select: {
+                statusName: true,
+                isActive: true,
+                description: true,
+            },
+            orderBy: { statusName: 'asc' },
+        });
+        res.json(statuses);
+    }
+    catch (error) {
+        console.error('Error fetching ward statuses:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+exports.getAllWardStatuses = getAllWardStatuses;

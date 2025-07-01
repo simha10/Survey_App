@@ -161,7 +161,7 @@ export default function WardManagementTab() {
   }
 
   return (
-    <div className="space-y-8 p-6 bg-gray-50 min-h-screen">
+    <div className="space-y-8 bg-gray-50 min-h-screen">
       {/* Filters */}
       <Card className="shadow-xl border border-gray-200 rounded-2xl bg-white transition-all hover:shadow-2xl max-w-4xl mx-auto">
         <CardHeader className="border-b border-gray-100">
@@ -213,7 +213,7 @@ export default function WardManagementTab() {
                 onValueChange={handleZoneChange}
                 disabled={!selectedUlb}
               >
-                <SelectTrigger className="w-full h-12 text-base font-medium bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all hover:border-indigo-400 disabled:bg-gray-100 disabled:cursor-not-allowed">
+                <SelectTrigger className="w-full h-12 text-base text-black font-medium bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all hover:border-indigo-400 disabled:bg-gray-100 disabled:cursor-not-allowed">
                   <SelectValue placeholder="Select Zone" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border border-gray-200 rounded-lg shadow-xl w-full">

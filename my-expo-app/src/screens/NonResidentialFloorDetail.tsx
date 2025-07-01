@@ -17,6 +17,7 @@ import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { getLocalSurvey, updateLocalSurvey } from '../utils/storage';
 import { fetchMasterData } from '../services/surveyService';
+import { fetchNrPropertySubCategories } from '../services/masterDataService';
 
 interface FloorDetail {
   id: string;
@@ -57,6 +58,7 @@ export default function NonResidentialFloorDetail() {
     nrPropertyCategories: [],
     nrPropertySubCategories: [],
   });
+  const [subCategories, setSubCategories] = useState<MasterData['nrPropertySubCategories']>([]);
 
   // Form state
   const [formData, setFormData] = useState<FloorDetail>({
@@ -98,7 +100,7 @@ export default function NonResidentialFloorDetail() {
         occupancyStatuses: data.occupancyStatuses || [],
         constructionNatures: data.constructionNatures || [],
         nrPropertyCategories: data.nrPropertyCategories || [],
-        nrPropertySubCategories: data.nrPropertySubCategories || [],
+        nrPropertySubCategories: [], // This will be loaded dynamically
       });
     } catch (error) {
       console.error('Error loading master data:', error);
@@ -135,11 +137,22 @@ export default function NonResidentialFloorDetail() {
     }
   };
 
-  const getFilteredSubCategories = () => {
-    if (!formData.nrPropertyCategoryId) return [];
-    return masterData.nrPropertySubCategories.filter(
-      sub => sub.propertyCategoryId === formData.nrPropertyCategoryId
-    );
+  const handleCategoryChange = async (categoryId: number) => {
+    handleInputChange('nrPropertyCategoryId', categoryId.toString());
+    handleInputChange('nrSubCategoryId', '0'); // Reset sub-category selection
+    
+    if (categoryId) {
+      try {
+        const fetchedSubCategories = await fetchNrPropertySubCategories(categoryId);
+        setSubCategories(fetchedSubCategories);
+      } catch (error) {
+        console.error('Error fetching sub-categories:', error);
+        Alert.alert('Error', 'Failed to fetch sub-categories.');
+        setSubCategories([]);
+      }
+    } else {
+      setSubCategories([]);
+    }
   };
 
   const validateForm = (): boolean => {
@@ -184,17 +197,23 @@ export default function NonResidentialFloorDetail() {
         Alert.alert('Error', 'Survey not found');
         return;
       }
+
+      const processedFormData = {
+        ...formData,
+        builtupArea: parseFloat(formData.builtupArea) || 0,
+      };
+
       const existingFloors = survey.data && survey.data.nonResidentialPropertyAssessments ? survey.data.nonResidentialPropertyAssessments : [];
       let updatedFloors;
 
       if (editMode) {
         // Update existing floor
         updatedFloors = existingFloors.map(floor =>
-          floor.id === floorId ? formData : floor
+          floor.id === floorId ? processedFormData : floor
         );
       } else {
         // Add new floor
-        updatedFloors = [...existingFloors, formData];
+        updatedFloors = [...existingFloors, processedFormData];
       }
 
       const updatedSurvey = {
@@ -276,9 +295,7 @@ export default function NonResidentialFloorDetail() {
               <Picker
                 selectedValue={formData.nrPropertyCategoryId}
                 onValueChange={(value) => {
-                  handleInputChange('nrPropertyCategoryId', value.toString());
-                  // Reset sub category when category changes
-                  handleInputChange('nrSubCategoryId', '0');
+                  handleCategoryChange(value);
                 }}
                 style={styles.picker}
               >
@@ -302,10 +319,10 @@ export default function NonResidentialFloorDetail() {
                 selectedValue={formData.nrSubCategoryId}
                 onValueChange={(value) => handleInputChange('nrSubCategoryId', value.toString())}
                 style={styles.picker}
-                enabled={!!formData.nrPropertyCategoryId}
+                enabled={!!formData.nrPropertyCategoryId && subCategories.length > 0}
               >
                 <Picker.Item label="Select Property Sub Category" value={0} />
-                {getFilteredSubCategories().map((subCategory) => (
+                {subCategories.map((subCategory) => (
                   <Picker.Item
                     key={subCategory.subCategoryId}
                     label={subCategory.subCategoryName}

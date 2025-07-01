@@ -14,6 +14,9 @@ const masterDataRoutes_1 = __importDefault(require("./routes/masterDataRoutes"))
 const authMiddleware_1 = require("./middleware/authMiddleware");
 const wardRoutes_1 = __importDefault(require("./routes/wardRoutes"));
 const userRoutes_1 = __importDefault(require("./routes/userRoutes"));
+const ulbRoutes_1 = __importDefault(require("./routes/ulbRoutes"));
+const zoneRoutes_1 = __importDefault(require("./routes/zoneRoutes"));
+const mohallaRoutes_1 = __importDefault(require("./routes/mohallaRoutes"));
 dotenv_1.default.config();
 // Initialize Express app
 const app = (0, express_1.default)();
@@ -23,8 +26,6 @@ const corsOptions = {
     origin: [
         'http://localhost:3000', // Web portal
         'http://127.0.0.1:3000', // Alternative localhost
-        'http://localhost:3001', // Alternative port
-        'http://127.0.0.1:3001', // Alternative port
         'http://localhost:8081', // Expo development server
         'http://127.0.0.1:8081', // Expo development server
     ],
@@ -57,16 +58,24 @@ app.use((req, res, next) => {
     }
 });
 // Routes
-app.use('/auth', authRoutes_1.default);
+app.use('/api/auth', authRoutes_1.default);
 // Master data routes (public for now, can be protected later if needed)
-app.use('/master-data', masterDataRoutes_1.default);
+app.use('/api/master-data', masterDataRoutes_1.default);
 // Protected routes - Web Portal Only (ADMIN/SUPERADMIN)
-app.use('/ward', authMiddleware_1.authenticateJWT, authMiddleware_1.restrictToWebPortal, wardRoutes_1.default);
-app.use('/user', authMiddleware_1.authenticateJWT, authMiddleware_1.restrictToWebPortal, userRoutes_1.default);
+app.use('/api/ward', authMiddleware_1.authenticateJWT, authMiddleware_1.restrictToWebPortal, wardRoutes_1.default);
+app.use('/api/user', authMiddleware_1.authenticateJWT, authMiddleware_1.restrictToWebPortal, userRoutes_1.default);
 // Protected routes - All Authenticated Users
-app.use('/surveyors', authMiddleware_1.authenticateJWT, surveyorRoutes_1.default);
-app.use('/surveys', surveyRoutes_1.default);
-app.use('/surveyor', surveyorRoutes_1.default);
+app.use('/api/surveyors', authMiddleware_1.authenticateJWT, surveyorRoutes_1.default);
+app.use('/api/surveys', surveyRoutes_1.default);
+app.use('/api/surveyor', surveyorRoutes_1.default);
+// Protected routes - ULBs
+app.use('/ulbs', ulbRoutes_1.default);
+// Protected routes - Zones
+app.use('/zones', zoneRoutes_1.default);
+// Protected routes - Wards
+app.use('/wards', wardRoutes_1.default);
+// Protected routes - Mohallas
+app.use('/mohallas', mohallaRoutes_1.default);
 // Health check route
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', message: 'Server is running' });

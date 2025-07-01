@@ -62,6 +62,16 @@ This document summarizes the current status of the Survey Application, including
 - Automated testing
 - Performance optimization
 
+### ✅ Modularized master data API: ULB, Zone, Ward, and Mohalla now have separate controllers and routes.
+
+### ✅ Endpoints for fetching all ULBs, Zones, Wards, Mohallas, and their parent-child relationships are implemented and protected with JWT.
+
+### ✅ Ward statuses endpoint is available under /wards/statuses.
+
+### ⏳ Assignment and conflict resolution logic: Service logic exists, but endpoints and UI integration are next.
+
+### ⏳ Old masterDataController/routes remain for other master data (not ULB/Zone/Ward/Mohalla).
+
 ---
 
 ## Frontend (Mobile App) Status
@@ -117,6 +127,12 @@ This document summarizes the current status of the Survey Application, including
   - Add unit and integration tests
 - Push notifications, advanced supervisor features
 
+### ⏳ Needs to update API calls to use new modular endpoints (e.g., /ulbs, /zones/ulb/:ulbId, /wards/zone/:zoneId, /mohallas/ward/:wardId, /wards/statuses).
+
+### ⏳ Ward Management UI is scaffolded and ready for integration with new endpoints.
+
+### ⏳ Assignment management and conflict UI logic to be implemented next.
+
 ---
 
 ## Web Portal Status
@@ -127,8 +143,6 @@ This document summarizes the current status of the Survey Application, including
 - **User Management UI:**
   - Admin UI for user creation, editing, status management, and role assignment is implemented and styled. End-to-end flow is ready for testing.
 - Admin-only assignment management UI (wards/mohallas to users)
-- QC workflow and user management
-- Analytics and reporting dashboards (basic)
 
 ### 🔄 In Progress
 
@@ -177,6 +191,7 @@ This document summarizes the current status of the Survey Application, including
 ## Recent Implementations (Latest Updates)
 
 ### ✅ Survey Flow Enhancement
+
 - **SurveyIntermediate Screen:** Complete survey summary with edit, delete, submit, and add floor details options
 - **ResidentialIntermediate Screen:** Lists residential floor details with edit/delete and add new floor functionality
 - **NonResidentialIntermediate Screen:** Lists non-residential floor details with edit/delete and add new floor functionality
@@ -184,6 +199,7 @@ This document summarizes the current status of the Survey Application, including
 - **Surveyor Assignment API:** Integration with backend assignment endpoints
 
 ### 🔄 Next Screen Implementations
+
 - **ResidentialFloorDetail Screen:** Form for adding/editing residential floor details
 - **NonResidentialFloorDetail Screen:** Form for adding/editing non-residential floor details
 - **Form Validation:** Enhanced validation for floor-specific inputs
@@ -213,6 +229,12 @@ This document summarizes the current status of the Survey Application, including
 - End-to-end testing of assignment flows and dashboards
 - Further analytics and supervisor features as needed
 - Documentation and onboarding for new team members
+
+### Update frontend to use new endpoints.
+
+### Implement and test assignment and conflict resolution logic (backend + frontend).
+
+### Continue with QC workflow and dashboard/reporting enhancements.
 
 ---
 

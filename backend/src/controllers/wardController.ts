@@ -11,6 +11,9 @@ import {
   AssignSupervisorToWardSchema,
   RemoveSupervisorFromWardSchema,
 } from '../dtos/wardDto';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 // 1. Assign Ward to Surveyor
 export const assignWardToSurveyor = async (req: Request, res: Response) => {
@@ -194,18 +197,15 @@ export const removeSupervisorFromWard = async (req: Request, res: Response) => {
 // 10. Get Available Wards (for dropdowns)
 export const getAvailableWards = async (req: Request, res: Response) => {
   try {
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
-
     const wards = await prisma.wardMaster.findMany({
       where: { isActive: true },
       select: {
         wardId: true,
-        wardNumber: true,
+        newWardNumber: true,
         wardName: true,
         description: true,
       },
-      orderBy: { wardNumber: 'asc' },
+      orderBy: { newWardNumber: 'asc' },
     });
 
     return res.status(200).json({ wards });
@@ -218,9 +218,6 @@ export const getAvailableWards = async (req: Request, res: Response) => {
 // 11. Get Available Mohallas (for dropdowns)
 export const getAvailableMohallas = async (req: Request, res: Response) => {
   try {
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
-
     const mohallas = await prisma.mohallaMaster.findMany({
       where: { isActive: true },
       select: {
@@ -241,16 +238,13 @@ export const getAvailableMohallas = async (req: Request, res: Response) => {
 // 12. Get Ward-Mohalla Mappings
 export const getWardMohallaMappings = async (req: Request, res: Response) => {
   try {
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
-
     const mappings = await prisma.wardMohallaMapping.findMany({
       where: { isActive: true },
       include: {
         ward: {
           select: {
             wardId: true,
-            wardNumber: true,
+            newWardNumber: true,
             wardName: true,
           },
         },
@@ -262,7 +256,7 @@ export const getWardMohallaMappings = async (req: Request, res: Response) => {
         },
       },
       orderBy: [
-        { ward: { wardNumber: 'asc' } },
+        { ward: { newWardNumber: 'asc' } },
         { mohalla: { mohallaName: 'asc' } },
       ],
     });
@@ -278,9 +272,6 @@ export const getWardMohallaMappings = async (req: Request, res: Response) => {
 export const getSurveyorsByWard = async (req: Request, res: Response) => {
   try {
     const { wardId } = req.params;
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
-
     const surveyors = await prisma.surveyorAssignment.findMany({
       where: { wardId, isActive: true },
       include: {
@@ -289,11 +280,6 @@ export const getSurveyorsByWard = async (req: Request, res: Response) => {
             userId: true,
             username: true,
             mobileNumber: true,
-          },
-        },
-        surveyor: {
-          select: {
-            surveyorName: true,
           },
         },
       },
@@ -310,9 +296,6 @@ export const getSurveyorsByWard = async (req: Request, res: Response) => {
 export const getSupervisorsByWard = async (req: Request, res: Response) => {
   try {
     const { wardId } = req.params;
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
-
     const supervisors = await prisma.supervisors.findMany({
       where: { wardId },
       include: {
@@ -330,5 +313,71 @@ export const getSupervisorsByWard = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error(error);
     return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const getAllWards = async (req: Request, res: Response) => {
+  try {
+    const wards = await prisma.wardMaster.findMany({
+      where: { isActive: true },
+      select: {
+        wardId: true,
+        newWardNumber: true,
+        wardName: true,
+        isActive: true,
+        description: true,
+      },
+      orderBy: { newWardNumber: 'asc' },
+    });
+    res.json(wards);
+  } catch (error) {
+    console.error('Error fetching wards:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const getWardsByZone = async (req: Request, res: Response) => {
+  try {
+    const { zoneId } = req.params;
+    const mappings = await prisma.zoneWardMapping.findMany({
+      where: { zoneId, isActive: true },
+      include: {
+        ward: {
+          select: {
+            wardId: true,
+            newWardNumber: true,
+            wardName: true,
+            isActive: true,
+            description: true,
+          },
+        },
+      },
+      orderBy: {
+        ward: { newWardNumber: 'asc' },
+      },
+    });
+    const wards = mappings.map(m => m.ward);
+    res.json(wards);
+  } catch (error) {
+    console.error('Error fetching wards by zone:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const getAllWardStatuses = async (req: Request, res: Response) => {
+  try {
+    const statuses = await prisma.wardStatusMaster.findMany({
+      where: { isActive: true },
+      select: {
+        statusName: true,
+        isActive: true,
+        description: true,
+      },
+      orderBy: { statusName: 'asc' },
+    });
+    res.json(statuses);
+  } catch (error) {
+    console.error('Error fetching ward statuses:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 }; 
