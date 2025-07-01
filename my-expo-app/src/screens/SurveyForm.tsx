@@ -3,13 +3,63 @@ import { ScrollView, View, Text, StyleSheet, Button, Alert, findNodeHandle } fro
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FormInput from '../components/FormInput';
 import FormDropdown from '../components/FormDropdown';
-import { saveSurveyLocally } from '../utils/storage';
+import { saveSurveyLocally, getLocalSurvey } from '../utils/storage';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchAllMasterData } from '../services/masterDataService';
 
+interface FormData {
+  ulbId: string;
+  zoneId: string;
+  wardId: string;
+  mohallaId: string;
+  parcelId: string | number;
+  mapId: string | number;
+  gisId: string;
+  subGisId: string;
+  responseTypeId: number;
+  oldHouseNumber: string;
+  electricityConsumerName: string;
+  waterSewerageConnectionNumber: string;
+  respondentName: string;
+  respondentStatusId: number;
+  ownerName: string;
+  fatherHusbandName: string;
+  mobileNumber: string;
+  aadharNumber: string;
+  propertyLatitude: string | number;
+  propertyLongitude: string | number;
+  assessmentYear: string;
+  propertyTypeId: number;
+  buildingName: string;
+  roadTypeId: number;
+  constructionYear: string;
+  constructionTypeId: number;
+  addressRoadName: string;
+  locality: string;
+  pinCode: string | number;
+  landmark: string;
+  fourWayEast: string;
+  fourWayWest: string;
+  fourWayNorth: string;
+  fourWaySouth: string;
+  newWardNumber: string;
+  waterSourceId: number;
+  rainWaterHarvestingSystem: string;
+  plantation: string;
+  parking: string;
+  pollution: string;
+  pollutionMeasurementTaken: string;
+  waterSupplyWithin200Meters: string;
+  sewerageLineWithin100Meters: string;
+  disposalTypeId: number;
+  totalPlotArea: string | number;
+  builtupAreaOfGroundFloor: string | number;
+  remarks: string;
+}
+
 export default function SurveyForm({ route }: any) {
-  let { surveyType } = route.params as { surveyType: string };
+  let { surveyType, surveyData: initialSurveyData, editMode, surveyId } = route.params as { surveyType: string, surveyData?: any, editMode?: boolean, surveyId?: string };
   if (surveyType === 'Mix') surveyType = 'Mixed';
   type SurveyTypeKey = 'Residential' | 'Non-Residential' | 'Mixed';
   const surveyTypeKey = surveyType as SurveyTypeKey;
@@ -37,65 +87,108 @@ export default function SurveyForm({ route }: any) {
     { label: 'Gomti Nagar', value: '00000000-0000-0000-0000-000000000006' },
   ];
 
-  // Fetch master data on component mount
+  // Integer IDs for SurveyTypeMaster (replace with real IDs from your DB/seed)
+  const SURVEY_TYPE_IDS = {
+    Residential: 1,
+    'Non-Residential': 2,
+    Mixed: 3,
+  };
+
+  const [formData, setFormData] = useState<FormData>({
+    // Default initial state
+    ulbId: ulbOptions[0].value,
+    zoneId: zoneOptions[0].value,
+    wardId: wardOptions[0].value,
+    mohallaId: mohallaOptions[0].value,
+    parcelId: '',
+    mapId: '',
+    gisId: '',
+    subGisId: '',
+    responseTypeId: 0,
+    oldHouseNumber: '',
+    electricityConsumerName: '',
+    waterSewerageConnectionNumber: '',
+    respondentName: '',
+    respondentStatusId: 0,
+    ownerName: '',
+    fatherHusbandName: '',
+    mobileNumber: '',
+    aadharNumber: '',
+    propertyLatitude: '',
+    propertyLongitude: '',
+    assessmentYear: new Date().getFullYear().toString(),
+    propertyTypeId: 0,
+    buildingName: '',
+    roadTypeId: 0,
+    constructionYear: '',
+    constructionTypeId: 0,
+    addressRoadName: '',
+    locality: '',
+    pinCode: '',
+    landmark: '',
+    fourWayEast: '',
+    fourWayWest: '',
+    fourWayNorth: '',
+    fourWaySouth: '',
+    newWardNumber: '',
+    waterSourceId: 0,
+    rainWaterHarvestingSystem: 'NO',
+    plantation: 'NO',
+    parking: 'NO',
+    pollution: 'NO',
+    pollutionMeasurementTaken: '',
+    waterSupplyWithin200Meters: 'NO',
+    sewerageLineWithin100Meters: 'NO',
+    disposalTypeId: 0,
+    totalPlotArea: '',
+    builtupAreaOfGroundFloor: '',
+    remarks: '',
+  });
+
   useEffect(() => {
-    const loadMasterData = async () => {
+    const loadData = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
         const data = await fetchAllMasterData();
         setMasterData(data);
+        
+        let surveyToLoad = null;
+        if (editMode && initialSurveyData) {
+          surveyToLoad = initialSurveyData;
+        } else if (editMode && surveyId) {
+          const localSurvey = await getLocalSurvey(surveyId);
+          if (localSurvey && !Array.isArray(localSurvey)) {
+            surveyToLoad = localSurvey.data;
+          }
+        }
+        
+        if (surveyToLoad) {
+          const flatData = {
+            ...surveyToLoad.surveyDetails,
+            ...surveyToLoad.propertyDetails,
+            ...surveyToLoad.ownerDetails,
+            ...surveyToLoad.locationDetails,
+            ...surveyToLoad.otherDetails,
+          };
+          setFormData(prev => ({ ...prev, ...flatData }));
+        }
       } catch (error) {
-        console.error('Error loading master data:', error);
-        Alert.alert('Error', 'Failed to load master data. Using fallback data.');
-        // Set fallback data
-        setMasterData({
-          responseTypes: [
-            { responseTypeId: 1, responseTypeName: 'OLD PROPERTY' },
-            { responseTypeId: 2, responseTypeName: 'NEW PROPERTY' },
-            { responseTypeId: 3, responseTypeName: 'DOOR LOCK' },
-            { responseTypeId: 4, responseTypeName: 'ACCESS DENIED' },
-          ],
-          propertyTypes: [
-            { propertyTypeId: 1, propertyTypeName: 'HOUSE' },
-            { propertyTypeId: 2, propertyTypeName: 'FLAT' },
-            { propertyTypeId: 3, propertyTypeName: 'PLOT LAND' },
-          ],
-          respondentStatuses: [
-            { respondentStatusId: 1, respondentStatusName: 'OWNER' },
-            { respondentStatusId: 2, respondentStatusName: 'OCCUPIER' },
-            { respondentStatusId: 3, respondentStatusName: 'TENANT' },
-            { respondentStatusId: 4, respondentStatusName: 'EMPLOYEE' },
-            { respondentStatusId: 5, respondentStatusName: 'OTHER' },
-          ],
-          roadTypes: [
-            { roadTypeId: 1, roadTypeName: 'WIDTH LESS THAN 3M' },
-            { roadTypeId: 2, roadTypeName: 'WIDTH 3 TO 11M' },
-            { roadTypeId: 3, roadTypeName: 'WIDTH 12 TO 24M' },
-            { roadTypeId: 4, roadTypeName: 'WIDTH MORE THAN 24M' },
-          ],
-          constructionTypes: [
-            { constructionTypeId: 1, constructionTypeName: 'CONSTRUCTED' },
-            { constructionTypeId: 2, constructionTypeName: 'NOT CONSTRUCTED' },
-            { constructionTypeId: 3, constructionTypeName: 'UNDER CONSTRUCTION' },
-          ],
-          waterSources: [
-            { waterSourceId: 1, waterSourceName: 'OWN' },
-            { waterSourceId: 2, waterSourceName: 'MUNICIPAL' },
-            { waterSourceId: 3, waterSourceName: 'PUBLIC TAP WITHIN 100 YARDS' },
-            { waterSourceId: 4, waterSourceName: 'PUBLIC TAP MORE THAN 100 YARDS' },
-          ],
-          disposalTypes: [
-            { disposalTypeId: 1, disposalTypeName: 'SEWERAGE' },
-            { disposalTypeId: 2, disposalTypeName: 'SEPTIC TANK' },
-          ],
-        });
+        console.error('Failed to load data:', error);
+        Alert.alert('Error', 'Could not load survey data. Please try again later.');
       } finally {
         setLoading(false);
       }
     };
+    loadData();
+  }, [editMode, surveyId, initialSurveyData]);
 
-    loadMasterData();
-  }, []);
+  const createDropdownOptions = (items: any[], labelKey: string, valueKey: string) => {
+    if (!items) return [{ label: 'No selection', value: 0 }];
+    return items.map(item => ({
+      label: item[labelKey],
+      value: item[valueKey],
+    }));
+  };
 
   // Transform master data to dropdown options format
   const responseTypeOptions = masterData?.responseTypes?.map((item: any) => ({
@@ -133,70 +226,12 @@ export default function SurveyForm({ route }: any) {
     value: item.disposalTypeId,
   })) || [];
 
-  // Integer IDs for SurveyTypeMaster (replace with real IDs from your DB/seed)
-  const SURVEY_TYPE_IDS = {
-    Residential: 1,
-    'Non-Residential': 2,
-    Mixed: 3,
-  };
-
-  // State aligned with backend DTO
-  const [formData, setFormData] = useState({
-    ulbId: ulbOptions[0].value,
-    zoneId: zoneOptions[0].value,
-    wardId: wardOptions[0].value,
-    mohallaId: mohallaOptions[0].value,
-    parcelId: '',
-    mapId: '',
-    gisId: '',
-    subGisId: '',
-    responseTypeId: 0,
-    oldHouseNumber: '',
-    electricityConsumerName: '',
-    waterSewerageConnectionNumber: '',
-    respondentName: '',
-    respondentStatusId: 0,
-    ownerName: '',
-    fatherHusbandName: '',
-    mobileNumber: '',
-    aadharNumber: '',
-    propertyLatitude: '',
-    propertyLongitude: '',
-    assessmentYear: '',
-    propertyTypeId: 0,
-    buildingName: '',
-    roadTypeId: 0,
-    constructionYear: '',
-    constructionTypeId: 0,
-    addressRoadName: '',
-    locality: '',
-    pinCode: '',
-    landmark: '',
-    fourWayEast: '',
-    fourWayWest: '',
-    fourWayNorth: '',
-    fourWaySouth: '',
-    newWard: '',
-    waterSourceId: 0,
-    rainWaterHarvestingSystem: '',
-    plantation: '',
-    parking: '',
-    pollution: '',
-    pollutionMeasurementTaken: '',
-    waterSupplyWithin200Meters: '',
-    sewerageLineWithin100Meters: '',
-    disposalTypeId: 0,
-    totalPlotArea: '',
-    builtupAreaOfGroundFloor: '',
-    remarks: '',
-  });
-
-  const handleInputChange = (name: string, value: string | boolean | number) => {
+  const handleInputChange = (name: keyof FormData, value: string | number) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const validateForm = () => {
-    const requiredFields: { key: keyof typeof formData; label: string }[] = [
+    const requiredFields: { key: keyof FormData; label: string }[] = [
       { key: 'mohallaId', label: 'Mohalla' },
       { key: 'mapId', label: 'Map ID' },
       { key: 'gisId', label: 'GIS ID' },
@@ -210,6 +245,7 @@ export default function SurveyForm({ route }: any) {
       { key: 'roadTypeId', label: 'Road Type' },
       { key: 'constructionYear', label: 'Construction Year' },
       { key: 'constructionTypeId', label: 'Construction Type' },
+      { key: 'addressRoadName', label: 'Address/Road Name' },
       { key: 'locality', label: 'Locality' },
       { key: 'pinCode', label: 'PIN Code' },
       { key: 'waterSourceId', label: 'Source of Water' },
@@ -219,6 +255,7 @@ export default function SurveyForm({ route }: any) {
       { key: 'disposalTypeId', label: 'Disposal Type' },
       { key: 'totalPlotArea', label: 'Total Plot Area' },
       { key: 'builtupAreaOfGroundFloor', label: 'Built-up Area of Ground Floor' },
+      { key: 'newWardNumber', label: 'New Ward Number' },
     ];
 
     if (surveyTypeKey !== 'Residential') {
@@ -257,100 +294,159 @@ export default function SurveyForm({ route }: any) {
     return true;
   };
 
+  const transformDataForSaving = (data: FormData) => {
+    const transformedData = { ...data };
+
+    // Handle numeric conversions, treating empty strings as null
+    const numericFields: (keyof FormData)[] = [
+      'mapId', 'responseTypeId', 'respondentStatusId', 'propertyTypeId',
+      'roadTypeId', 'constructionTypeId', 'pinCode', 'waterSourceId',
+      'disposalTypeId', 'totalPlotArea', 'builtupAreaOfGroundFloor',
+      'propertyLatitude', 'propertyLongitude'
+    ];
+
+    numericFields.forEach(field => {
+      const value = transformedData[field];
+      if (value === '' || value === null || value === undefined) {
+        (transformedData[field] as any) = null;
+      } else if (typeof value === 'string') {
+        (transformedData[field] as any) = Number(value);
+      }
+    });
+    
+    // Handle optional Parcel ID
+    if (transformedData.parcelId === '' || transformedData.parcelId === null || transformedData.parcelId === undefined) {
+        transformedData.parcelId = null as any;
+    } else if (typeof transformedData.parcelId === 'string') {
+        transformedData.parcelId = Number(transformedData.parcelId);
+    }
+
+    // Handle optional string fields, converting empty to null
+    const optionalStringFields: (keyof FormData)[] = [
+        'subGisId', 'electricityConsumerName', 'waterSewerageConnectionNumber', 
+        'mobileNumber', 'aadharNumber', 'buildingName', 'addressRoadName',
+        'landmark', 'fourWayEast', 'fourWayWest', 'fourWayNorth', 'fourWaySouth',
+        'pollutionMeasurementTaken', 'remarks'
+    ];
+
+    optionalStringFields.forEach(field => {
+        if (transformedData[field] === '') {
+            (transformedData[field] as any) = null;
+        }
+    });
+
+    return transformedData;
+  };
+
   const handleSave = async () => {
     if (!validateForm()) {
       return; // Stop submission if validation fails
     }
 
     try {
-      // Get surveyor userId from AsyncStorage
       const userJson = await AsyncStorage.getItem('user');
-      let uploadedById = '';
-      if (userJson) {
-        const user = JSON.parse(userJson);
-        uploadedById = user.userId || user.id || '';
-      } else {
-        uploadedById = await AsyncStorage.getItem('userId') || '';
-      }
-      if (!uploadedById) {
-        Alert.alert('Error', 'Surveyor user ID not found. Please log in again.');
+      if (!userJson) {
+        Alert.alert('Error', 'User not authenticated. Please log in again.');
         return;
       }
+      const user = JSON.parse(userJson);
+      const uploadedById = user.userId || user.id;
+
+      if (!uploadedById) {
+        Alert.alert('Error', 'Could not determine surveyor ID.');
+        return;
+      }
+
+      const processedData = transformDataForSaving(formData);
+
       // Build DTO as per backend schema
-      const surveyData = {
+      const surveyDataPayload = {
         surveyDetails: {
-          ulbId: formData.ulbId,
-          zoneId: formData.zoneId,
-          wardId: formData.wardId,
-          mohallaId: formData.mohallaId,
+          ulbId: processedData.ulbId,
+          zoneId: processedData.zoneId,
+          wardId: processedData.wardId,
+          mohallaId: processedData.mohallaId,
           surveyTypeId: SURVEY_TYPE_IDS[surveyTypeKey],
           entryDate: new Date().toISOString(),
-          parcelId: formData.parcelId ? Number(formData.parcelId) : undefined,
-          mapId: Number(formData.mapId),
-          gisId: formData.gisId,
-          subGisId: formData.subGisId,
+          parcelId: processedData.parcelId,
+          mapId: processedData.mapId,
+          gisId: processedData.gisId,
+          subGisId: processedData.subGisId,
         },
         propertyDetails: {
-          responseTypeId: formData.responseTypeId,
-          oldHouseNumber: formData.oldHouseNumber,
-          electricityConsumerName: formData.electricityConsumerName,
-          waterSewerageConnectionNumber: formData.waterSewerageConnectionNumber,
-          respondentName: formData.respondentName,
-          respondentStatusId: formData.respondentStatusId,
+          responseTypeId: processedData.responseTypeId,
+          oldHouseNumber: processedData.oldHouseNumber,
+          electricityConsumerName: processedData.electricityConsumerName,
+          waterSewerageConnectionNumber: processedData.waterSewerageConnectionNumber,
+          respondentName: processedData.respondentName,
+          respondentStatusId: processedData.respondentStatusId,
         },
         ownerDetails: {
-          ownerName: formData.ownerName,
-          fatherHusbandName: formData.fatherHusbandName,
-          mobileNumber: formData.mobileNumber,
-          aadharNumber: formData.aadharNumber,
+          ownerName: processedData.ownerName,
+          fatherHusbandName: processedData.fatherHusbandName,
+          mobileNumber: processedData.mobileNumber,
+          aadharNumber: processedData.aadharNumber,
         },
         locationDetails: {
-          propertyLatitude: Number(formData.propertyLatitude),
-          propertyLongitude: Number(formData.propertyLongitude),
-          assessmentYear: formData.assessmentYear,
-          propertyTypeId: formData.propertyTypeId,
-          buildingName: formData.buildingName,
-          roadTypeId: formData.roadTypeId,
-          constructionYear: formData.constructionYear,
-          constructionTypeId: formData.constructionTypeId,
-          addressRoadName: formData.addressRoadName,
-          locality: formData.locality,
-          pinCode: Number(formData.pinCode),
-          landmark: formData.landmark,
-          fourWayEast: formData.fourWayEast,
-          fourWayWest: formData.fourWayWest,
-          fourWayNorth: formData.fourWayNorth,
-          fourWaySouth: formData.fourWaySouth,
-          newWard: formData.newWard,
+          propertyLatitude: processedData.propertyLatitude,
+          propertyLongitude: processedData.propertyLongitude,
+          assessmentYear: processedData.assessmentYear,
+          propertyTypeId: processedData.propertyTypeId,
+          buildingName: processedData.buildingName,
+          roadTypeId: processedData.roadTypeId,
+          constructionYear: processedData.constructionYear,
+          constructionTypeId: processedData.constructionTypeId,
+          addressRoadName: processedData.addressRoadName,
+          locality: processedData.locality,
+          pinCode: processedData.pinCode,
+          landmark: processedData.landmark,
+          fourWayEast: processedData.fourWayEast,
+          fourWayWest: processedData.fourWayWest,
+          fourWayNorth: processedData.fourWayNorth,
+          fourWaySouth: processedData.fourWaySouth,
+          newWardNumber: processedData.newWardNumber,
         },
         otherDetails: {
-          waterSourceId: formData.waterSourceId,
-          rainWaterHarvestingSystem: formData.rainWaterHarvestingSystem,
-          plantation: formData.plantation,
-          parking: formData.parking,
-          pollution: formData.pollution,
-          pollutionMeasurementTaken: formData.pollutionMeasurementTaken,
-          waterSupplyWithin200Meters: formData.waterSupplyWithin200Meters,
-          sewerageLineWithin100Meters: formData.sewerageLineWithin100Meters,
-          disposalTypeId: formData.disposalTypeId,
-          totalPlotArea: Number(formData.totalPlotArea),
-          builtupAreaOfGroundFloor: Number(formData.builtupAreaOfGroundFloor),
-          remarks: formData.remarks,
+          waterSourceId: processedData.waterSourceId,
+          rainWaterHarvestingSystem: processedData.rainWaterHarvestingSystem,
+          plantation: processedData.plantation,
+          parking: processedData.parking,
+          pollution: processedData.pollution,
+          pollutionMeasurementTaken: processedData.pollutionMeasurementTaken,
+          waterSupplyWithin200Meters: processedData.waterSupplyWithin200Meters,
+          sewerageLineWithin100Meters: processedData.sewerageLineWithin100Meters,
+          disposalTypeId: processedData.disposalTypeId,
+          totalPlotArea: processedData.totalPlotArea,
+          builtupAreaOfGroundFloor: processedData.builtupAreaOfGroundFloor,
+          remarks: processedData.remarks,
         },
-        residentialPropertyAssessments: [],
-        nonResidentialPropertyAssessments: [],
+        residentialPropertyAssessments: initialSurveyData?.residentialPropertyAssessments || [],
+        nonResidentialPropertyAssessments: initialSurveyData?.nonResidentialPropertyAssessments || [],
       };
 
-      // Create survey object for local storage
-      const surveyToSave = {
-        id: `survey_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        surveyType: surveyTypeKey,
-        data: surveyData,
-        createdAt: new Date().toISOString(),
-        synced: false,
-      };
+      let surveyToSave;
 
-      // Save to local storage
+      if (editMode && surveyId) {
+        const existingSurvey = await getLocalSurvey(surveyId);
+        if (existingSurvey && !Array.isArray(existingSurvey)) {
+          surveyToSave = {
+            ...existingSurvey,
+            data: surveyDataPayload,
+          };
+        } else {
+           Alert.alert('Error', 'Original survey not found for editing.');
+           return;
+        }
+      } else {
+        surveyToSave = {
+          id: `survey_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          surveyType: surveyTypeKey,
+          data: surveyDataPayload,
+          createdAt: new Date().toISOString(),
+          synced: false,
+        };
+      }
+      
       await saveSurveyLocally(surveyToSave);
 
       // Navigate to survey intermediate screen
@@ -373,7 +469,7 @@ export default function SurveyForm({ route }: any) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading master data...</Text>
+          <Text style={styles.loadingText}>Loading data...</Text>
         </View>
       </SafeAreaView>
     );
@@ -390,7 +486,6 @@ export default function SurveyForm({ route }: any) {
           <FormInput label="Zone" value="Zone 1" editable={false} />
           <FormInput label="Ward" value="Ward No. 1" editable={false} />
           <FormDropdown
-            ref={el => { fieldRefs.current['mohallaId'] = el; }}
             label="Mohalla"
             required
             items={mohallaOptions}
@@ -400,19 +495,17 @@ export default function SurveyForm({ route }: any) {
           <FormInput
             label="Parcel ID"
             onChangeText={(value: string) => handleInputChange('parcelId', value)}
-            value={formData.parcelId}
+            value={String(formData.parcelId ?? '')}
             keyboardType="numeric"
           />
           <FormInput
-            ref={el => { fieldRefs.current['mapId'] = el; }}
             label="Map ID"
             required
             onChangeText={(value: string) => handleInputChange('mapId', value)}
-            value={formData.mapId}
+            value={String(formData.mapId ?? '')}
             keyboardType="numeric"
           />
           <FormInput
-            ref={el => { fieldRefs.current['gisId'] = el; }}
             label="GIS ID"
             required
             onChangeText={(value: string) => handleInputChange('gisId', value)}
@@ -421,50 +514,46 @@ export default function SurveyForm({ route }: any) {
           <FormInput
             label="Sub-GIS ID"
             onChangeText={(value: string) => handleInputChange('subGisId', value)}
-            value={formData.subGisId}
+            value={String(formData.subGisId ?? '')}
           />
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>2. Property Details</Text>
           <FormDropdown
-            ref={el => { fieldRefs.current['responseTypeId'] = el; }}
-            label="Response Type"
-            required
-            items={responseTypeOptions}
-            onValueChange={(value: string) => handleInputChange('responseTypeId', value)}
-            value={formData.responseTypeId}
+              label="Response Type"
+              required
+              items={createDropdownOptions(masterData?.responseTypes, 'responseTypeName', 'responseTypeId')}
+              onValueChange={(value) => handleInputChange('responseTypeId', value)}
+              value={formData.responseTypeId}
           />
           <FormInput
-            ref={el => { fieldRefs.current['oldHouseNumber'] = el; }}
-            label="Old House No."
-            required
-            onChangeText={(value: string) => handleInputChange('oldHouseNumber', value)}
-            value={formData.oldHouseNumber}
+              label="Old House No."
+              required
+              onChangeText={(value) => handleInputChange('oldHouseNumber', value)}
+              value={formData.oldHouseNumber}
           />
           <FormInput
             label="Electricity Consumer Name"
-            onChangeText={(value: string) => handleInputChange('electricityConsumerName', value)}
-            value={formData.electricityConsumerName}
+            onChangeText={(value) => handleInputChange('electricityConsumerName', value)}
+            value={String(formData.electricityConsumerName ?? '')}
           />
           <FormInput
             label="Water Sewerage Connection No."
-            onChangeText={(value: string) => handleInputChange('waterSewerageConnectionNumber', value)}
-            value={formData.waterSewerageConnectionNumber}
+            onChangeText={(value) => handleInputChange('waterSewerageConnectionNumber', value)}
+            value={String(formData.waterSewerageConnectionNumber ?? '')}
           />
           <FormInput
-            ref={el => { fieldRefs.current['respondentName'] = el; }}
             label="Respondent Name"
             required
-            onChangeText={(value: string) => handleInputChange('respondentName', value)}
+            onChangeText={(value) => handleInputChange('respondentName', value)}
             value={formData.respondentName}
           />
           <FormDropdown
-            ref={el => { fieldRefs.current['respondentStatusId'] = el; }}
             label="Respondent Status"
             required
-            items={respondentStatusOptions}
-            onValueChange={(value: string) => handleInputChange('respondentStatusId', value)}
+            items={createDropdownOptions(masterData?.respondentStatuses, 'respondentStatusName', 'respondentStatusId')}
+            onValueChange={(value) => handleInputChange('respondentStatusId', value)}
             value={formData.respondentStatusId}
           />
         </View>
@@ -472,29 +561,27 @@ export default function SurveyForm({ route }: any) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>3. Owner Details</Text>
           <FormInput
-            ref={el => { fieldRefs.current['ownerName'] = el; }}
             label="Owner Name"
             required
-            onChangeText={(value: string) => handleInputChange('ownerName', value)}
+            onChangeText={(value) => handleInputChange('ownerName', value)}
             value={formData.ownerName}
           />
           <FormInput
-            ref={el => { fieldRefs.current['fatherHusbandName'] = el; }}
             label="Father/Husband Name"
             required
-            onChangeText={(value: string) => handleInputChange('fatherHusbandName', value)}
+            onChangeText={(value) => handleInputChange('fatherHusbandName', value)}
             value={formData.fatherHusbandName}
           />
           <FormInput
             label="Mobile Number"
-            onChangeText={(value: string) => handleInputChange('mobileNumber', value)}
-            value={formData.mobileNumber}
+            onChangeText={(value) => handleInputChange('mobileNumber', value)}
+            value={String(formData.mobileNumber ?? '')}
             keyboardType="phone-pad"
           />
           <FormInput
             label="Aadhar Number"
-            onChangeText={(value: string) => handleInputChange('aadharNumber', value)}
-            value={formData.aadharNumber}
+            onChangeText={(value) => handleInputChange('aadharNumber', value)}
+            value={String(formData.aadharNumber ?? '')}
             keyboardType="numeric"
           />
         </View>
@@ -504,102 +591,114 @@ export default function SurveyForm({ route }: any) {
           <FormInput
             label="Latitude"
             onChangeText={(value: string) => handleInputChange('propertyLatitude', value)}
-            value={formData.propertyLatitude}
+            value={String(formData.propertyLatitude ?? '')}
             keyboardType="numeric"
           />
           <FormInput
             label="Longitude"
             onChangeText={(value: string) => handleInputChange('propertyLongitude', value)}
-            value={formData.propertyLongitude}
+            value={String(formData.propertyLongitude ?? '')}
             keyboardType="numeric"
           />
           <FormInput
             label="Assessment Year"
-            value={new Date().getFullYear().toString()}
+            value={formData.assessmentYear}
             editable={false}
           />
           <FormDropdown
-            ref={el => { fieldRefs.current['propertyTypeId'] = el; }}
             label="Property Type"
             required
-            items={propertyTypeOptions}
-            onValueChange={(value: string) => handleInputChange('propertyTypeId', value)}
+            items={createDropdownOptions(masterData?.propertyTypes, 'propertyTypeName', 'propertyTypeId')}
+            onValueChange={(value) => handleInputChange('propertyTypeId', value)}
             value={formData.propertyTypeId}
           />
           <FormInput
             label="Building Name"
-            onChangeText={(value: string) => handleInputChange('buildingName', value)}
-            value={formData.buildingName}
+            onChangeText={(value) => handleInputChange('buildingName', value)}
+            value={String(formData.buildingName ?? '')}
           />
           <FormDropdown
-            ref={el => { fieldRefs.current['roadTypeId'] = el; }}
             label="Road Type"
             required
-            items={roadTypeOptions}
-            onValueChange={(value: string) => handleInputChange('roadTypeId', value)}
+            items={createDropdownOptions(masterData?.roadTypes, 'roadTypeName', 'roadTypeId')}
+            onValueChange={(value) => handleInputChange('roadTypeId', value)}
             value={formData.roadTypeId}
           />
           <FormInput
-            ref={el => { fieldRefs.current['constructionYear'] = el; }}
             label="Construction Year"
             required
-            onChangeText={(value: string) => handleInputChange('constructionYear', value)}
+            onChangeText={(value) => handleInputChange('constructionYear', value)}
             value={formData.constructionYear}
             keyboardType="numeric"
           />
           <FormDropdown
-            ref={el => { fieldRefs.current['constructionTypeId'] = el; }}
             label="Construction Type"
             required
-            items={constructionTypeOptions}
-            onValueChange={(value: string) => handleInputChange('constructionTypeId', value)}
+            items={createDropdownOptions(masterData?.constructionTypes, 'constructionTypeName', 'constructionTypeId')}
+            onValueChange={(value) => handleInputChange('constructionTypeId', value)}
             value={formData.constructionTypeId}
           />
           <FormInput
             label="Address/Road Name"
+            required
             onChangeText={(value: string) => handleInputChange('addressRoadName', value)}
-            value={formData.addressRoadName}
+            value={String(formData.addressRoadName ?? '')}
           />
           <FormInput
-            ref={el => { fieldRefs.current['locality'] = el; }}
             label="Locality"
             required
-            onChangeText={(value: string) => handleInputChange('locality', value)}
+            onChangeText={(value) => handleInputChange('locality', value)}
             value={formData.locality}
           />
           <FormInput
-            ref={el => { fieldRefs.current['pinCode'] = el; }}
             label="PIN Code"
             required
-            onChangeText={(value: string) => handleInputChange('pinCode', value)}
-            value={formData.pinCode}
+            onChangeText={(value) => handleInputChange('pinCode', value)}
+            value={String(formData.pinCode ?? '')}
             keyboardType="numeric"
           />
           <FormInput
             label="Landmark"
-            onChangeText={(value: string) => handleInputChange('landmark', value)}
-            value={formData.landmark}
+            onChangeText={(value) => handleInputChange('landmark', value)}
+            value={String(formData.landmark ?? '')}
           />
           <FormInput
-            label="Four Way-East/West/North/South"
+            label="Four Way-East"
             onChangeText={(value: string) => handleInputChange('fourWayEast', value)}
-            value={formData.fourWayEast}
+            value={String(formData.fourWayEast ?? '')}
           />
-          <FormInput label="New Ward" value="Pre-filled New Ward" editable={false} />
+          <FormInput
+            label="Four Way-West"
+            onChangeText={(value: string) => handleInputChange('fourWayWest', value)}
+            value={String(formData.fourWayWest ?? '')}
+          />
+          <FormInput
+            label="Four Way-North"
+            onChangeText={(value: string) => handleInputChange('fourWayNorth', value)}
+            value={String(formData.fourWayNorth ?? '')}
+          />
+          <FormInput
+            label="Four Way-South"
+            onChangeText={(value: string) => handleInputChange('fourWaySouth', value)}
+            value={String(formData.fourWaySouth ?? '')}
+          />
+          <FormInput 
+            label="New Ward Number"
+            required
+            onChangeText={(value: string) => handleInputChange('newWardNumber', value)}
+            value={formData.newWardNumber} />
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>5. Other Details</Text>
           <FormDropdown
-            ref={el => { fieldRefs.current['waterSourceId'] = el; }}
             label="Source of Water"
             required
-            items={waterSourceOptions}
+            items={createDropdownOptions(masterData?.waterSources, 'waterSourceName', 'waterSourceId')}
             onValueChange={(value: string) => handleInputChange('waterSourceId', value)}
             value={formData.waterSourceId}
           />
           <FormDropdown
-            ref={el => { fieldRefs.current['rainWaterHarvestingSystem'] = el; }}
             label="Rain Water Harvesting"
             required
             items={yesNoOptions}
@@ -610,7 +709,6 @@ export default function SurveyForm({ route }: any) {
           {surveyType !== 'Residential' && (
             <>
               <FormDropdown
-                ref={el => { fieldRefs.current['plantation'] = el; }}
                 label="Plantation Available"
                 required
                 items={yesNoOptions}
@@ -618,7 +716,6 @@ export default function SurveyForm({ route }: any) {
                 value={formData.plantation}
               />
               <FormDropdown
-                ref={el => { fieldRefs.current['parking'] = el; }}
                 label="Parking Available"
                 required
                 items={yesNoOptions}
@@ -626,7 +723,6 @@ export default function SurveyForm({ route }: any) {
                 value={formData.parking}
               />
               <FormDropdown
-                ref={el => { fieldRefs.current['pollution'] = el; }}
                 label="Pollution Created"
                 required
                 items={yesNoOptions}
@@ -642,7 +738,6 @@ export default function SurveyForm({ route }: any) {
           )}
 
           <FormDropdown
-            ref={el => { fieldRefs.current['waterSupplyWithin200Meters'] = el; }}
             label="Water Supply within 200m"
             required
             items={yesNoOptions}
@@ -650,7 +745,6 @@ export default function SurveyForm({ route }: any) {
             value={formData.waterSupplyWithin200Meters}
           />
           <FormDropdown
-            ref={el => { fieldRefs.current['sewerageLineWithin100Meters'] = el; }}
             label="Sewerage Line within 100m"
             required
             items={yesNoOptions}
@@ -658,33 +752,30 @@ export default function SurveyForm({ route }: any) {
             value={formData.sewerageLineWithin100Meters}
           />
           <FormDropdown
-            ref={el => { fieldRefs.current['disposalTypeId'] = el; }}
             label="Disposal Type"
             required
-            items={disposalTypeOptions}
+            items={createDropdownOptions(masterData?.disposalTypes, 'disposalTypeName', 'disposalTypeId')}
             onValueChange={(value: string) => handleInputChange('disposalTypeId', value)}
             value={formData.disposalTypeId}
           />
           <FormInput
-            ref={el => { fieldRefs.current['totalPlotArea'] = el; }}
             label="Total Plot Area"
             required
-            onChangeText={(value: string) => handleInputChange('totalPlotArea', value)}
-            value={formData.totalPlotArea}
+            onChangeText={(value) => handleInputChange('totalPlotArea', value)}
+            value={String(formData.totalPlotArea ?? '')}
             keyboardType="numeric"
           />
           <FormInput
-            ref={el => { fieldRefs.current['builtupAreaOfGroundFloor'] = el; }}
             label="Built-up Area of Ground Floor"
             required
-            onChangeText={(value: string) => handleInputChange('builtupAreaOfGroundFloor', value)}
-            value={formData.builtupAreaOfGroundFloor}
+            onChangeText={(value) => handleInputChange('builtupAreaOfGroundFloor', value)}
+            value={String(formData.builtupAreaOfGroundFloor ?? '')}
             keyboardType="numeric"
           />
           <FormInput
             label="Remarks"
             onChangeText={(value: string) => handleInputChange('remarks', value)}
-            value={formData.remarks}
+            value={String(formData.remarks ?? '')}
             multiline
           />
         </View>

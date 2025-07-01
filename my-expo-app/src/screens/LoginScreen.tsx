@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Animated } 
 import { Picker } from '@react-native-picker/picker';
 import { Feather } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
-import axios from 'axios';
+import api from '../api/axiosConfig';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -46,7 +46,7 @@ export default function LoginScreen() {
     if (Object.keys(validation).length > 0) return;
     setLoading(true);
     try {
-      const res = await axios.post(`${API_BASE_URL}/auth/login`, form);
+      const res = await api.post('/auth/login', form);
       const { token, user } = res.data;
       await login(user.role, token, user);
       Toast.show({ type: 'success', text1: 'Login successful' });

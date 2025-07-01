@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SurveyData } from '../utils/storage';
 import { fetchAllMasterData } from './masterDataService';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000/api';
+const API_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:4000/api';
 
 export const submitSurvey = async (surveyData: SurveyData): Promise<any> => {
   try {
@@ -11,13 +11,13 @@ export const submitSurvey = async (surveyData: SurveyData): Promise<any> => {
       throw new Error('No auth token found');
     }
 
-    const response = await fetch(`${API_URL}/surveys`, {
+    const response = await fetch(`${API_URL}/surveys/addSurvey`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify(surveyData),
+      body: JSON.stringify(surveyData.data),
     });
 
     if (!response.ok) {

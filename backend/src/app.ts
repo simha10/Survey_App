@@ -58,19 +58,19 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.use('/auth', authRoutes);
+app.use('/api/auth', authRoutes);
 
 // Master data routes (public for now, can be protected later if needed)
-app.use('/master-data', masterDataRoutes);
+app.use('/api/master-data', masterDataRoutes);
 
 // Protected routes - Web Portal Only (ADMIN/SUPERADMIN)
-app.use('/ward', authenticateJWT, restrictToWebPortal, wardRoutes);
-app.use('/user', authenticateJWT, restrictToWebPortal, userRoutes);
+app.use('/api/ward', authenticateJWT, restrictToWebPortal, wardRoutes);
+app.use('/api/user', authenticateJWT, restrictToWebPortal, userRoutes);
 
 // Protected routes - All Authenticated Users
-app.use('/surveyors', authenticateJWT, surveyorRoutes);
-app.use('/surveys', surveyRoutes);
-app.use('/surveyor', surveyorRoutes);
+app.use('/api/surveyors', authenticateJWT, surveyorRoutes);
+app.use('/api/surveys', surveyRoutes);
+app.use('/api/surveyor', surveyorRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {

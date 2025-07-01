@@ -156,17 +156,27 @@ export default function ResidentialFloorDetail() {
         Alert.alert('Error', 'Survey not found');
         return;
       }
+
+      const processedFormData = {
+        ...formData,
+        coveredArea: parseFloat(formData.coveredArea) || 0,
+        allRoomVerandaArea: parseFloat(formData.allRoomVerandaArea) || 0,
+        allBalconyKitchenArea: parseFloat(formData.allBalconyKitchenArea) || 0,
+        allGarageArea: parseFloat(formData.allGarageArea) || 0,
+        carpetArea: parseFloat(formData.carpetArea) || 0,
+      };
+
       const existingFloors = survey.data && survey.data.residentialPropertyAssessments ? survey.data.residentialPropertyAssessments : [];
       let updatedFloors;
 
       if (editMode) {
         // Update existing floor
         updatedFloors = existingFloors.map(floor =>
-          floor.id === floorId ? formData : floor
+          floor.id === floorId ? processedFormData : floor
         );
       } else {
         // Add new floor
-        updatedFloors = [...existingFloors, formData];
+        updatedFloors = [...existingFloors, processedFormData];
       }
 
       const updatedSurvey = {

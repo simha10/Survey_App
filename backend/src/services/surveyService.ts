@@ -7,6 +7,26 @@ export const createSurvey = async (surveyData: CreateSurveyDto, uploadedById: st
   const { surveyDetails, propertyDetails, ownerDetails, locationDetails, otherDetails, residentialPropertyAssessments, nonResidentialPropertyAssessments } = surveyData;
 
   return prisma.$transaction(async (tx) => {
+    const locationCreate: any = {
+      propertyLatitude: locationDetails.propertyLatitude,
+      propertyLongitude: locationDetails.propertyLongitude,
+      assessmentYear: locationDetails.assessmentYear,
+      propertyTypeId: locationDetails.propertyTypeId,
+      roadTypeId: locationDetails.roadTypeId,
+      constructionYear: locationDetails.constructionYear,
+      constructionTypeId: locationDetails.constructionTypeId,
+      locality: locationDetails.locality,
+      pinCode: locationDetails.pinCode,
+      newWardNumber: locationDetails.newWardNumber,
+    };
+    if (locationDetails.buildingName) locationCreate.buildingName = locationDetails.buildingName;
+    if (locationDetails.addressRoadName) locationCreate.addressRoadName = locationDetails.addressRoadName;
+    if (locationDetails.landmark) locationCreate.landmark = locationDetails.landmark;
+    if (locationDetails.fourWayEast) locationCreate.fourWayEast = locationDetails.fourWayEast;
+    if (locationDetails.fourWayWest) locationCreate.fourWayWest = locationDetails.fourWayWest;
+    if (locationDetails.fourWayNorth) locationCreate.fourWayNorth = locationDetails.fourWayNorth;
+    if (locationDetails.fourWaySouth) locationCreate.fourWaySouth = locationDetails.fourWaySouth;
+
     const newSurvey = await tx.surveyDetails.create({
       data: {
         ...surveyDetails,
@@ -18,12 +38,7 @@ export const createSurvey = async (surveyData: CreateSurveyDto, uploadedById: st
           create: ownerDetails,
         },
         locationDetails: {
-          create: {
-            ...locationDetails,
-            propertyLatitude: locationDetails.propertyLatitude,
-            propertyLongitude: locationDetails.propertyLongitude,
-            newWardNumber: locationDetails.newWardNumber,
-          },
+          create: locationCreate,
         },
         otherDetails: {
           create: otherDetails,

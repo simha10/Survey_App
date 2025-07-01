@@ -15,13 +15,39 @@ const prisma = new client_1.PrismaClient();
 const createSurvey = (surveyData, uploadedById) => __awaiter(void 0, void 0, void 0, function* () {
     const { surveyDetails, propertyDetails, ownerDetails, locationDetails, otherDetails, residentialPropertyAssessments, nonResidentialPropertyAssessments } = surveyData;
     return prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const locationCreate = {
+            propertyLatitude: locationDetails.propertyLatitude,
+            propertyLongitude: locationDetails.propertyLongitude,
+            assessmentYear: locationDetails.assessmentYear,
+            propertyTypeId: locationDetails.propertyTypeId,
+            roadTypeId: locationDetails.roadTypeId,
+            constructionYear: locationDetails.constructionYear,
+            constructionTypeId: locationDetails.constructionTypeId,
+            locality: locationDetails.locality,
+            pinCode: locationDetails.pinCode,
+            newWardNumber: locationDetails.newWardNumber,
+        };
+        if (locationDetails.buildingName)
+            locationCreate.buildingName = locationDetails.buildingName;
+        if (locationDetails.addressRoadName)
+            locationCreate.addressRoadName = locationDetails.addressRoadName;
+        if (locationDetails.landmark)
+            locationCreate.landmark = locationDetails.landmark;
+        if (locationDetails.fourWayEast)
+            locationCreate.fourWayEast = locationDetails.fourWayEast;
+        if (locationDetails.fourWayWest)
+            locationCreate.fourWayWest = locationDetails.fourWayWest;
+        if (locationDetails.fourWayNorth)
+            locationCreate.fourWayNorth = locationDetails.fourWayNorth;
+        if (locationDetails.fourWaySouth)
+            locationCreate.fourWaySouth = locationDetails.fourWaySouth;
         const newSurvey = yield tx.surveyDetails.create({
             data: Object.assign(Object.assign({}, surveyDetails), { uploadedById, propertyDetails: {
                     create: propertyDetails,
                 }, ownerDetails: {
                     create: ownerDetails,
                 }, locationDetails: {
-                    create: Object.assign(Object.assign({}, locationDetails), { propertyLatitude: locationDetails.propertyLatitude, propertyLongitude: locationDetails.propertyLongitude, newWardNumber: locationDetails.newWardNumber }),
+                    create: locationCreate,
                 }, otherDetails: {
                     create: otherDetails,
                 }, residentialPropertyAssessments: residentialPropertyAssessments && residentialPropertyAssessments.length > 0
