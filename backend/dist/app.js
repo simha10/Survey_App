@@ -57,16 +57,16 @@ app.use((req, res, next) => {
     }
 });
 // Routes
-app.use('/auth', authRoutes_1.default);
+app.use('/api/auth', authRoutes_1.default);
 // Master data routes (public for now, can be protected later if needed)
-app.use('/master-data', masterDataRoutes_1.default);
+app.use('/api/master-data', masterDataRoutes_1.default);
 // Protected routes - Web Portal Only (ADMIN/SUPERADMIN)
-app.use('/ward', authMiddleware_1.authenticateJWT, authMiddleware_1.restrictToWebPortal, wardRoutes_1.default);
-app.use('/user', authMiddleware_1.authenticateJWT, authMiddleware_1.restrictToWebPortal, userRoutes_1.default);
+app.use('/api/ward', authMiddleware_1.authenticateJWT, authMiddleware_1.restrictToWebPortal, wardRoutes_1.default);
+app.use('/api/user', authMiddleware_1.authenticateJWT, authMiddleware_1.restrictToWebPortal, userRoutes_1.default);
 // Protected routes - All Authenticated Users
-app.use('/surveyors', authMiddleware_1.authenticateJWT, surveyorRoutes_1.default);
-app.use('/surveys', surveyRoutes_1.default);
-app.use('/surveyor', surveyorRoutes_1.default);
+app.use('/api/surveyors', authMiddleware_1.authenticateJWT, surveyorRoutes_1.default);
+app.use('/api/surveys', surveyRoutes_1.default);
+app.use('/api/surveyor', surveyorRoutes_1.default);
 // Health check route
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', message: 'Server is running' });

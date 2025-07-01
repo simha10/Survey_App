@@ -9,17 +9,17 @@ const SurveyDetailsSchema = z.object({
   mohallaId: z.string().uuid(),
   surveyTypeId: z.number().int().positive(),
   entryDate: z.string().datetime(),
-  parcelId: z.number().optional(),
+  parcelId: z.number().optional().nullable(),
   mapId: z.number(),
   gisId: z.string().max(12),
-  subGisId: z.string().max(15).optional(),
+  subGisId: z.string().max(15).optional().nullable(),
 });
 
 const PropertyDetailsSchema = z.object({
   responseTypeId: z.number().int().positive(),
-  oldHouseNumber: z.string().max(15).optional(),
-  electricityConsumerName: z.string().max(50).optional(),
-  waterSewerageConnectionNumber: z.string().max(50).optional(),
+  oldHouseNumber: z.string().max(15),
+  electricityConsumerName: z.string().max(50).optional().nullable(),
+  waterSewerageConnectionNumber: z.string().max(50).optional().nullable(),
   respondentName: z.string().max(50),
   respondentStatusId: z.number().int().positive(),
 });
@@ -27,43 +27,43 @@ const PropertyDetailsSchema = z.object({
 const OwnerDetailsSchema = z.object({
   ownerName: z.string().max(50),
   fatherHusbandName: z.string().max(50),
-  mobileNumber: z.string().max(20).optional(),
-  aadharNumber: z.string().length(12).optional(),
+  mobileNumber: z.string().max(20).optional().nullable(),
+  aadharNumber: z.string().length(12).optional().nullable(),
 });
 
 const LocationDetailsSchema = z.object({
-  propertyLatitude: z.number(),
-  propertyLongitude: z.number(),
+  propertyLatitude: z.number().min(0).max(36),
+  propertyLongitude: z.number().min(0).max(36),
   assessmentYear: z.string().max(20),
   propertyTypeId: z.number().int().positive(),
-  buildingName: z.string().optional(),
+  buildingName: z.string().optional().nullable(),
   roadTypeId: z.number().int().positive(),
   constructionYear: z.string().max(20),
   constructionTypeId: z.number().int().positive(),
-  addressRoadName: z.string(),
-  locality: z.string().optional(),
+  addressRoadName: z.string().optional().nullable(),
+  locality: z.string(),
   pinCode: z.number(),
-  landmark: z.string().optional(),
-  fourWayEast: z.string().optional(),
-  fourWayWest: z.string().optional(),
-  fourWayNorth: z.string().optional(),
-  fourWaySouth: z.string().optional(),
+  landmark: z.string().optional().nullable(),
+  fourWayEast: z.string().optional().nullable(),
+  fourWayWest: z.string().optional().nullable(),
+  fourWayNorth: z.string().optional().nullable(),
+  fourWaySouth: z.string().optional().nullable(),
   newWardNumber: z.string().max(20),
 });
 
 const OtherDetailsSchema = z.object({
   waterSourceId: z.number().int().positive(),
-  rainWaterHarvestingSystem: YesNoSchema.optional(),
-  plantation: YesNoSchema.optional(),
-  parking: YesNoSchema.optional(),
-  pollution: YesNoSchema.optional(),
-  pollutionMeasurementTaken: z.string().optional(),
-  waterSupplyWithin200Meters: YesNoSchema.optional(),
-  sewerageLineWithin100Meters: YesNoSchema.optional(),
+  rainWaterHarvestingSystem: YesNoSchema.optional().nullable(),
+  plantation: YesNoSchema.optional().nullable(),
+  parking: YesNoSchema.optional().nullable(),
+  pollution: YesNoSchema.optional().nullable(),
+  pollutionMeasurementTaken: z.string().optional().nullable(),
+  waterSupplyWithin200Meters: YesNoSchema.optional().nullable(),
+  sewerageLineWithin100Meters: YesNoSchema.optional().nullable(),
   disposalTypeId: z.number().int().positive(),
   totalPlotArea: z.number(),
   builtupAreaOfGroundFloor: z.number(),
-  remarks: z.string().optional(),
+  remarks: z.string().optional().nullable(),
 });
 
 // Residential Floor Details
@@ -86,8 +86,8 @@ const NonResidentialPropertyAssessmentSchema = z.object({
   nrPropertyCategoryId: z.number().int().positive(), // Property Category (from NR Property Category Master)
   nrSubCategoryId: z.number().int().positive(), // Property Sub Category (from NR Property Sub Category Master)
   establishmentName: z.string(), // Establishment Name (manual entry)
-  licenseNo: z.string().max(20).optional(), // License Number (manual entry, optional)
-  licenseExpiryDate: z.string().datetime().optional(), // License Expiry Date (manual entry, optional)
+  licenseNo: z.string().max(20).optional().nullable(), // License Number (manual entry, optional)
+  licenseExpiryDate: z.string().datetime().optional().nullable(), // License Expiry Date (manual entry, optional)
   occupancyStatusId: z.number().int().positive(), // Occupancy Status (from Occupancy Status Master)
   constructionNatureId: z.number().int().positive(), // Construction Nature (from Construction Nature Master)
   builtupArea: z.number(), // Built-up Area (manual entry)
@@ -99,8 +99,8 @@ export const CreateSurveyDtoSchema = z.object({
   ownerDetails: OwnerDetailsSchema,
   locationDetails: LocationDetailsSchema,
   otherDetails: OtherDetailsSchema,
-  residentialPropertyAssessments: z.array(ResidentialPropertyAssessmentSchema).optional(),
-  nonResidentialPropertyAssessments: z.array(NonResidentialPropertyAssessmentSchema).optional(),
+  residentialPropertyAssessments: z.array(ResidentialPropertyAssessmentSchema).optional().nullable(),
+  nonResidentialPropertyAssessments: z.array(NonResidentialPropertyAssessmentSchema).optional().nullable(),
 });
 
 export type CreateSurveyDto = z.infer<typeof CreateSurveyDtoSchema>; 
