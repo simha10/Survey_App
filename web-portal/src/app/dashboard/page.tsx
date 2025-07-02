@@ -1,12 +1,22 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import ProtectedRoute from "@/features/auth/ProtectedRoute";
 import { useAuth } from "@/features/auth/AuthContext";
+import Loading from "@/components/ui/loading";
 
 const Dashboard: React.FC = () => {
   const { user, hasRole } = useAuth();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate loading time for consistency
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const getRoleDisplayName = (role: string) => {
     const roleMap: { [key: string]: string } = {
@@ -79,6 +89,14 @@ const Dashboard: React.FC = () => {
       </div>
     </a>
   );
+
+  if (loading) {
+    return (
+      <ProtectedRoute>
+        <Loading fullScreen />
+      </ProtectedRoute>
+    );
+  }
 
   return (
     <ProtectedRoute>

@@ -1,9 +1,77 @@
 import { Router } from 'express';
 import * as wardController from '../controllers/wardController';
 import { authenticateJWT, restrictToRoles } from '../middleware/authMiddleware';
-import { getAllWards, getWardsByZone, getAllWardStatuses } from '../controllers/wardController';
+import { 
+  getAllWards, 
+  getWardsByZone, 
+  getAllWardStatuses,
+  getWardById,
+  createWard,
+  updateWard,
+  deleteWard,
+  updateWardStatus,
+  getWardStatuses,
+  searchWards,
+  getAllWardsWithStatus,
+  getWardsByZoneWithStatus
+} from '../controllers/wardController';
 
 const router = Router();
+
+// ========================================
+// WARD MASTER DATA ROUTES
+// ========================================
+
+// Get all wards
+router.get('/', authenticateJWT, getAllWards);
+
+// Get all wards with status information
+router.get('/with-status', authenticateJWT, getAllWardsWithStatus);
+
+// Search wards by name (must come before /:wardId)
+router.get('/search', authenticateJWT, searchWards);
+
+// Get all ward statuses (must come before /:wardId)
+router.get('/statuses', authenticateJWT, getAllWardStatuses);
+
+// Get wards by zone (must come before /:wardId)
+router.get('/zone/:zoneId', authenticateJWT, getWardsByZone);
+
+// Get wards by zone with status filtering (must come before /:wardId)
+router.get('/zone/:zoneId/with-status', authenticateJWT, getWardsByZoneWithStatus);
+
+// Get ward assignments (must come before /:wardId)
+router.get('/assignments', authenticateJWT, wardController.getWardAssignments);
+
+// Get available wards for dropdowns (must come before /:wardId)
+router.get('/available-wards', authenticateJWT, wardController.getAvailableWards);
+
+// Get available mohallas for dropdowns (must come before /:wardId)
+router.get('/available-mohallas', authenticateJWT, wardController.getAvailableMohallas);
+
+// Get ward-mohalla mappings (must come before /:wardId)
+router.get('/ward-mohalla-mappings', authenticateJWT, wardController.getWardMohallaMappings);
+
+// Get surveyors by ward (must come before /:wardId)
+router.get('/surveyors/:wardId', authenticateJWT, wardController.getSurveyorsByWard);
+
+// Get supervisors by ward (must come before /:wardId)
+router.get('/supervisors/:wardId', authenticateJWT, wardController.getSupervisorsByWard);
+
+// Create ward (ADMIN/SUPERADMIN only)
+router.post('/', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN']), createWard);
+
+// Get ward by ID (must come after specific routes)
+router.get('/:wardId', authenticateJWT, getWardById);
+
+// Update ward (ADMIN/SUPERADMIN only)
+router.put('/:wardId', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN']), updateWard);
+
+// Delete ward (ADMIN/SUPERADMIN only)
+router.delete('/:wardId', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN']), deleteWard);
+
+// Update ward status (ADMIN/SUPERADMIN only)
+router.put('/:wardId/status', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN']), wardController.updateWardStatus);
 
 // ========================================
 // WARD ASSIGNMENT ROUTES
@@ -85,59 +153,7 @@ router.put(
   wardController.updateWardStatus
 );
 
-// ========================================
-// QUERY ROUTES (All authenticated users)
-// ========================================
-
-// Get ward assignments (filtered by role)
-router.get(
-  '/assignments',
-  authenticateJWT,
-  wardController.getWardAssignments
-);
-
-// Get available wards for dropdowns
-router.get(
-  '/available-wards',
-  authenticateJWT,
-  wardController.getAvailableWards
-);
-
-// Get available mohallas for dropdowns
-router.get(
-  '/available-mohallas',
-  authenticateJWT,
-  wardController.getAvailableMohallas
-);
-
-// Get ward-mohalla mappings
-router.get(
-  '/ward-mohalla-mappings',
-  authenticateJWT,
-  wardController.getWardMohallaMappings
-);
-
-// Get surveyors by ward
-router.get(
-  '/surveyors/:wardId',
-  authenticateJWT,
-  wardController.getSurveyorsByWard
-);
-
-// Get supervisors by ward
-router.get(
-  '/supervisors/:wardId',
-  authenticateJWT,
-  wardController.getSupervisorsByWard
-);
-
-// Get all wards
-router.get('/', authenticateJWT, getAllWards);
-
-// Get wards by zone
-router.get('/zone/:zoneId', authenticateJWT, getWardsByZone);
-
-// Get all ward statuses
-router.get('/statuses', authenticateJWT, getAllWardStatuses);
+// Add these routes:
+router.get('/statuses', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN']), wardController.getWardStatuses);
 
 export default router; 

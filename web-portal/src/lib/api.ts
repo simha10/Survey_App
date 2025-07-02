@@ -419,6 +419,21 @@ export const masterDataApi = {
     return response.data;
   },
 
+  createUlb: async (data: any): Promise<any> => {
+    const response = await apiClient.post('/api/ulbs', data);
+    return response.data;
+  },
+
+  updateUlb: async (ulbId: string, data: any): Promise<any> => {
+    const response = await apiClient.put(`/api/ulbs/${ulbId}`, data);
+    return response.data;
+  },
+
+  deleteUlb: async (ulbId: string): Promise<any> => {
+    const response = await apiClient.delete(`/api/ulbs/${ulbId}`);
+    return response.data;
+  },
+
   // Zone Master Data
   getAllZones: async (): Promise<any> => {
     const response = await apiClient.get('/api/zones');
@@ -427,6 +442,26 @@ export const masterDataApi = {
 
   getZonesByUlb: async (ulbId: string): Promise<any> => {
     const response = await apiClient.get(`/api/zones/ulb/${ulbId}`);
+    return response.data;
+  },
+
+  getZoneById: async (zoneId: string): Promise<any> => {
+    const response = await apiClient.get(`/api/zones/${zoneId}`);
+    return response.data;
+  },
+
+  createZone: async (data: any): Promise<any> => {
+    const response = await apiClient.post('/api/zones', data);
+    return response.data;
+  },
+
+  updateZone: async (zoneId: string, data: any): Promise<any> => {
+    const response = await apiClient.put(`/api/zones/${zoneId}`, data);
+    return response.data;
+  },
+
+  deleteZone: async (zoneId: string): Promise<any> => {
+    const response = await apiClient.delete(`/api/zones/${zoneId}`);
     return response.data;
   },
 
@@ -441,13 +476,40 @@ export const masterDataApi = {
     return response.data;
   },
 
+  searchWards: async (searchTerm: string): Promise<any> => {
+    const response = await apiClient.get('/api/wards/search', { 
+      params: { search: searchTerm } 
+    });
+    return response.data;
+  },
+
   getWardsByZone: async (zoneId: string): Promise<any> => {
     const response = await apiClient.get(`/api/wards/zone/${zoneId}`);
     return response.data;
   },
 
-  updateWardStatus: async (wardId: string, data: any): Promise<any> => {
-    const response = await apiClient.put(`/api/wards/${wardId}/status`, data);
+  getWardById: async (wardId: string): Promise<any> => {
+    const response = await apiClient.get(`/api/wards/${wardId}`);
+    return response.data;
+  },
+
+  createWard: async (data: any): Promise<any> => {
+    const response = await apiClient.post('/api/wards', data);
+    return response.data;
+  },
+
+  updateWard: async (wardId: string, data: any): Promise<any> => {
+    const response = await apiClient.put(`/api/wards/${wardId}`, data);
+    return response.data;
+  },
+
+  deleteWard: async (wardId: string): Promise<any> => {
+    const response = await apiClient.delete(`/api/wards/${wardId}`);
+    return response.data;
+  },
+
+  updateWardStatus: async (wardId: string, wardStatusId: number) => {
+    const response = await apiClient.put(`/api/wards/${wardId}/status`, { wardStatusId });
     return response.data;
   },
 
@@ -457,14 +519,80 @@ export const masterDataApi = {
     return response.data;
   },
 
+  searchMohallas: async (searchTerm: string): Promise<any> => {
+    const response = await apiClient.get('/api/mohallas/search', { 
+      params: { search: searchTerm } 
+    });
+    return response.data;
+  },
+
   getMohallasByWard: async (wardId: string): Promise<any> => {
     const response = await apiClient.get(`/api/mohallas/ward/${wardId}`);
+    return response.data;
+  },
+
+  getMohallaById: async (mohallaId: string): Promise<any> => {
+    const response = await apiClient.get(`/api/mohallas/${mohallaId}`);
+    return response.data;
+  },
+
+  createMohalla: async (data: any): Promise<any> => {
+    const response = await apiClient.post('/api/mohallas', data);
+    return response.data;
+  },
+
+  updateMohalla: async (mohallaId: string, data: any): Promise<any> => {
+    const response = await apiClient.put(`/api/mohallas/${mohallaId}`, data);
+    return response.data;
+  },
+
+  deleteMohalla: async (mohallaId: string): Promise<any> => {
+    const response = await apiClient.delete(`/api/mohallas/${mohallaId}`);
     return response.data;
   },
 
   // Ward Status Master Data
   getAllWardStatuses: async (): Promise<any> => {
     const response = await apiClient.get('/api/wards/statuses');
+    return response.data;
+  },
+
+  // Mapping APIs
+  getWardMohallaMappings: async (): Promise<any> => {
+    const response = await apiClient.get('/api/ward/ward-mohalla-mappings');
+    return response.data;
+  },
+
+  getZoneWardMappings: async (): Promise<any> => {
+    const response = await apiClient.get('/api/zones/ward-mappings');
+    return response.data;
+  },
+
+  getUlbZoneMappings: async (): Promise<any> => {
+    const response = await apiClient.get('/api/ulbs/zone-mappings');
+    return response.data;
+  },
+
+  getWardsByZoneWithStatus: async (zoneId: string, statusName: string = 'STARTED') => {
+    const response = await apiClient.get(`/api/wards/zone/${zoneId}/with-status`, {
+      params: { status: statusName }
+    });
+    return response.data;
+  },
+};
+
+// Survey Status APIs
+export const surveyStatusApi = {
+  getAllWardStatuses: async () => {
+    const response = await apiClient.get('/api/wards/statuses');
+    return response.data;
+  },
+  updateWardStatus: async (wardId: string, statusId: number) => {
+    const response = await apiClient.put(`/api/wards/${wardId}/status`, { wardStatusId: statusId });
+    return response.data;
+  },
+  updateMohallaStatus: async (mohallaId: string, statusId: number) => {
+    const response = await apiClient.put(`/api/mohallas/${mohallaId}/status`, { statusId });
     return response.data;
   },
 };

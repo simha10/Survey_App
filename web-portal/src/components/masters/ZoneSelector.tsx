@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { masterDataApi } from "@/lib/api";
 
 interface ZoneSelectorProps {
   ulbId: string | null;
@@ -12,18 +13,19 @@ export default function ZoneSelector({
   value,
   onChange,
 }: ZoneSelectorProps) {
+  // Reset selected zone when ulbId changes
+  useEffect(() => {
+    onChange(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ulbId]);
+
   const {
     data: zones,
     isLoading,
     error,
   } = useQuery({
     queryKey: ["zones", ulbId],
-    queryFn: async () => {
-      if (!ulbId) return [];
-      const res = await fetch(`/api/zones/ulb/${ulbId}`);
-      if (!res.ok) throw new Error("Failed to fetch zones");
-      return res.json();
-    },
+    queryFn: () => (ulbId ? masterDataApi.getZonesByUlb(ulbId) : []),
     enabled: !!ulbId,
   });
 
@@ -36,7 +38,7 @@ export default function ZoneSelector({
         onChange={(e) => onChange(e.target.value || null)}
         disabled={isLoading || !!error || !ulbId}
       >
-        <option value="">-- Select Zone --</option>
+        <option value="">Select Zone</option>
         {zones &&
           zones.length > 0 &&
           zones.map((zone: any) => (
