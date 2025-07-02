@@ -95,7 +95,6 @@ storybook-static
 # Temporary folders
 tmp/
 temp/
-
 # Logs
 logs
 *.log
