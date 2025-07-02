@@ -303,10 +303,11 @@ async function main() {
 
   // WardStatusMaster
   const wardStatuses = [
-    { statusName: 'ACTIVE', description: 'Ward is active' },
-    { statusName: 'INACTIVE', description: 'Ward is inactive' },
-    { statusName: 'COMPLETED', description: 'Ward survey completed' },
+    { statusName: 'STARTED', description: 'Ward survey is started' },
+    { statusName: 'NOT STARTED', description: 'Ward survey is not started' },
     { statusName: 'IN PROGRESS', description: 'Ward survey in progress' },
+    { statusName: 'ON HOLD', description: 'Ward survey on hold' },
+    { statusName: 'COMPLETED', description: 'Ward survey completed' },
   ];
 
   await prisma.wardStatusMaster.createMany({

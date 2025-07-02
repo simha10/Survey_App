@@ -22,10 +22,10 @@ export default function StatusChangeModal({
 
   const queryClient = useQueryClient();
 
-  // Fetch all wards with status (no status filter)
+  // Fetch all wards (no status filter)
   const { data: wards = [] } = useQuery({
-    queryKey: ["wards-with-status"],
-    queryFn: masterDataApi.getAllWardsWithStatus,
+    queryKey: ["all-wards"],
+    queryFn: masterDataApi.getAllWards,
     enabled: isOpen,
   });
 

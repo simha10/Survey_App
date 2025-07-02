@@ -556,13 +556,6 @@ export const updateWardStatus = async (req: Request, res: Response) => {
       });
     }
 
-    // Update WardMaster.isActive based on status (assume 'Started' means active)
-    if (status.statusName === 'Started') {
-      await prisma.wardMaster.update({ where: { wardId }, data: { isActive: true } });
-    } else {
-      await prisma.wardMaster.update({ where: { wardId }, data: { isActive: false } });
-    }
-
     // Audit log
     await prisma.auditLog.create({
       data: {
