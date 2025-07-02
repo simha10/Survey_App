@@ -57,7 +57,7 @@ export const getMohallasByWard = async (req: Request, res: Response) => {
       },
     });
     
-    const mohallas = mappings.map(m => ({
+    const mohallas = mappings.map((m: any) => ({
       ...m.mohalla,
       inheritedStatus: wardStatus?.status?.statusName || "Not Started"
     }));

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import {
   AssignWardToSurveyorDto,
   AssignWardToSupervisorDto,
@@ -68,7 +68,7 @@ export async function assignWardToSurveyor(dto: AssignWardToSurveyorDto, assigne
     }
 
     // Create assignment
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Update surveyor's ward information
       await tx.surveyors.update({
         where: { userId: surveyorId },
@@ -153,7 +153,7 @@ export async function assignWardToSupervisor(dto: AssignWardToSupervisorDto, ass
     }
 
     // Assign wards to supervisor
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const assignments = [];
 
       for (const wardId of wardIds) {
@@ -221,7 +221,7 @@ export async function bulkWardAssignment(dto: BulkWardAssignmentDto, assignedByI
       );
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const createdAssignments = [];
 
       for (const assignment of assignments) {
@@ -373,7 +373,7 @@ export async function toggleSurveyorAccess(dto: ToggleSurveyorAccessDto, actionB
       whereClause.wardId = wardId;
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Update surveyor assignments
       await tx.surveyorAssignment.updateMany({
         where: whereClause,
@@ -454,8 +454,8 @@ export async function getWardAssignments(dto: GetWardAssignmentsDto) {
         where: { userId: supervisorId },
         select: { wardId: true },
       });
-      const supervisorWardIds = supervisorWards.map(sw => sw.wardId);
-      filteredAssignments = assignments.filter(a => supervisorWardIds.includes(a.wardId));
+      const supervisorWardIds = supervisorWards.map((sw: any) => sw.wardId);
+      filteredAssignments = assignments.filter((a: any) => supervisorWardIds.includes(a.wardId));
     }
 
     if (surveyorId) {

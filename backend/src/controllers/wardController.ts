@@ -472,7 +472,7 @@ export const getWardsByZone = async (req: Request, res: Response) => {
         ward: { newWardNumber: 'asc' },
       },
     });
-    const wards = mappings.map(m => m.ward);
+    const wards = mappings.map((m: any) => m.ward);
     res.json(wards);
   } catch (error) {
     console.error('Error fetching wards by zone:', error);
@@ -707,7 +707,7 @@ export const getWardsByZoneWithStatus = async (req: Request, res: Response) => {
       },
     });
     
-    let wards = mappings.map(m => m.ward);
+    let wards = mappings.map((m: any) => m.ward);
     
     // Filter by status if provided
     if (status && typeof status === 'string') {

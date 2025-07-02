@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { CreateSurveyDto } from '../dtos/surveyDto';
 
 const prisma = new PrismaClient();
@@ -27,7 +27,7 @@ export const createSurvey = async (surveyData: CreateSurveyDto, uploadedById: st
     ? nonResidentialPropertyAssessments.map(cleanAssessment)
     : undefined;
 
-  return prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const locationCreate: any = {
       propertyLatitude: locationDetails.propertyLatitude,
       propertyLongitude: locationDetails.propertyLongitude,

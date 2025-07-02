@@ -30,7 +30,7 @@ export async function authenticateJWT(req: AuthenticatedRequest, res: Response, 
       return res.status(403).json({ error: 'User has no active roles' });
     }
 
-    const roles = userRoleMappings.map((mapping) => mapping.role.roleName);
+    const roles = userRoleMappings.map((mapping: any) => mapping.role.roleName);
 
     req.user = {
       userId: payload.userId,

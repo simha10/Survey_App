@@ -43,7 +43,7 @@ export const getZonesByUlb = async (req: Request, res: Response) => {
         zone: { zoneNumber: 'asc' },
       },
     });
-    const zones = mappings.map(m => m.zone);
+    const zones = mappings.map((m: any) => m.zone);
     res.json(zones);
   } catch (error) {
     console.error('Error fetching zones by ULB:', error);

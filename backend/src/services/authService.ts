@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { LoginSchema, RegisterSchema, LoginDto, RegisterDto } from '../dtos/authDto';
@@ -65,7 +65,7 @@ export async function register(dto: RegisterDto, creator: any) {
     // Hash password
     const hashed = await bcrypt.hash(password, 10);
     // Transaction: create user, role mapping, and role-specific table
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Create UsersMaster
       const user = await tx.usersMaster.create({
         data: {

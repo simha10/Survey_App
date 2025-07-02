@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import {
   UpdateProfileDto,
@@ -50,7 +50,7 @@ export async function updateProfile(dto: UpdateProfileDto, userId: string) {
     if (mobileNumber) updateData.mobileNumber = mobileNumber;
     if (name) updateData.name = name;
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Update UsersMaster
       const updatedUser = await tx.usersMaster.update({
         where: { userId },
@@ -114,7 +114,7 @@ export async function changePassword(dto: ChangePasswordDto, userId: string) {
     // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Update UsersMaster
       await tx.usersMaster.update({
         where: { userId },
@@ -285,7 +285,7 @@ export async function deleteUser(dto: DeleteUserDto, deletedById: string) {
       throw { status: 400, message: 'Cannot delete your own account' };
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Soft delete user
       await tx.usersMaster.update({
         where: { userId },
@@ -331,7 +331,7 @@ export async function assignRole(dto: AssignRoleDto, assignedById: string) {
       throw { status: 400, message: 'Invalid role' };
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Remove existing role mappings
       await tx.userRoleMapping.updateMany({
         where: { userId },
@@ -417,7 +417,7 @@ export async function removeRole(dto: RemoveRoleDto, removedById: string) {
       throw { status: 400, message: 'User has no active roles' };
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Deactivate role mappings
       await tx.userRoleMapping.updateMany({
         where: { userId },
@@ -480,19 +480,19 @@ export async function getUserStats(dto: GetUserStatsDto) {
     });
 
     // Get role names for the statistics
-    const roleIds = roleStats.map(stat => stat.roleId);
+    const roleIds = roleStats.map((stat: any) => stat.roleId);
     const roles = await prisma.rolePermissionMaster.findMany({
       where: { roleId: { in: roleIds } },
       select: { roleId: true, roleName: true },
     });
 
-    const roleMap = new Map(roles.map(role => [role.roleId, role.roleName]));
+    const roleMap = new Map(roles.map((role: any) => [role.roleId, role.roleName]));
 
     return {
       totalUsers,
       activeUsers,
       inactiveUsers,
-      roleStats: roleStats.map(stat => ({
+      roleStats: roleStats.map((stat: any) => ({
         role: roleMap.get(stat.roleId) || 'Unknown',
         count: stat._count.userId,
       })),

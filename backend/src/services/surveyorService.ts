@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { AssignWardDto, ToggleLoginDto } from '../dtos/surveyorDto';
 
 const prisma = new PrismaClient();
@@ -52,7 +52,7 @@ export async function assignWard(dto: AssignWardDto, assignedById: string) {
     }
 
     // Update Surveyors table and create assignment
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Update surveyor's ward information
       await tx.surveyors.update({
         where: { userId },

@@ -233,4 +233,17 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts 
+next-env.d.ts
+
+# Ignore build output
+dist/
+
+# Ignore node modules
+node_modules/
+**/node_modules/
+
+# Ignore environment files
+.env
+.env.*
+**/.env
+**/.env.* 
