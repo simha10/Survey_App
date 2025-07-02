@@ -201,6 +201,13 @@ export default function NonResidentialFloorDetail() {
       const processedFormData = {
         ...formData,
         builtupArea: parseFloat(formData.builtupArea) || 0,
+        licenseNo: formData.licenseNo === '' ? null : formData.licenseNo,
+        licenseExpiryDate: !formData.licenseExpiryDate ? null : formData.licenseExpiryDate,
+        floorNumberId: Number(formData.floorNumberId),
+        nrPropertyCategoryId: Number(formData.nrPropertyCategoryId),
+        nrSubCategoryId: Number(formData.nrSubCategoryId),
+        occupancyStatusId: Number(formData.occupancyStatusId),
+        constructionNatureId: Number(formData.constructionNatureId),
       };
 
       const existingFloors = survey.data && survey.data.nonResidentialPropertyAssessments ? survey.data.nonResidentialPropertyAssessments : [];
