@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { CreateSurveyDtoSchema } from '../dtos/surveyDto';
 import * as surveyService from '../services/surveyService';
+import { z } from 'zod';
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -11,6 +12,8 @@ interface AuthenticatedRequest extends Request {
 
 export const submitSurvey = async (req: AuthenticatedRequest, res: Response) => {
   try {
+    // Log the incoming request body for debugging
+    console.log('Received survey submission body:', JSON.stringify(req.body, null, 2));
     const surveyData = CreateSurveyDtoSchema.parse(req.body);
     const uploadedById = req.user?.userId;
 
@@ -26,15 +29,29 @@ export const submitSurvey = async (req: AuthenticatedRequest, res: Response) => 
     const newSurvey = await surveyService.createSurvey(surveyData, uploadedById);
     res.status(201).json(newSurvey);
   } catch (error) {
-    if (error instanceof Error) {
-        let errors;
-        try {
-          errors = JSON.parse(error.message);
-        } catch {
-          errors = error.message;
-        }
-        return res.status(400).json({ message: 'Invalid request body', errors });
+    // Enhanced logging for all error types
+    console.log('CATCH BLOCK REACHED');
+    console.log('Error type:', error?.constructor?.name);
+    console.log('Error object:', error);
+
+    if (error instanceof z.ZodError) {
+      // Log the full Zod error details
+      console.log('Zod validation error:', JSON.stringify(error.errors, null, 2));
+      return res.status(400).json({ message: 'Invalid request body', errors: error.errors });
     }
+    if (error instanceof Error) {
+      let errors;
+      try {
+        errors = JSON.parse(error.message);
+      } catch {
+        errors = error.message;
+      }
+      // Log generic error
+      console.log('Error submitting survey:', errors);
+      return res.status(400).json({ message: 'Invalid request body', errors });
+    }
+    // Fallback for unknown error types
+    console.log('Unknown error:', error);
     res.status(500).json({ message: 'Error submitting survey', error });
   }
 }; 

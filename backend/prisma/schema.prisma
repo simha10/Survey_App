@@ -383,7 +383,7 @@ model SurveyDetails {
   uploadedById                      String
   ulbId                             String
   zoneId                            String
-  wardId                            String
+  wardId                             String
   mohallaId                         String
   surveyTypeId                      Int
   entryDate                         DateTime                           @db.Timestamp(0)
@@ -394,24 +394,24 @@ model SurveyDetails {
   isSynced                          Boolean                            @default(false)
   syncStatus                        SyncStatusEnum                     @default(PENDING)
   lastSyncAttempt                   DateTime?
-  syncErrorMessage                  String?
+  syncErrorMessage                  String?                            @db.Text
   createdAt                         DateTime                           @default(now())
   updatedAt                         DateTime                           @updatedAt
-  locationDetails                   LocationDetails?
-  nonResidentialPropertyAssessments NonResidentialPropertyAssessment[]
-  otherDetails                      OtherDetails?
-  ownerDetails                      OwnerDetails?
-  propertyAttachments               PropertyAttachmentDetails?
-  propertyDetails                   PropertyDetails?
-  qcRecords                         QCRecord[]
-  residentialPropertyAssessments    ResidentialPropertyAssessment[]
+  uploadedBy                        UsersMaster                        @relation("UsersMasterToSurveyDetails", fields: [uploadedById], references: [userId], onDelete: Restrict)
+  ulb                               UlbMaster                          @relation(fields: [ulbId], references: [ulbId])
+  zone                              ZoneMaster                         @relation(fields: [zoneId], references: [zoneId])
+  ward                              WardMaster                         @relation(fields: [wardId], references: [wardId])
   mohalla                           MohallaMaster                      @relation(fields: [mohallaId], references: [mohallaId])
   surveyType                        SurveyTypeMaster                   @relation(fields: [surveyTypeId], references: [surveyTypeId])
-  ulb                               UlbMaster                          @relation(fields: [ulbId], references: [ulbId])
-  uploadedBy                        UsersMaster                        @relation("UsersMasterToSurveyDetails", fields: [uploadedById], references: [userId])
-  ward                              WardMaster                         @relation(fields: [wardId], references: [wardId])
-  zone                              ZoneMaster                         @relation(fields: [zoneId], references: [zoneId])
+  propertyDetails                   PropertyDetails[]
+  ownerDetails                      OwnerDetails[]
+  locationDetails                   LocationDetails[]
+  otherDetails                      OtherDetails[]
+  residentialPropertyAssessments    ResidentialPropertyAssessment[]
+  nonResidentialPropertyAssessments NonResidentialPropertyAssessment[]
+  propertyAttachments               PropertyAttachmentDetails[]
   surveyStatusMaps                  SurveyStatusMapping[]
+  qcRecords                         QCRecord[]
 
   @@index([uploadedById])
   @@index([isSynced])
@@ -427,9 +427,9 @@ model PropertyDetails {
   waterSewerageConnectionNumber String?                @db.VarChar(50)
   respondentName                String                 @db.Char(50)
   respondentStatusId            Int
-  respondentStatus              RespondentStatusMaster @relation(fields: [respondentStatusId], references: [respondentStatusId])
-  responseType                  ResponseTypeMaster     @relation(fields: [responseTypeId], references: [responseTypeId])
   survey                        SurveyDetails          @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
+  responseType                  ResponseTypeMaster     @relation(fields: [responseTypeId], references: [responseTypeId])
+  respondentStatus              RespondentStatusMaster @relation(fields: [respondentStatusId], references: [respondentStatusId])
 }
 
 model OwnerDetails {
@@ -447,23 +447,23 @@ model LocationDetails {
   propertyLongitude  Decimal?               @db.Decimal(9, 6)
   assessmentYear     String                 @db.VarChar(20)
   propertyTypeId     Int
-  buildingName       String?
+  buildingName       String?                @db.Text
   roadTypeId         Int
   constructionYear   String                 @db.VarChar(20)
   constructionTypeId Int
-  addressRoadName    String
-  locality           String?
+  addressRoadName    String                 @db.Text
+  locality           String?                @db.Text
   pinCode            Int
-  landmark           String?
-  fourWayEast        String?
-  fourWayWest        String?
-  fourWayNorth       String?
-  fourWaySouth       String?
+  landmark           String?                @db.Text
+  fourWayEast        String?                @db.Text
+  fourWayWest        String?                @db.Text
+  fourWayNorth       String?                @db.Text
+  fourWaySouth       String?                @db.Text
   newWardNumber      String                 @db.VarChar(20)
-  constructionType   ConstructionTypeMaster @relation(fields: [constructionTypeId], references: [constructionTypeId])
+  survey             SurveyDetails          @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
   propertyType       PropertyTypeMaster     @relation(fields: [propertyTypeId], references: [propertyTypeId])
   roadType           RoadTypeMaster         @relation(fields: [roadTypeId], references: [roadTypeId])
-  survey             SurveyDetails          @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
+  constructionType   ConstructionTypeMaster @relation(fields: [constructionTypeId], references: [constructionTypeId])
 }
 
 model OtherDetails {
@@ -473,16 +473,16 @@ model OtherDetails {
   plantation                  String?            @db.Char(3)
   parking                     String?            @db.Char(3)
   pollution                   String?            @db.Char(3)
-  pollutionMeasurementTaken   String?
+  pollutionMeasurementTaken   String?            @db.Text
   waterSupplyWithin200Meters  String             @db.Char(3)
   sewerageLineWithin100Meters String             @db.Char(3)
   disposalTypeId              Int
-  totalPlotArea               Float
-  builtupAreaOfGroundFloor    Float
-  remarks                     String?
-  disposalType                DisposalTypeMaster @relation(fields: [disposalTypeId], references: [disposalTypeId])
+  totalPlotArea               Float              @db.DoublePrecision
+  builtupAreaOfGroundFloor    Float              @db.DoublePrecision
+  remarks                     String?            @db.Text
   survey                      SurveyDetails      @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
   waterSource                 WaterSourceMaster  @relation(fields: [waterSourceId], references: [waterSourceId])
+  disposalType                DisposalTypeMaster @relation(fields: [disposalTypeId], references: [disposalTypeId])
 }
 
 model ResidentialPropertyAssessment {
@@ -496,30 +496,30 @@ model ResidentialPropertyAssessment {
   allBalconyKitchenArea Decimal?                 @db.Decimal(10, 2)
   allGarageArea         Decimal?                 @db.Decimal(10, 2)
   carpetArea            Decimal                  @db.Decimal(10, 2)
-  constructionNature    ConstructionNatureMaster @relation(fields: [constructionNatureId], references: [constructionNatureId])
+  survey                SurveyDetails            @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
   floorMaster           FloorMaster              @relation(fields: [floorNumberId], references: [floorNumberId])
   occupancyStatus       OccupancyStatusMaster    @relation(fields: [occupancyStatusId], references: [occupancyStatusId])
-  survey                SurveyDetails            @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
+  constructionNature    ConstructionNatureMaster @relation(fields: [constructionNatureId], references: [constructionNatureId])
 }
 
 model NonResidentialPropertyAssessment {
-  floorAssessmentId    String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  surveyUniqueCode     String                      @db.Uuid
-  floorNumberId        Int
-  nrPropertyCategoryId Int
-  nrSubCategoryId      Int
-  establishmentName    String
-  licenseNo            String?                     @db.VarChar(20)
-  licenseExpiryDate    DateTime?
-  occupancyStatusId    Int
-  constructionNatureId Int
-  builtupArea          Float
-  constructionNature   ConstructionNatureMaster    @relation(fields: [constructionNatureId], references: [constructionNatureId])
-  floorMaster          FloorMaster                 @relation(fields: [floorNumberId], references: [floorNumberId])
-  nrPropertyCategory   NrPropertyCategoryMaster    @relation(fields: [nrPropertyCategoryId], references: [propertyCategoryId])
-  nrSubCategory        NrPropertySubCategoryMaster @relation(fields: [nrSubCategoryId], references: [subCategoryId])
-  occupancyStatus      OccupancyStatusMaster       @relation(fields: [occupancyStatusId], references: [occupancyStatusId])
-  survey               SurveyDetails               @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
+  floorAssessmentId     String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  surveyUniqueCode      String                      @db.Uuid
+  floorNumberId         Int
+  nrPropertyCategoryId  Int
+  nrSubCategoryId       Int
+  establishmentName     String                      @db.Text
+  licenseNo             String?                     @db.VarChar(20)
+  licenseExpiryDate     DateTime?
+  occupancyStatusId     Int
+  constructionNatureId  Int
+  builtupArea           Float                       @db.DoublePrecision
+  floorMaster           FloorMaster                 @relation(fields: [floorNumberId], references: [floorNumberId])
+  nrPropertyCategory    NrPropertyCategoryMaster    @relation(fields: [nrPropertyCategoryId], references: [propertyCategoryId], onDelete: Restrict)
+  nrSubCategory         NrPropertySubCategoryMaster @relation(fields: [nrSubCategoryId], references: [subCategoryId], onDelete: Restrict)
+  occupancyStatus       OccupancyStatusMaster       @relation(fields: [occupancyStatusId], references: [occupancyStatusId])
+  constructionNature    ConstructionNatureMaster    @relation(fields: [constructionNatureId], references: [constructionNatureId])
+  survey                SurveyDetails               @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
 
   @@index([nrPropertyCategoryId])
   @@index([nrSubCategoryId])

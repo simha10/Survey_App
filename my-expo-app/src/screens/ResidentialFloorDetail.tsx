@@ -160,10 +160,13 @@ export default function ResidentialFloorDetail() {
       const processedFormData = {
         ...formData,
         coveredArea: parseFloat(formData.coveredArea) || 0,
-        allRoomVerandaArea: parseFloat(formData.allRoomVerandaArea) || 0,
-        allBalconyKitchenArea: parseFloat(formData.allBalconyKitchenArea) || 0,
-        allGarageArea: parseFloat(formData.allGarageArea) || 0,
+        allRoomVerandaArea: formData.allRoomVerandaArea === '' ? null : parseFloat(formData.allRoomVerandaArea),
+        allBalconyKitchenArea: formData.allBalconyKitchenArea === '' ? null : parseFloat(formData.allBalconyKitchenArea),
+        allGarageArea: formData.allGarageArea === '' ? null : parseFloat(formData.allGarageArea),
         carpetArea: parseFloat(formData.carpetArea) || 0,
+        floorNumberId: Number(formData.floorNumberId),
+        occupancyStatusId: Number(formData.occupancyStatusId),
+        constructionNatureId: Number(formData.constructionNatureId),
       };
 
       const existingFloors = survey.data && survey.data.residentialPropertyAssessments ? survey.data.residentialPropertyAssessments : [];
