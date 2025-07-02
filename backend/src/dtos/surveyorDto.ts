@@ -3,8 +3,7 @@ import { z } from 'zod';
 export const AssignWardSchema = z.object({
   userId: z.string().uuid(),
   wardId: z.string().uuid(),
-  mohallaId: z.string().uuid(),
-  wardMohallaMapId: z.string().uuid(),
+  mohallaIds: z.array(z.string().uuid()),
   zoneWardMapId: z.string().uuid(),
   ulbZoneMapId: z.string().uuid(),
   assignmentType: z.enum(['PRIMARY', 'SECONDARY']).default('PRIMARY'),

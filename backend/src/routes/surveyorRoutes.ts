@@ -22,4 +22,6 @@ router.post(
 
 router.get('/my-assignments', authenticateJWT, restrictToRoles(['SURVEYOR']), getMyAssignments);
 
+router.get('/assigned-mohallas', authenticateJWT, restrictToRoles(['SURVEYOR']), surveyorController.getAssignedMohallas);
+
 export default router;

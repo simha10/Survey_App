@@ -37,6 +37,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         await AsyncStorage.setItem('userToken', token);
         await AsyncStorage.setItem('user', JSON.stringify({ ...user, role }));
         setUserRole(role);
+        // Fetch and store surveyor assignment if role is SURVEYOR
+        if (role === 'SURVEYOR') {
+          const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:4000/api'}/surveyor/assigned-mohallas`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+          if (response.ok) {
+            const assignment = await response.json();
+            await AsyncStorage.setItem('surveyorAssignment', JSON.stringify(assignment));
+          }
+        }
     } catch (e) {
         console.error('Failed to save user session', e);
     }

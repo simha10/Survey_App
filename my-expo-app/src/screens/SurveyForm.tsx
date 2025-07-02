@@ -145,6 +145,8 @@ export default function SurveyForm({ route }: any) {
     remarks: '',
   });
 
+  const [assignmentData, setAssignmentData] = useState<any>(null);
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -181,6 +183,28 @@ export default function SurveyForm({ route }: any) {
     };
     loadData();
   }, [editMode, surveyId, initialSurveyData]);
+
+  useEffect(() => {
+    const loadAssignment = async () => {
+      try {
+        const assignmentStr = await AsyncStorage.getItem('surveyorAssignment');
+        if (assignmentStr) {
+          const assignment = JSON.parse(assignmentStr);
+          setFormData(prev => ({
+            ...prev,
+            ulbId: assignment.ulbId,
+            zoneId: assignment.zoneId,
+            wardId: assignment.wardId,
+            mohallaId: assignment.mohallaIds[0] || '',
+          }));
+          setAssignmentData(assignment);
+        }
+      } catch (e) {
+        console.error('Failed to load surveyor assignment', e);
+      }
+    };
+    loadAssignment();
+  }, []);
 
   const createDropdownOptions = (items: any[], labelKey: string, valueKey: string) => {
     if (!items) return [{ label: 'No selection', value: 0 }];
@@ -372,6 +396,12 @@ export default function SurveyForm({ route }: any) {
         return;
       }
 
+      // Validate mohallaId is in assignment
+      if (assignmentData && !assignmentData.mohallaIds.includes(formData.mohallaId)) {
+        Alert.alert('Error', 'Selected mohalla is not assigned to you.');
+        return;
+      }
+
       const processedData = transformDataForSaving(formData);
 
       // Build DTO as per backend schema
@@ -503,8 +533,8 @@ export default function SurveyForm({ route }: any) {
           <FormDropdown
             label="Mohalla"
             required
-            items={mohallaOptions}
-            onValueChange={(value: string) => handleInputChange('mohallaId', value)}
+            items={assignmentData?.mohallas?.map((m: any) => ({ label: m.mohallaName, value: m.mohallaId })) || []}
+            onValueChange={(value: string | number) => handleInputChange('mohallaId', value)}
             value={formData.mohallaId}
           />
           <FormInput
@@ -710,14 +740,14 @@ export default function SurveyForm({ route }: any) {
             label="Source of Water"
             required
             items={createDropdownOptions(masterData?.waterSources, 'waterSourceName', 'waterSourceId')}
-            onValueChange={(value: string) => handleInputChange('waterSourceId', value)}
+            onValueChange={(value: string | number) => handleInputChange('waterSourceId', value)}
             value={formData.waterSourceId}
           />
           <FormDropdown
             label="Rain Water Harvesting"
             required
             items={yesNoOptions}
-            onValueChange={(value: string) => handleInputChange('rainWaterHarvestingSystem', value)}
+            onValueChange={(value: string | number) => handleInputChange('rainWaterHarvestingSystem', value)}
             value={formData.rainWaterHarvestingSystem}
           />
 
@@ -727,21 +757,21 @@ export default function SurveyForm({ route }: any) {
                 label="Plantation Available"
                 required
                 items={yesNoOptions}
-                onValueChange={(value: string) => handleInputChange('plantation', value)}
+                onValueChange={(value: string | number) => handleInputChange('plantation', value)}
                 value={formData.plantation}
               />
               <FormDropdown
                 label="Parking Available"
                 required
                 items={yesNoOptions}
-                onValueChange={(value: string) => handleInputChange('parking', value)}
+                onValueChange={(value: string | number) => handleInputChange('parking', value)}
                 value={formData.parking}
               />
               <FormDropdown
                 label="Pollution Created"
                 required
                 items={yesNoOptions}
-                onValueChange={(value: string) => handleInputChange('pollution', value)}
+                onValueChange={(value: string | number) => handleInputChange('pollution', value)}
                 value={formData.pollution}
               />
               <FormInput
@@ -756,21 +786,21 @@ export default function SurveyForm({ route }: any) {
             label="Water Supply within 200m"
             required
             items={yesNoOptions}
-            onValueChange={(value: string) => handleInputChange('waterSupplyWithin200Meters', value)}
+            onValueChange={(value: string | number) => handleInputChange('waterSupplyWithin200Meters', value)}
             value={formData.waterSupplyWithin200Meters}
           />
           <FormDropdown
             label="Sewerage Line within 100m"
             required
             items={yesNoOptions}
-            onValueChange={(value: string) => handleInputChange('sewerageLineWithin100Meters', value)}
+            onValueChange={(value: string | number) => handleInputChange('sewerageLineWithin100Meters', value)}
             value={formData.sewerageLineWithin100Meters}
           />
           <FormDropdown
             label="Disposal Type"
             required
             items={createDropdownOptions(masterData?.disposalTypes, 'disposalTypeName', 'disposalTypeId')}
-            onValueChange={(value: string) => handleInputChange('disposalTypeId', value)}
+            onValueChange={(value: string | number) => handleInputChange('disposalTypeId', value)}
             value={formData.disposalTypeId}
           />
           <FormInput
