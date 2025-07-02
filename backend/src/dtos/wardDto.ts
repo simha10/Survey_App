@@ -4,7 +4,7 @@ import { z } from 'zod';
 export const AssignWardToSurveyorSchema = z.object({
   surveyorId: z.string().uuid(),
   wardId: z.string().uuid(),
-  mohallaId: z.string().uuid(),
+  mohallaIds: z.array(z.string().uuid()),
   wardMohallaMapId: z.string().uuid(),
   zoneWardMapId: z.string().uuid(),
   ulbZoneMapId: z.string().uuid(),
@@ -32,8 +32,7 @@ export const BulkWardAssignmentSchema = z.object({
   surveyorId: z.string().uuid(),
   assignments: z.array(z.object({
     wardId: z.string().uuid(),
-    mohallaId: z.string().uuid(),
-    wardMohallaMapId: z.string().uuid(),
+    mohallaIds: z.array(z.string().uuid()),
     zoneWardMapId: z.string().uuid(),
     ulbZoneMapId: z.string().uuid(),
     assignmentType: z.enum(['PRIMARY', 'SECONDARY']).default('PRIMARY'),

@@ -33,18 +33,18 @@ async function validateWardEntities(wardId: string, mohallaId: string, wardMohal
 }
 
 export async function assignWard(dto: AssignWardDto, assignedById: string) {
-  const { userId, wardId, mohallaId, wardMohallaMapId, zoneWardMapId, ulbZoneMapId, assignmentType = 'PRIMARY' } = dto;
+  const { userId, wardId, mohallaIds, zoneWardMapId, ulbZoneMapId, assignmentType = 'PRIMARY' } = dto;
   
   try {
     // Validate user is a surveyor
     await validateUserRole(userId, 'SURVEYOR');
 
     // Validate ward entities
-    const { ward } = await validateWardEntities(wardId, mohallaId, wardMohallaMapId, zoneWardMapId, ulbZoneMapId);
+    const { ward } = await validateWardEntities(wardId, mohallaIds[0], mohallaIds[0] + '-' + wardId, zoneWardMapId, ulbZoneMapId);
 
     // Check for existing assignment
     const existingAssignment = await prisma.surveyorAssignment.findFirst({
-      where: { userId, wardId, mohallaId, isActive: true },
+      where: { userId, wardId, isActive: true },
     });
 
     if (existingAssignment) {
@@ -57,7 +57,6 @@ export async function assignWard(dto: AssignWardDto, assignedById: string) {
       await tx.surveyors.update({
         where: { userId },
         data: {
-          wardMohallaMapId,
           zoneWardMapId,
           ulbZoneMapId,
         },
@@ -69,8 +68,7 @@ export async function assignWard(dto: AssignWardDto, assignedById: string) {
           userId,
           assignmentType,
           wardId,
-          mohallaId,
-          wardMohallaMapId,
+          mohallaIds,
           assignedById,
           isActive: true,
         },
@@ -83,7 +81,7 @@ export async function assignWard(dto: AssignWardDto, assignedById: string) {
       assignmentId: result.assignmentId,
       userId,
       wardId,
-      mohallaId,
+      mohallaIds,
       assignmentType,
       status: 'Ward assigned successfully',
     };
@@ -157,7 +155,6 @@ export async function getSurveyorAssignments(userId: string) {
       where: { userId, isActive: true },
       include: {
         ward: true,
-        mohalla: true,
         assignedBy: {
           include: {
             userRoleMaps: {
@@ -231,7 +228,6 @@ export async function getSurveyorProfile(userId: string) {
         wardMohallaMap: {
           include: {
             ward: true,
-            mohalla: true,
           },
         },
         zoneWardMap: {
@@ -259,7 +255,6 @@ export async function getSurveyorProfile(userId: string) {
       username: surveyor.username,
       isActive: surveyor.user.isActive,
       ward: surveyor.wardMohallaMap?.ward || null,
-      mohalla: surveyor.wardMohallaMap?.mohalla || null,
       zone: surveyor.zoneWardMap?.zone || null,
       ulb: surveyor.ulbZoneMap?.ulb || null,
       role: surveyor.user.userRoleMaps[0]?.role.roleName || null,
@@ -268,4 +263,26 @@ export async function getSurveyorProfile(userId: string) {
     if (!err.status) console.error(err);
     throw err.status ? err : { status: 500, message: 'Internal server error' };
   }
+}
+
+export async function getAssignedMohallas(userId: string) {
+  // Validate user is a surveyor
+  await validateUserRole(userId, 'SURVEYOR');
+  // Get the active assignment
+  const assignment = await prisma.surveyorAssignment.findFirst({
+    where: { userId, isActive: true },
+  });
+  if (!assignment) {
+    throw { status: 404, message: 'No active assignment found' };
+  }
+  // Fetch mohalla details
+  const mohallas = await prisma.mohallaMaster.findMany({
+    where: { mohallaId: { in: assignment.mohallaIds } },
+    select: { mohallaId: true, mohallaName: true },
+  });
+  return {
+    mohallas,
+    wardId: assignment.wardId ?? null,
+    mohallaIds: assignment.mohallaIds,
+  };
 }

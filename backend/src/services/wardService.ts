@@ -44,14 +44,14 @@ async function validateWardEntities(wardId: string, mohallaId: string, wardMohal
 
 // 1. Assign Ward to Surveyor
 export async function assignWardToSurveyor(dto: AssignWardToSurveyorDto, assignedById: string) {
-  const { surveyorId, wardId, mohallaId, wardMohallaMapId, zoneWardMapId, ulbZoneMapId, assignmentType, supervisorId } = dto;
+  const { surveyorId, wardId, mohallaIds, zoneWardMapId, ulbZoneMapId, assignmentType, supervisorId } = dto;
 
   try {
     // Validate surveyor
     await validateUserRole(surveyorId, 'SURVEYOR');
 
     // Validate ward entities
-    const { ward } = await validateWardEntities(wardId, mohallaId, wardMohallaMapId, zoneWardMapId, ulbZoneMapId);
+    const { ward } = await validateWardEntities(wardId, mohallaIds[0], '', zoneWardMapId, ulbZoneMapId);
 
     // Validate supervisor if provided
     if (supervisorId) {
@@ -60,7 +60,7 @@ export async function assignWardToSurveyor(dto: AssignWardToSurveyorDto, assigne
 
     // Check for existing assignment
     const existingAssignment = await prisma.surveyorAssignment.findFirst({
-      where: { userId: surveyorId, wardId, mohallaId, isActive: true },
+      where: { userId: surveyorId, wardId, mohallaIds: { has: mohallaIds[0] }, isActive: true },
     });
 
     if (existingAssignment) {
@@ -73,7 +73,6 @@ export async function assignWardToSurveyor(dto: AssignWardToSurveyorDto, assigne
       await tx.surveyors.update({
         where: { userId: surveyorId },
         data: {
-          wardMohallaMapId,
           zoneWardMapId,
           ulbZoneMapId,
         },
@@ -85,8 +84,7 @@ export async function assignWardToSurveyor(dto: AssignWardToSurveyorDto, assigne
           userId: surveyorId,
           assignmentType,
           wardId,
-          mohallaId,
-          wardMohallaMapId,
+          mohallaIds: [mohallaIds[0]],
           assignedById,
           isActive: true,
         },
@@ -124,7 +122,7 @@ export async function assignWardToSurveyor(dto: AssignWardToSurveyorDto, assigne
       assignmentId: result.assignmentId,
       surveyorId,
       wardId,
-      mohallaId,
+      mohallaIds,
       assignmentType,
       supervisorId,
       status: 'Assigned successfully',
@@ -214,8 +212,8 @@ export async function bulkWardAssignment(dto: BulkWardAssignmentDto, assignedByI
     for (const assignment of assignments) {
       await validateWardEntities(
         assignment.wardId,
-        assignment.mohallaId,
-        assignment.wardMohallaMapId,
+        assignment.mohallaIds[0],
+        '',
         assignment.zoneWardMapId,
         assignment.ulbZoneMapId
       );
@@ -227,7 +225,7 @@ export async function bulkWardAssignment(dto: BulkWardAssignmentDto, assignedByI
       for (const assignment of assignments) {
         // Check for existing assignment
         const existing = await tx.surveyorAssignment.findFirst({
-          where: { userId: surveyorId, wardId: assignment.wardId, mohallaId: assignment.mohallaId, isActive: true },
+          where: { userId: surveyorId, wardId: assignment.wardId, mohallaIds: { has: assignment.mohallaIds[0] }, isActive: true },
         });
 
         if (!existing) {
@@ -236,8 +234,7 @@ export async function bulkWardAssignment(dto: BulkWardAssignmentDto, assignedByI
               userId: surveyorId,
               assignmentType: assignment.assignmentType,
               wardId: assignment.wardId,
-              mohallaId: assignment.mohallaId,
-              wardMohallaMapId: assignment.wardMohallaMapId,
+              mohallaIds: [assignment.mohallaIds[0]],
               assignedById,
               isActive: true,
             },
@@ -252,7 +249,6 @@ export async function bulkWardAssignment(dto: BulkWardAssignmentDto, assignedByI
         await tx.surveyors.update({
           where: { userId: surveyorId },
           data: {
-            wardMohallaMapId: firstAssignment.wardMohallaMapId,
             zoneWardMapId: firstAssignment.zoneWardMapId,
             ulbZoneMapId: firstAssignment.ulbZoneMapId,
           },
@@ -435,7 +431,6 @@ export async function getWardAssignments(dto: GetWardAssignmentsDto) {
           },
         },
         ward: true,
-        mohalla: true,
         assignedBy: {
           include: {
             userRoleMaps: {

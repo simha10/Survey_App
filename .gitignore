@@ -161,6 +161,7 @@ web_modules/
 
 # dotenv environment variable files
 # Note: .env files are NOT ignored as per user request
+.env
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
