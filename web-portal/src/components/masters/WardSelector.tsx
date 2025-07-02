@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { masterDataApi } from "@/lib/api";
 
 interface WardSelectorProps {
   zoneId: string | null;
@@ -12,18 +13,19 @@ export default function WardSelector({
   value,
   onChange,
 }: WardSelectorProps) {
+  // Reset selected ward when zoneId changes
+  useEffect(() => {
+    onChange(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoneId]);
+
   const {
     data: wards,
     isLoading,
     error,
   } = useQuery({
     queryKey: ["wards", zoneId],
-    queryFn: async () => {
-      if (!zoneId) return [];
-      const res = await fetch(`/api/wards/zone/${zoneId}`);
-      if (!res.ok) throw new Error("Failed to fetch wards");
-      return res.json();
-    },
+    queryFn: () => (zoneId ? masterDataApi.getWardsByZone(zoneId) : []),
     enabled: !!zoneId,
   });
 
@@ -36,7 +38,7 @@ export default function WardSelector({
         onChange={(e) => onChange(e.target.value || null)}
         disabled={isLoading || !!error || !zoneId}
       >
-        <option value="">-- Select Ward --</option>
+        <option value="">Select Ward</option>
         {wards &&
           wards.length > 0 &&
           wards.map((ward: any) => (

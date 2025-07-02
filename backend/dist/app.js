@@ -17,6 +17,8 @@ const userRoutes_1 = __importDefault(require("./routes/userRoutes"));
 const ulbRoutes_1 = __importDefault(require("./routes/ulbRoutes"));
 const zoneRoutes_1 = __importDefault(require("./routes/zoneRoutes"));
 const mohallaRoutes_1 = __importDefault(require("./routes/mohallaRoutes"));
+const qcRoutes_1 = __importDefault(require("./routes/qcRoutes"));
+const reportsRoutes_1 = __importDefault(require("./routes/reportsRoutes"));
 dotenv_1.default.config();
 // Initialize Express app
 const app = (0, express_1.default)();
@@ -69,13 +71,17 @@ app.use('/api/surveyors', authMiddleware_1.authenticateJWT, surveyorRoutes_1.def
 app.use('/api/surveys', surveyRoutes_1.default);
 app.use('/api/surveyor', surveyorRoutes_1.default);
 // Protected routes - ULBs
-app.use('/ulbs', ulbRoutes_1.default);
+app.use('/api/ulbs', authMiddleware_1.authenticateJWT, ulbRoutes_1.default);
 // Protected routes - Zones
-app.use('/zones', zoneRoutes_1.default);
-// Protected routes - Wards
-app.use('/wards', wardRoutes_1.default);
+app.use('/api/zones', authMiddleware_1.authenticateJWT, zoneRoutes_1.default);
+// Protected routes - Wards (master data)
+app.use('/api/wards', authMiddleware_1.authenticateJWT, wardRoutes_1.default);
 // Protected routes - Mohallas
-app.use('/mohallas', mohallaRoutes_1.default);
+app.use('/api/mohallas', authMiddleware_1.authenticateJWT, mohallaRoutes_1.default);
+// Protected routes - QC
+app.use('/api/qc', authMiddleware_1.authenticateJWT, qcRoutes_1.default);
+// Protected routes - Reports
+app.use('/api/reports', authMiddleware_1.authenticateJWT, reportsRoutes_1.default);
 // Health check route
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', message: 'Server is running' });

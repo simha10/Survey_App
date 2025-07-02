@@ -41,7 +41,17 @@ export const createSurvey = async (surveyData: CreateSurveyDto, uploadedById: st
           create: locationCreate,
         },
         otherDetails: {
-          create: otherDetails,
+          create: {
+            ...otherDetails,
+            rainWaterHarvestingSystem: otherDetails.rainWaterHarvestingSystem ?? '',
+            waterSupplyWithin200Meters: otherDetails.waterSupplyWithin200Meters ?? '',
+            sewerageLineWithin100Meters: otherDetails.sewerageLineWithin100Meters ?? '',
+            plantation: otherDetails.plantation ?? null,
+            parking: otherDetails.parking ?? null,
+            pollution: otherDetails.pollution ?? null,
+            pollutionMeasurementTaken: otherDetails.pollutionMeasurementTaken ?? null,
+            remarks: otherDetails.remarks ?? null,
+          },
         },
         residentialPropertyAssessments: residentialPropertyAssessments && residentialPropertyAssessments.length > 0
           ? { create: residentialPropertyAssessments }

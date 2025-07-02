@@ -3,6 +3,7 @@
 import React, { ReactNode, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import { useRouter } from "next/navigation";
+import Loading from "@/components/ui/loading";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -41,11 +42,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Show loading state
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
-      </div>
-    );
+    return <Loading fullScreen />;
   }
 
   // Check if user is authenticated

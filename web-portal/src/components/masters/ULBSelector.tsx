@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { masterDataApi } from "@/lib/api";
 
 interface ULBSelectorProps {
   value: string | null;
@@ -14,16 +15,7 @@ export default function ULBSelector({ value, onChange }: ULBSelectorProps) {
     error,
   } = useQuery({
     queryKey: ["ulbs"],
-    queryFn: async () => {
-      const token = localStorage.getItem("auth_token");
-      const res = await fetch("/api/ulbs", {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : "",
-        },
-      });
-      if (!res.ok) throw new Error("Failed to fetch ULBs");
-      return res.json();
-    },
+    queryFn: masterDataApi.getAllUlbs,
   });
 
   return (
@@ -35,7 +27,7 @@ export default function ULBSelector({ value, onChange }: ULBSelectorProps) {
         onChange={(e) => onChange(e.target.value || null)}
         disabled={isLoading || !!error}
       >
-        <option value="">-- Select ULB --</option>
+        <option value="">Select ULB</option>
         {ulbs &&
           ulbs.length > 0 &&
           ulbs.map((ulb: any) => (

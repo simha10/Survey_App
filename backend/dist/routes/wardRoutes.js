@@ -39,6 +39,43 @@ const authMiddleware_1 = require("../middleware/authMiddleware");
 const wardController_1 = require("../controllers/wardController");
 const router = (0, express_1.Router)();
 // ========================================
+// WARD MASTER DATA ROUTES
+// ========================================
+// Get all wards
+router.get('/', authMiddleware_1.authenticateJWT, wardController_1.getAllWards);
+// Get all wards with status information
+router.get('/with-status', authMiddleware_1.authenticateJWT, wardController_1.getAllWardsWithStatus);
+// Search wards by name (must come before /:wardId)
+router.get('/search', authMiddleware_1.authenticateJWT, wardController_1.searchWards);
+// Get all ward statuses (must come before /:wardId)
+router.get('/statuses', authMiddleware_1.authenticateJWT, wardController_1.getAllWardStatuses);
+// Get wards by zone (must come before /:wardId)
+router.get('/zone/:zoneId', authMiddleware_1.authenticateJWT, wardController_1.getWardsByZone);
+// Get wards by zone with status filtering (must come before /:wardId)
+router.get('/zone/:zoneId/with-status', authMiddleware_1.authenticateJWT, wardController_1.getWardsByZoneWithStatus);
+// Get ward assignments (must come before /:wardId)
+router.get('/assignments', authMiddleware_1.authenticateJWT, wardController.getWardAssignments);
+// Get available wards for dropdowns (must come before /:wardId)
+router.get('/available-wards', authMiddleware_1.authenticateJWT, wardController.getAvailableWards);
+// Get available mohallas for dropdowns (must come before /:wardId)
+router.get('/available-mohallas', authMiddleware_1.authenticateJWT, wardController.getAvailableMohallas);
+// Get ward-mohalla mappings (must come before /:wardId)
+router.get('/ward-mohalla-mappings', authMiddleware_1.authenticateJWT, wardController.getWardMohallaMappings);
+// Get surveyors by ward (must come before /:wardId)
+router.get('/surveyors/:wardId', authMiddleware_1.authenticateJWT, wardController.getSurveyorsByWard);
+// Get supervisors by ward (must come before /:wardId)
+router.get('/supervisors/:wardId', authMiddleware_1.authenticateJWT, wardController.getSupervisorsByWard);
+// Create ward (ADMIN/SUPERADMIN only)
+router.post('/', authMiddleware_1.authenticateJWT, (0, authMiddleware_1.restrictToRoles)(['SUPERADMIN', 'ADMIN']), wardController_1.createWard);
+// Get ward by ID (must come after specific routes)
+router.get('/:wardId', authMiddleware_1.authenticateJWT, wardController_1.getWardById);
+// Update ward (ADMIN/SUPERADMIN only)
+router.put('/:wardId', authMiddleware_1.authenticateJWT, (0, authMiddleware_1.restrictToRoles)(['SUPERADMIN', 'ADMIN']), wardController_1.updateWard);
+// Delete ward (ADMIN/SUPERADMIN only)
+router.delete('/:wardId', authMiddleware_1.authenticateJWT, (0, authMiddleware_1.restrictToRoles)(['SUPERADMIN', 'ADMIN']), wardController_1.deleteWard);
+// Update ward status (ADMIN/SUPERADMIN only)
+router.put('/:wardId/status', authMiddleware_1.authenticateJWT, (0, authMiddleware_1.restrictToRoles)(['SUPERADMIN', 'ADMIN']), wardController.updateWardStatus);
+// ========================================
 // WARD ASSIGNMENT ROUTES
 // ========================================
 // Assign ward to surveyor (ADMIN/SUPERADMIN only)
@@ -66,25 +103,6 @@ router.delete('/remove-supervisor-from-ward', authMiddleware_1.authenticateJWT, 
 // ========================================
 // Update ward status (ADMIN/SUPERADMIN only)
 router.put('/update-status', authMiddleware_1.authenticateJWT, (0, authMiddleware_1.restrictToRoles)(['SUPERADMIN', 'ADMIN']), wardController.updateWardStatus);
-// ========================================
-// QUERY ROUTES (All authenticated users)
-// ========================================
-// Get ward assignments (filtered by role)
-router.get('/assignments', authMiddleware_1.authenticateJWT, wardController.getWardAssignments);
-// Get available wards for dropdowns
-router.get('/available-wards', authMiddleware_1.authenticateJWT, wardController.getAvailableWards);
-// Get available mohallas for dropdowns
-router.get('/available-mohallas', authMiddleware_1.authenticateJWT, wardController.getAvailableMohallas);
-// Get ward-mohalla mappings
-router.get('/ward-mohalla-mappings', authMiddleware_1.authenticateJWT, wardController.getWardMohallaMappings);
-// Get surveyors by ward
-router.get('/surveyors/:wardId', authMiddleware_1.authenticateJWT, wardController.getSurveyorsByWard);
-// Get supervisors by ward
-router.get('/supervisors/:wardId', authMiddleware_1.authenticateJWT, wardController.getSupervisorsByWard);
-// Get all wards
-router.get('/', authMiddleware_1.authenticateJWT, wardController_1.getAllWards);
-// Get wards by zone
-router.get('/zone/:zoneId', authMiddleware_1.authenticateJWT, wardController_1.getWardsByZone);
-// Get all ward statuses
-router.get('/statuses', authMiddleware_1.authenticateJWT, wardController_1.getAllWardStatuses);
+// Add these routes:
+router.get('/statuses', authMiddleware_1.authenticateJWT, (0, authMiddleware_1.restrictToRoles)(['SUPERADMIN', 'ADMIN']), wardController.getWardStatuses);
 exports.default = router;
