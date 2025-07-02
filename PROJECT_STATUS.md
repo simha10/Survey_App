@@ -36,6 +36,16 @@ This document summarizes the current status of the Survey Application, including
 - Surveyor and supervisor dashboard APIs for the mobile app
 - All major survey, property, and QC models implemented
 - Error handling and audit logging
+- **Schema and Assignment Refactor (July 2024):**
+  - SurveyorAssignment now uses `mohallaIds` (array of UUIDs) instead of `mohallaId` (single value)
+  - All backend services, controllers, and DTOs updated to match new schema
+  - Legacy references to `mohallaId`, `wardMohallaMapId`, and related relations removed
+  - Assignment API and enforcement logic improved and tested
+  - Build is now error-free and backend is in sync with frontend assignment logic
+- **Floor Detail Management:**
+  - End-to-end implementation of ResidentialFloorDetail and NonResidentialFloorDetail screens
+  - Floor detail validation and data handling complete
+  - Survey flow now supports full floor-wise property assessment and management
 
 ### 🔄 In Progress
 
@@ -68,7 +78,7 @@ This document summarizes the current status of the Survey Application, including
 
 ### ✅ Ward statuses endpoint is available under /wards/statuses.
 
-### ⏳ Assignment and conflict resolution logic: Service logic exists, but endpoints and UI integration are next.
+### ⏳ Assignment and conflict resolution logic: Service logic exists, endpoints and UI integration are next. Assignment management and conflict UI logic is ready for next steps.
 
 ### ⏳ Old masterDataController/routes remain for other master data (not ULB/Zone/Ward/Mohalla).
 
@@ -89,11 +99,13 @@ This document summarizes the current status of the Survey Application, including
   - SurveyIntermediate screen with survey summary and actions (edit, delete, submit, add floor details)
   - ResidentialIntermediate and NonResidentialIntermediate screens for floor detail management
   - Floor-wise property assessment flow fully implemented
+  - ResidentialFloorDetail and NonResidentialFloorDetail screens fully implemented and tested
+  - Form validation and data handling for floor-specific inputs complete
   - Data submission to backend, confirmation, and reset logic
   - Error handling for submission
 - **API Integration:**
   - Real master data integration for ULBs, zones, wards, mohallas, categories, subcategories
-  - Surveyor assignment fetching from backend
+  - Surveyor assignment fetching from backend (now uses new assignment API and schema)
   - Survey creation and submission to backend
   - Authentication token management
 - **User Management Integration:**
@@ -107,12 +119,16 @@ This document summarizes the current status of the Survey Application, including
   - Secure login, offline support, and data sync
   - AsyncStorage for local data persistence
   - All assignment and dashboard logic implemented and tested
+- **Assignment Logic Refactor (July 2024):**
+  - Mobile app now fetches and enforces assignments using the new backend API and schema (mohallaIds array)
+  - Assignment logic and survey form pre-fill are in sync with backend
+- **Floor Detail Management:**
+  - End-to-end implementation of ResidentialFloorDetail and NonResidentialFloorDetail screens
+  - Floor detail validation and data handling complete
+  - Survey flow now supports full floor-wise property assessment and management
 
 ### 🔄 In Progress
 
-- **Floor Detail Screens:**
-  - ResidentialFloorDetail and NonResidentialFloorDetail screens need implementation
-  - Form validation and data handling for floor-specific inputs
 - **Offline Support:**
   - Local storage for unsynced surveys (basic), needs robust sync logic
 - UI/UX polish and further analytics for supervisors
@@ -175,12 +191,10 @@ This document summarizes the current status of the Survey Application, including
 - ResidentialIntermediate and NonResidentialIntermediate screens for floor detail listing and management
 - UI for adding multiple floors and submitting with main survey
 - Real master data integration for floor numbers and construction types
+- ResidentialFloorDetail and NonResidentialFloorDetail screens fully implemented and tested
+- Form validation and data handling for floor-specific property details complete
 
 ### 🔄 In Progress
-
-- **Floor Detail Input Screens:**
-  - ResidentialFloorDetail and NonResidentialFloorDetail screens implementation
-  - Form validation and data handling for floor-specific property details
 
 ### 📋 Pending
 
@@ -196,7 +210,7 @@ This document summarizes the current status of the Survey Application, including
 - **ResidentialIntermediate Screen:** Lists residential floor details with edit/delete and add new floor functionality
 - **NonResidentialIntermediate Screen:** Lists non-residential floor details with edit/delete and add new floor functionality
 - **API Integration:** Real master data fetching for all dropdowns and form fields
-- **Surveyor Assignment API:** Integration with backend assignment endpoints
+- **Surveyor Assignment API:** Integration with backend assignment endpoints (now using mohallaIds array)
 
 ### 🔄 Next Screen Implementations
 
@@ -238,4 +252,4 @@ This document summarizes the current status of the Survey Application, including
 
 ---
 
-**The project has made significant progress with the complete survey flow implementation including intermediate screens and real API integration. The next major milestone is completing the floor detail input screens to finalize the end-to-end survey submission process.**
+**The project has made significant progress with the complete survey flow implementation including intermediate screens and real API integration. The backend and mobile app are now fully in sync for assignment logic (mohallaIds array). The next major milestone is completing the floor detail input screens to finalize the end-to-end survey submission process.**
