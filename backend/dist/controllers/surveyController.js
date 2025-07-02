@@ -45,9 +45,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.submitSurvey = void 0;
 const surveyDto_1 = require("../dtos/surveyDto");
 const surveyService = __importStar(require("../services/surveyService"));
+const zod_1 = require("zod");
 const submitSurvey = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+    var _a, _b;
     try {
+        // Log the incoming request body for debugging
+        console.log('Received survey submission body:', JSON.stringify(req.body, null, 2));
         const surveyData = surveyDto_1.CreateSurveyDtoSchema.parse(req.body);
         const uploadedById = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
         if (!uploadedById) {
@@ -61,16 +64,29 @@ const submitSurvey = (req, res) => __awaiter(void 0, void 0, void 0, function* (
         res.status(201).json(newSurvey);
     }
     catch (error) {
+        // Enhanced logging for all error types
+        console.log('CATCH BLOCK REACHED');
+        console.log('Error type:', (_b = error === null || error === void 0 ? void 0 : error.constructor) === null || _b === void 0 ? void 0 : _b.name);
+        console.log('Error object:', error);
+        if (error instanceof zod_1.z.ZodError) {
+            // Log the full Zod error details
+            console.log('Zod validation error:', JSON.stringify(error.errors, null, 2));
+            return res.status(400).json({ message: 'Invalid request body', errors: error.errors });
+        }
         if (error instanceof Error) {
             let errors;
             try {
                 errors = JSON.parse(error.message);
             }
-            catch (_b) {
+            catch (_c) {
                 errors = error.message;
             }
+            // Log generic error
+            console.log('Error submitting survey:', errors);
             return res.status(400).json({ message: 'Invalid request body', errors });
         }
+        // Fallback for unknown error types
+        console.log('Unknown error:', error);
         res.status(500).json({ message: 'Error submitting survey', error });
     }
 });

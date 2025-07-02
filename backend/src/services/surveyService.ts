@@ -3,21 +3,42 @@ import { CreateSurveyDto } from '../dtos/surveyDto';
 
 const prisma = new PrismaClient();
 
+function cleanAssessment<T extends object>(assessment: T): Omit<T, 'id'> {
+  const { id, ...rest } = assessment as any;
+  // Remove undefined fields
+  Object.keys(rest).forEach((key) => {
+    if (rest[key] === undefined) {
+      delete rest[key];
+    }
+  });
+  return rest;
+}
+
 export const createSurvey = async (surveyData: CreateSurveyDto, uploadedById: string) => {
   const { surveyDetails, propertyDetails, ownerDetails, locationDetails, otherDetails, residentialPropertyAssessments, nonResidentialPropertyAssessments } = surveyData;
+
+  // Clean residential assessments: remove 'id' and undefined fields
+  const cleanResidentialAssessments = residentialPropertyAssessments
+    ? residentialPropertyAssessments.map(cleanAssessment)
+    : undefined;
+
+  // Clean non-residential assessments: remove 'id' and undefined fields
+  const cleanNonResidentialAssessments = nonResidentialPropertyAssessments
+    ? nonResidentialPropertyAssessments.map(cleanAssessment)
+    : undefined;
 
   return prisma.$transaction(async (tx) => {
     const locationCreate: any = {
       propertyLatitude: locationDetails.propertyLatitude,
       propertyLongitude: locationDetails.propertyLongitude,
       assessmentYear: locationDetails.assessmentYear,
-      propertyTypeId: locationDetails.propertyTypeId,
-      roadTypeId: locationDetails.roadTypeId,
       constructionYear: locationDetails.constructionYear,
-      constructionTypeId: locationDetails.constructionTypeId,
       locality: locationDetails.locality,
       pinCode: locationDetails.pinCode,
       newWardNumber: locationDetails.newWardNumber,
+      propertyType: { connect: { propertyTypeId: locationDetails.propertyTypeId } },
+      roadType: { connect: { roadTypeId: locationDetails.roadTypeId } },
+      constructionType: { connect: { constructionTypeId: locationDetails.constructionTypeId } },
     };
     if (locationDetails.buildingName) locationCreate.buildingName = locationDetails.buildingName;
     if (locationDetails.addressRoadName) locationCreate.addressRoadName = locationDetails.addressRoadName;
@@ -27,12 +48,71 @@ export const createSurvey = async (surveyData: CreateSurveyDto, uploadedById: st
     if (locationDetails.fourWayNorth) locationCreate.fourWayNorth = locationDetails.fourWayNorth;
     if (locationDetails.fourWaySouth) locationCreate.fourWaySouth = locationDetails.fourWaySouth;
 
+    const propertyDetailsCreate: any = {
+      ...propertyDetails,
+      responseType: { connect: { responseTypeId: propertyDetails.responseTypeId } },
+      respondentStatus: { connect: { respondentStatusId: propertyDetails.respondentStatusId } },
+    };
+    delete propertyDetailsCreate.responseTypeId;
+    delete propertyDetailsCreate.respondentStatusId;
+
+    const otherDetailsCreate: any = {
+      ...otherDetails,
+      waterSource: { connect: { waterSourceId: otherDetails.waterSourceId } },
+      disposalType: { connect: { disposalTypeId: otherDetails.disposalTypeId } },
+    };
+    delete otherDetailsCreate.waterSourceId;
+    delete otherDetailsCreate.disposalTypeId;
+
+    const cleanResidentialAssessments = residentialPropertyAssessments
+      ? residentialPropertyAssessments.map(assessment => {
+          const cleaned = cleanAssessment(assessment);
+          const { floorNumberId, occupancyStatusId, constructionNatureId, ...rest } = cleaned;
+          return {
+            ...rest,
+            floorMaster: { connect: { floorNumberId } },
+            occupancyStatus: { connect: { occupancyStatusId } },
+            constructionNature: { connect: { constructionNatureId } },
+          };
+        })
+      : undefined;
+
+    const cleanNonResidentialAssessments = nonResidentialPropertyAssessments
+      ? nonResidentialPropertyAssessments.map(assessment => {
+          const cleaned = cleanAssessment(assessment);
+          const { floorNumberId, nrPropertyCategoryId, nrSubCategoryId, occupancyStatusId, constructionNatureId, ...rest } = cleaned;
+          return {
+            ...rest,
+            floorMaster: { connect: { floorNumberId } },
+            nrPropertyCategory: { connect: { propertyCategoryId: nrPropertyCategoryId } },
+            nrSubCategory: { connect: { subCategoryId: nrSubCategoryId } },
+            occupancyStatus: { connect: { occupancyStatusId } },
+            constructionNature: { connect: { constructionNatureId } },
+          };
+        })
+      : undefined;
+
+    const surveyDetailsCreate: any = {
+      ...surveyDetails,
+      ulb: { connect: { ulbId: surveyDetails.ulbId } },
+      zone: { connect: { zoneId: surveyDetails.zoneId } },
+      ward: { connect: { wardId: surveyDetails.wardId } },
+      mohalla: { connect: { mohallaId: surveyDetails.mohallaId } },
+      surveyType: { connect: { surveyTypeId: surveyDetails.surveyTypeId } },
+    };
+    delete surveyDetailsCreate.ulbId;
+    delete surveyDetailsCreate.zoneId;
+    delete surveyDetailsCreate.wardId;
+    delete surveyDetailsCreate.mohallaId;
+    delete surveyDetailsCreate.surveyTypeId;
+    delete surveyDetailsCreate.uploadedBy;
+
     const newSurvey = await tx.surveyDetails.create({
       data: {
-        ...surveyDetails,
-        uploadedById,
+        ...surveyDetailsCreate,
+        uploadedBy: { connect: { userId: uploadedById } },
         propertyDetails: {
-          create: propertyDetails,
+          create: propertyDetailsCreate,
         },
         ownerDetails: {
           create: ownerDetails,
@@ -41,16 +121,17 @@ export const createSurvey = async (surveyData: CreateSurveyDto, uploadedById: st
           create: locationCreate,
         },
         otherDetails: {
-          create: otherDetails,
+          create: otherDetailsCreate,
         },
-        residentialPropertyAssessments: residentialPropertyAssessments && residentialPropertyAssessments.length > 0
-          ? { create: residentialPropertyAssessments }
+        residentialPropertyAssessments: cleanResidentialAssessments && cleanResidentialAssessments.length > 0
+          ? { create: cleanResidentialAssessments as any }
           : undefined,
-        nonResidentialPropertyAssessments: nonResidentialPropertyAssessments && nonResidentialPropertyAssessments.length > 0
-          ? { create: nonResidentialPropertyAssessments }
+        nonResidentialPropertyAssessments: cleanNonResidentialAssessments && cleanNonResidentialAssessments.length > 0
+          ? { create: cleanNonResidentialAssessments as any }
           : undefined,
       },
       include: {
+        
         propertyDetails: true,
         ownerDetails: true,
         locationDetails: true,

@@ -17,7 +17,7 @@ const SurveyDetailsSchema = z.object({
 
 const PropertyDetailsSchema = z.object({
   responseTypeId: z.number().int().positive(),
-  oldHouseNumber: z.string().max(15),
+  oldHouseNumber: z.string().max(15).optional().nullable(),
   electricityConsumerName: z.string().max(50).optional().nullable(),
   waterSewerageConnectionNumber: z.string().max(50).optional().nullable(),
   respondentName: z.string().max(50),
@@ -32,16 +32,16 @@ const OwnerDetailsSchema = z.object({
 });
 
 const LocationDetailsSchema = z.object({
-  propertyLatitude: z.number().min(0).max(36),
-  propertyLongitude: z.number().min(0).max(36),
+  propertyLatitude: z.number().min(0).max(180).optional().nullable(),
+  propertyLongitude: z.number().min(0).max(360).optional().nullable(),
   assessmentYear: z.string().max(20),
   propertyTypeId: z.number().int().positive(),
   buildingName: z.string().optional().nullable(),
   roadTypeId: z.number().int().positive(),
   constructionYear: z.string().max(20),
   constructionTypeId: z.number().int().positive(),
-  addressRoadName: z.string().optional().nullable(),
-  locality: z.string(),
+  addressRoadName: z.string(),
+  locality: z.string().optional().nullable(),
   pinCode: z.number(),
   landmark: z.string().optional().nullable(),
   fourWayEast: z.string().optional().nullable(),
@@ -53,13 +53,13 @@ const LocationDetailsSchema = z.object({
 
 const OtherDetailsSchema = z.object({
   waterSourceId: z.number().int().positive(),
-  rainWaterHarvestingSystem: YesNoSchema.optional().nullable(),
+  rainWaterHarvestingSystem: YesNoSchema,
   plantation: YesNoSchema.optional().nullable(),
   parking: YesNoSchema.optional().nullable(),
   pollution: YesNoSchema.optional().nullable(),
   pollutionMeasurementTaken: z.string().optional().nullable(),
-  waterSupplyWithin200Meters: YesNoSchema.optional().nullable(),
-  sewerageLineWithin100Meters: YesNoSchema.optional().nullable(),
+  waterSupplyWithin200Meters: YesNoSchema,
+  sewerageLineWithin100Meters: YesNoSchema,
   disposalTypeId: z.number().int().positive(),
   totalPlotArea: z.number(),
   builtupAreaOfGroundFloor: z.number(),
@@ -73,9 +73,9 @@ const ResidentialPropertyAssessmentSchema = z.object({
   occupancyStatusId: z.number().int().positive(), // Occupancy Status (from Occupancy Status Master)
   constructionNatureId: z.number().int().positive(), // Construction Nature (from Construction Nature Master)
   coveredArea: z.number(), // Covered Area (manual entry)
-  allRoomVerandaArea: z.number(), // Total Rooms/Veranda Area (manual entry)
-  allBalconyKitchenArea: z.number(), // Total Balcony/Kitchen Area (manual entry)
-  allGarageArea: z.number(), // All Garage Area (manual entry)
+  allRoomVerandaArea: z.number().optional().nullable(), // Total Rooms/Veranda Area (manual entry)
+  allBalconyKitchenArea: z.number().optional().nullable(), // Total Balcony/Kitchen Area (manual entry)
+  allGarageArea: z.number().optional().nullable(), // All Garage Area (manual entry)
   carpetArea: z.number(), // Carpet Area (manual entry)
 });
 

@@ -297,42 +297,57 @@ export default function SurveyForm({ route }: any) {
   const transformDataForSaving = (data: FormData) => {
     const transformedData = { ...data };
 
-    // Handle numeric conversions, treating empty strings as null
-    const numericFields: (keyof FormData)[] = [
+    // Numeric fields that are required (not nullable)
+    const requiredNumericFields: (keyof FormData)[] = [
       'mapId', 'responseTypeId', 'respondentStatusId', 'propertyTypeId',
       'roadTypeId', 'constructionTypeId', 'pinCode', 'waterSourceId',
-      'disposalTypeId', 'totalPlotArea', 'builtupAreaOfGroundFloor',
-      'propertyLatitude', 'propertyLongitude'
+      'disposalTypeId', 'totalPlotArea', 'builtupAreaOfGroundFloor'
     ];
 
-    numericFields.forEach(field => {
+    requiredNumericFields.forEach(field => {
       const value = transformedData[field];
       if (value === '' || value === null || value === undefined) {
+        (transformedData[field] as any) = undefined;
+      } else if (typeof value === 'string') {
+        (transformedData[field] as any) = Number(value);
+      }
+    });
+
+    // Numeric fields that are optional/nullable
+    const optionalNumericFields: (keyof FormData)[] = [
+      'parcelId', 'propertyLatitude', 'propertyLongitude'
+    ];
+    optionalNumericFields.forEach(field => {
+      const value = transformedData[field];
+      if (value === '' || value === undefined) {
         (transformedData[field] as any) = null;
       } else if (typeof value === 'string') {
         (transformedData[field] as any) = Number(value);
       }
     });
-    
-    // Handle optional Parcel ID
-    if (transformedData.parcelId === '' || transformedData.parcelId === null || transformedData.parcelId === undefined) {
-        transformedData.parcelId = null as any;
-    } else if (typeof transformedData.parcelId === 'string') {
-        transformedData.parcelId = Number(transformedData.parcelId);
-    }
 
-    // Handle optional string fields, converting empty to null
+    // Optional string fields (convert empty to null)
     const optionalStringFields: (keyof FormData)[] = [
-        'subGisId', 'electricityConsumerName', 'waterSewerageConnectionNumber', 
-        'mobileNumber', 'aadharNumber', 'buildingName', 'addressRoadName',
-        'landmark', 'fourWayEast', 'fourWayWest', 'fourWayNorth', 'fourWaySouth',
-        'pollutionMeasurementTaken', 'remarks'
+      'subGisId', 'electricityConsumerName', 'waterSewerageConnectionNumber', 
+      'mobileNumber', 'aadharNumber', 'buildingName', 'addressRoadName',
+      'landmark', 'fourWayEast', 'fourWayWest', 'fourWayNorth', 'fourWaySouth',
+      'pollutionMeasurementTaken', 'remarks'
     ];
-
     optionalStringFields.forEach(field => {
-        if (transformedData[field] === '') {
-            (transformedData[field] as any) = null;
-        }
+      if (transformedData[field] === '') {
+        (transformedData[field] as any) = null;
+      }
+    });
+
+    // YesNo fields (must be 'YES' or 'NO', not null)
+    // Already handled by dropdowns, but ensure no empty string
+    const yesNoFields: (keyof FormData)[] = [
+      'rainWaterHarvestingSystem', 'waterSupplyWithin200Meters', 'sewerageLineWithin100Meters'
+    ];
+    yesNoFields.forEach(field => {
+      if (transformedData[field] === '') {
+        (transformedData[field] as any) = 'NO';
+      }
     });
 
     return transformedData;

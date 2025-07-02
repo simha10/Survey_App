@@ -17,7 +17,7 @@ const SurveyDetailsSchema = zod_1.z.object({
 });
 const PropertyDetailsSchema = zod_1.z.object({
     responseTypeId: zod_1.z.number().int().positive(),
-    oldHouseNumber: zod_1.z.string().max(15),
+    oldHouseNumber: zod_1.z.string().max(15).optional().nullable(),
     electricityConsumerName: zod_1.z.string().max(50).optional().nullable(),
     waterSewerageConnectionNumber: zod_1.z.string().max(50).optional().nullable(),
     respondentName: zod_1.z.string().max(50),
@@ -30,16 +30,16 @@ const OwnerDetailsSchema = zod_1.z.object({
     aadharNumber: zod_1.z.string().length(12).optional().nullable(),
 });
 const LocationDetailsSchema = zod_1.z.object({
-    propertyLatitude: zod_1.z.number().min(0).max(36),
-    propertyLongitude: zod_1.z.number().min(0).max(36),
+    propertyLatitude: zod_1.z.number().min(0).max(180).optional().nullable(),
+    propertyLongitude: zod_1.z.number().min(0).max(360).optional().nullable(),
     assessmentYear: zod_1.z.string().max(20),
     propertyTypeId: zod_1.z.number().int().positive(),
     buildingName: zod_1.z.string().optional().nullable(),
     roadTypeId: zod_1.z.number().int().positive(),
     constructionYear: zod_1.z.string().max(20),
     constructionTypeId: zod_1.z.number().int().positive(),
-    addressRoadName: zod_1.z.string().optional().nullable(),
-    locality: zod_1.z.string(),
+    addressRoadName: zod_1.z.string(),
+    locality: zod_1.z.string().optional().nullable(),
     pinCode: zod_1.z.number(),
     landmark: zod_1.z.string().optional().nullable(),
     fourWayEast: zod_1.z.string().optional().nullable(),
@@ -50,13 +50,13 @@ const LocationDetailsSchema = zod_1.z.object({
 });
 const OtherDetailsSchema = zod_1.z.object({
     waterSourceId: zod_1.z.number().int().positive(),
-    rainWaterHarvestingSystem: YesNoSchema.optional().nullable(),
+    rainWaterHarvestingSystem: YesNoSchema,
     plantation: YesNoSchema.optional().nullable(),
     parking: YesNoSchema.optional().nullable(),
     pollution: YesNoSchema.optional().nullable(),
     pollutionMeasurementTaken: zod_1.z.string().optional().nullable(),
-    waterSupplyWithin200Meters: YesNoSchema.optional().nullable(),
-    sewerageLineWithin100Meters: YesNoSchema.optional().nullable(),
+    waterSupplyWithin200Meters: YesNoSchema,
+    sewerageLineWithin100Meters: YesNoSchema,
     disposalTypeId: zod_1.z.number().int().positive(),
     totalPlotArea: zod_1.z.number(),
     builtupAreaOfGroundFloor: zod_1.z.number(),
@@ -69,9 +69,9 @@ const ResidentialPropertyAssessmentSchema = zod_1.z.object({
     occupancyStatusId: zod_1.z.number().int().positive(), // Occupancy Status (from Occupancy Status Master)
     constructionNatureId: zod_1.z.number().int().positive(), // Construction Nature (from Construction Nature Master)
     coveredArea: zod_1.z.number(), // Covered Area (manual entry)
-    allRoomVerandaArea: zod_1.z.number(), // Total Rooms/Veranda Area (manual entry)
-    allBalconyKitchenArea: zod_1.z.number(), // Total Balcony/Kitchen Area (manual entry)
-    allGarageArea: zod_1.z.number(), // All Garage Area (manual entry)
+    allRoomVerandaArea: zod_1.z.number().optional().nullable(), // Total Rooms/Veranda Area (manual entry)
+    allBalconyKitchenArea: zod_1.z.number().optional().nullable(), // Total Balcony/Kitchen Area (manual entry)
+    allGarageArea: zod_1.z.number().optional().nullable(), // All Garage Area (manual entry)
     carpetArea: zod_1.z.number(), // Carpet Area (manual entry)
 });
 // Non-Residential Floor Details
