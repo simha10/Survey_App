@@ -5,6 +5,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import ProtectedRoute from "@/features/auth/ProtectedRoute";
 import { userApi, User } from "@/lib/api";
 import toast from "react-hot-toast";
+import Loading from "@/components/ui/loading";
 
 const ProfilePage: React.FC = () => {
   const [profile, setProfile] = useState<User | null>(null);
@@ -43,11 +44,7 @@ const ProfilePage: React.FC = () => {
 
   const renderProfileDetails = () => {
     if (isLoading) {
-      return (
-        <div className="flex justify-center items-center p-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
-      );
+      return <Loading className="p-8" />;
     }
 
     if (error) {

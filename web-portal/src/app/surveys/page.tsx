@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import ProtectedRoute from "@/features/auth/ProtectedRoute";
 import toast from "react-hot-toast";
 import MainLayout from "@/components/layout/MainLayout";
+import Loading from "@/components/ui/loading";
 
 interface Survey {
   surveyUniqueCode: string;
@@ -193,9 +194,7 @@ const SurveyManagementPage: React.FC = () => {
   if (loading) {
     return (
       <ProtectedRoute requireWebPortalAccess>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
-        </div>
+        <Loading fullScreen />
       </ProtectedRoute>
     );
   }
