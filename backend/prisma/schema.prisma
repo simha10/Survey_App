@@ -62,7 +62,6 @@ model MohallaMaster {
   mohallaCode         String?              @db.VarChar(20)
   updatedAt           DateTime             @updatedAt
   surveyDetails       SurveyDetails[]
-  surveyorAssignments SurveyorAssignment[]
   wardMohallaMaps     WardMohallaMapping[]
 
   @@index([mohallaName])
@@ -268,7 +267,6 @@ model WardMohallaMapping {
   isActive            Boolean              @default(true)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
-  surveyorAssignments SurveyorAssignment[]
   surveyors           Surveyors[]
   mohalla             MohallaMaster        @relation(fields: [mohallaId], references: [mohallaId])
   ward                WardMaster           @relation(fields: [wardId], references: [wardId])
@@ -281,17 +279,14 @@ model SurveyorAssignment {
   userId           String
   assignmentType   String             @db.VarChar(10)
   wardId           String
-  mohallaId        String
-  wardMohallaMapId String
+  mohallaIds       String[]           @db.VarChar(36)
   assignedById     String
   isActive         Boolean            @default(true)
   assignedBy       UsersMaster        @relation("AssignedBy", fields: [assignedById], references: [userId])
-  mohalla          MohallaMaster      @relation(fields: [mohallaId], references: [mohallaId])
   user             UsersMaster        @relation(fields: [userId], references: [userId])
   ward             WardMaster         @relation(fields: [wardId], references: [wardId])
-  wardMohallaMap   WardMohallaMapping @relation(fields: [wardMohallaMapId], references: [wardMohallaMapId])
 
-  @@unique([userId, wardId, mohallaId])
+  @@unique([userId, wardId])
 }
 
 model WardStatusMapping {
@@ -383,7 +378,7 @@ model SurveyDetails {
   uploadedById                      String
   ulbId                             String
   zoneId                            String
-  wardId                             String
+  wardId                            String
   mohallaId                         String
   surveyTypeId                      Int
   entryDate                         DateTime                           @db.Timestamp(0)

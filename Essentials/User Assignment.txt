@@ -1,0 +1,97 @@
+Tech Stack:
+- Backend: ExpressJS
+- ORM: Prisma with Supabase PostgreSQL
+- Frontend: React Native with Expo
+- State & Auth: AsyncStorage, JWT
+- Validation: Zod
+- App Context: GIS Survey App
+
+Prompt Objective:
+Make the following updates to the codebase, considering the tech stack and database structure. Your task is to integrate these changes coherently across schema.prisma, backend routes, and frontend screen logic — do NOT run any commands, only provide them.
+
+Step 1: Prisma Schema Update
+-----------------------------
+In `schema.prisma`, update the `SurveyorAssignment` model as follows:
+
+- Replace `mohallaId` with `mohallaIds`, which is a `String[]` field.
+- These strings are UUIDs of `mohallaId` from `MohallaMaster`.
+- The field should look like: `mohallaIds String[] @db.VarChar(36)`
+- Keep only one assignment table — do not create separate role-wise assignment tables.
+
+Also, update `SurveyDetails` model:
+- Keep ulbId, zoneId, wardId, mohallaId pointing to their respective Master tables as foreign keys.
+- In actual usage (backend/frontend), only `mohallaId` will be selectable by the surveyor.
+- These 4 fields should be populated based on the surveyor’s assignment, not user choice.
+
+Step 2: Backend API Changes (ExpressJS)
+---------------------------------------
+Create a new authenticated route:
+`GET /api/surveyor/assigned-mohallas`
+
+Functionality:
+- Extract userId from the authenticated JWT.
+- Fetch `SurveyorAssignment` where `userId === req.user.id AND isActive === true`.
+- Use the `mohallaIds` array to perform:
+
+```ts
+const mohallas = await prisma.mohallaMaster.findMany({
+  where: { mohallaId: { in: assignment.mohallaIds } },
+});
+
+- Return the mohalla list: [{ mohallaId, mohallaName }]
+
+- Also return assignment-related info (ulbId, zoneId, wardId) to pre-fill survey form.
+
+Step 3: Frontend Logic (React Native)
+-------------------------------------
+
+In the login flow:
+
+- After successful login and token storage, fetch the logged-in user’s assignment via /api/surveyor/assigned-mohallas.
+
+- Store the entire assignment object in AsyncStorage as surveyorAssignment.
+
+In the Survey Form screen:
+
+- Fetch the assignment from AsyncStorage.
+
+- Use the assignment's ulbId, zoneId, and wardId values to pre-fill the respective dropdowns (disabled, read-only).
+
+- Populate the mohallaId dropdown from the mohallaIds list, mapping to names using MohallaMaster data.
+
+In the DTO payload for survey submission:
+
+- Ensure ulbId, zoneId, wardId, and mohallaId are populated from the assignment.
+
+- Validate that selected mohallaId exists in mohallaIds.
+
+Step 4: Zod Validation Notes
+----------------------------
+
+- mohallaId must be validated with z.string().uuid()
+
+- No changes required in DTO other than ensuring mohallaId comes from the assignment
+
+- All optional fields (string or number) must be null, not undefined or empty string
+
+Step 5: Commands
+----------------
+
+You must provide the user with commands but do NOT execute them automatically.
+
+Command to run migration manually:
+
+npx prisma migrate dev --name update-surveyor-assignment
+
+If syncing with Supabase shadow database becomes necessary and you face drift errors, suggest:
+
+npx prisma db pull
+npx prisma migrate dev --name sync-with-supabase
+
+Final Notes:
+
+- Do not normalize mohallaIds into a separate table
+
+- Do not mutate any other models unrelated to this feature
+
+- Keep all changes idempotent and minimal
