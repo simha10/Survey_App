@@ -15,9 +15,10 @@ import {
 import { Label } from "@/components/ui/label";
 import MainLayout from "@/components/layout/MainLayout";
 import Loading from "@/components/ui/loading";
-import { toast } from "react-toastify";
-
-// To use toast notifications, run: npm install react-toastify
+import toast from "react-hot-toast";
+import axios from "axios";
+import { Loader2 } from "lucide-react"; // For loading spinner
+import { useAuth } from "@/features/auth/AuthContext";
 
 const USER_TYPES = [
   { label: "Surveyor", value: "SURVEYOR" },
@@ -25,6 +26,7 @@ const USER_TYPES = [
 ];
 
 const UserAssignmentPage: React.FC = () => {
+  const { user } = useAuth();
   const [userType, setUserType] = useState("");
   const [assignmentDate, setAssignmentDate] = useState("");
   const [selectedUlb, setSelectedUlb] = useState("");
@@ -35,6 +37,12 @@ const UserAssignmentPage: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [wardMohallaMap, setWardMohallaMap] = useState<{
+    [wardId: string]: string[];
+  }>({});
+  const [mohallaAssignments, setMohallaAssignments] = useState<{
+    [wardId: string]: { [mohallaId: string]: any };
+  }>({});
 
   useEffect(() => {
     // Simulate loading time for consistency
@@ -92,48 +100,124 @@ const UserAssignmentPage: React.FC = () => {
     setSelectedUser("");
   }, [userType]);
 
+  // Fetch mohallas and assignment status for selected wards
+  useEffect(() => {
+    const fetchMohallasAndAssignments = async () => {
+      const newWardMohallaMap: { [wardId: string]: string[] } = {};
+      const newMohallaAssignments: {
+        [wardId: string]: { [mohallaId: string]: any };
+      } = {};
+      const token = localStorage.getItem("auth_token");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      for (const wardId of selectedWards) {
+        // Fetch mohallas for this ward
+        const mohallas = await masterDataApi.getMohallasByWard(wardId);
+        newWardMohallaMap[wardId] = mohallas.map((m: any) => m.mohallaId);
+        // Fetch assignment status for this ward
+        const res = await axios.get(`/api/assignments/ward/${wardId}`, {
+          headers,
+        });
+        const assignments = res.data.assignments || [];
+        const mohallaMap: { [mohallaId: string]: any } = {};
+        assignments.forEach((a: any) => {
+          a.mohallaIds.forEach((mid: string) => {
+            mohallaMap[mid] = a.user;
+          });
+        });
+        newMohallaAssignments[wardId] = mohallaMap;
+      }
+      setWardMohallaMap(newWardMohallaMap);
+      setMohallaAssignments(newMohallaAssignments);
+    };
+    if (selectedWards.length > 0) {
+      fetchMohallasAndAssignments();
+    } else {
+      setWardMohallaMap({});
+      setMohallaAssignments({});
+    }
+  }, [selectedWards]);
+
+  // Auto-select all unassigned mohallas for each ward
+  useEffect(() => {
+    if (Object.keys(wardMohallaMap).length > 0) {
+      const newSelectedMohallas: string[] = [];
+      Object.entries(wardMohallaMap).forEach(([wardId, mohallaIds]) => {
+        mohallaIds.forEach((mid) => {
+          if (!mohallaAssignments[wardId] || !mohallaAssignments[wardId][mid]) {
+            newSelectedMohallas.push(mid);
+          }
+        });
+      });
+      setSelectedMohallas(newSelectedMohallas);
+    }
+  }, [wardMohallaMap, mohallaAssignments]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser) {
       toast.error("Please select a user to assign.");
       return;
     }
+    const confirmed = window.confirm(
+      "Are you sure you want to assign the selected mohallas to this user?"
+    );
+    if (!confirmed) return;
     setSubmitting(true);
     try {
-      if (userType === "SURVEYOR") {
-        // Assign wards
-        if (selectedWards.length > 0) {
-          await wardApi.bulkAssign({
-            userId: selectedUser,
-            type: "WARD",
-            wardIds: selectedWards,
-            assignmentDate,
-          });
-        }
-        // Assign mohallas
-        if (selectedMohallas.length > 0) {
-          await wardApi.bulkAssign({
-            userId: selectedUser,
-            type: "MOHALLA",
-            mohallaIds: selectedMohallas,
-            assignmentDate,
-          });
-        }
-      } else if (userType === "SUPERVISOR") {
-        if (selectedWards.length > 0) {
-          await wardApi.bulkAssign({
-            userId: selectedUser,
-            type: "WARD",
-            wardIds: selectedWards,
-            assignmentDate,
-          });
-        }
+      // Build assignments array: [{ wardId, mohallaIds }]
+      const assignments = Object.entries(wardMohallaMap)
+        .map(([wardId, mohallaIds]) => ({
+          wardId,
+          mohallaIds: mohallaIds.filter((mid) =>
+            selectedMohallas.includes(mid)
+          ),
+        }))
+        .filter((a) => a.mohallaIds.length > 0);
+      if (assignments.length === 0) {
+        toast.error("No mohallas selected for assignment.");
+        setSubmitting(false);
+        return;
       }
-      toast.success("Assignment successful!");
-      setSelectedWards([]);
-      setSelectedMohallas([]);
-      setSelectedUser("");
+      const payload = {
+        userId: selectedUser,
+        assignmentType: userType,
+        assignments,
+      };
+      const token = localStorage.getItem("auth_token");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      const res = await axios.post("/api/assignments/bulk", payload, {
+        headers,
+      });
+      console.log("Assignment API response:", res.data);
+      if (
+        res.data.success &&
+        res.data.assigned &&
+        res.data.assigned.length > 0
+      ) {
+        toast.success("Assignment successful!");
+        if (res.data.conflicts && res.data.conflicts.length > 0) {
+          toast("Some mohallas were already assigned and skipped.", {
+            icon: "⚠️",
+          });
+        }
+        setSelectedWards([]);
+        setSelectedMohallas([]);
+        setSelectedUser("");
+      } else if (
+        res.data.success &&
+        (!res.data.assigned || res.data.assigned.length === 0)
+      ) {
+        toast(
+          "No new mohallas were assigned. All selected mohallas may already be assigned.",
+          { icon: "⚠️" }
+        );
+      } else {
+        toast.error("Assignment failed");
+      }
     } catch (err: any) {
+      console.error("Assignment API error:", err);
       toast.error(err?.response?.data?.error || "Assignment failed");
     } finally {
       setSubmitting(false);
@@ -288,39 +372,61 @@ const UserAssignmentPage: React.FC = () => {
                 </div>
               )}
             </div>
-            <div className="flex flex-col gap-2 md:col-span-2">
-              <Label>
-                Mohalla(s) <span className="text-red-500">*</span>
-              </Label>
-              {mohallasLoading ? (
-                <div>Loading...</div>
-              ) : mohallas.length === 0 ? (
-                <div>No mohallas found</div>
-              ) : (
-                <div className="flex flex-wrap gap-4">
-                  {mohallas.map((mohalla: any) => (
-                    <label
-                      key={mohalla.mohallaId}
-                      className="flex items-center gap-2"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedMohallas.includes(mohalla.mohallaId)}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setSelectedMohallas((prev) =>
-                            checked
-                              ? [...prev, mohalla.mohallaId]
-                              : prev.filter((id) => id !== mohalla.mohallaId)
-                          );
-                        }}
-                      />
-                      {mohalla.mohallaName}
-                    </label>
-                  ))}
+            {/* Mohalla selection per ward */}
+            {selectedWards.map((wardId) => {
+              const mohallaIds = wardMohallaMap[wardId] || [];
+              return (
+                <div key={wardId} className="flex flex-col gap-2 md:col-span-2">
+                  <Label>
+                    Mohalla(s) for Ward:{" "}
+                    {wards.find((w: any) => w.wardId === wardId)?.wardName}
+                  </Label>
+                  {mohallaIds.length === 0 ? (
+                    <div>No mohallas found</div>
+                  ) : (
+                    <div className="flex flex-wrap gap-4">
+                      {mohallaIds.map((mohallaId) => {
+                        const assignedUser =
+                          mohallaAssignments[wardId]?.[mohallaId];
+                        const isAssigned = Boolean(assignedUser);
+                        return (
+                          <label
+                            key={mohallaId}
+                            className="flex items-center gap-2"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedMohallas.includes(mohallaId)}
+                              disabled={isAssigned}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setSelectedMohallas((prev) =>
+                                  checked
+                                    ? [...prev, mohallaId]
+                                    : prev.filter((id) => id !== mohallaId)
+                                );
+                              }}
+                            />
+                            {(() => {
+                              const mohalla = mohallas.find(
+                                (m: any) => m.mohallaId === mohallaId
+                              );
+                              return mohalla ? mohalla.mohallaName : mohallaId;
+                            })()}
+                            {isAssigned && (
+                              <span className="text-xs text-red-500 ml-2">
+                                (Assigned to{" "}
+                                {assignedUser.name || assignedUser.username})
+                              </span>
+                            )}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              );
+            })}
             <div className="flex flex-col gap-2">
               <Label>
                 User <span className="text-red-500">*</span>
@@ -354,8 +460,13 @@ const UserAssignmentPage: React.FC = () => {
               </Select>
             </div>
             <div className="col-span-1 md:col-span-2 flex justify-end mt-4">
-              <Button type="submit" className="px-8 py-2" disabled={submitting}>
-                Submit
+              <Button
+                type="submit"
+                className="px-10 py-3 text-lg font-bold bg-gradient-to-r from-amber-500 to-yellow-400 text-black rounded-lg shadow-lg hover:from-yellow-400 hover:to-amber-500 transition-all duration-200 flex items-center gap-2 min-w-[140px] justify-center"
+                disabled={submitting}
+              >
+                {submitting && <Loader2 className="animate-spin w-5 h-5" />}
+                {submitting ? "Assigning..." : "Submit"}
               </Button>
             </div>
           </form>
@@ -391,10 +502,25 @@ const UserAssignmentPage: React.FC = () => {
               </div>
               <div>
                 <b>Mohallas:</b>{" "}
-                {mohallas
-                  .filter((m: any) => selectedMohallas.includes(m.mohallaId))
-                  .map((m: any) => m.mohallaName)
-                  .join(", ") || "-"}
+                {selectedWards
+                  .map((wardId) => {
+                    const mohallaIds = wardMohallaMap[wardId] || [];
+                    const mohallaNames = mohallaIds
+                      .filter((mid) => selectedMohallas.includes(mid))
+                      .map((mid) => {
+                        const mohalla = mohallas.find(
+                          (m: any) => m.mohallaId === mid
+                        );
+                        return mohalla ? mohalla.mohallaName : mid;
+                      });
+                    return mohallaNames.length > 0
+                      ? `${
+                          wards.find((w: any) => w.wardId === wardId)?.wardName
+                        }: ${mohallaNames.join(", ")}`
+                      : null;
+                  })
+                  .filter(Boolean)
+                  .join("; ") || "-"}
               </div>
             </div>
           </div>

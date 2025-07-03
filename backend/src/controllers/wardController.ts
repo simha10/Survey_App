@@ -302,7 +302,6 @@ export const getSupervisorsByWard = async (req: Request, res: Response) => {
 export const getAllWards = async (req: Request, res: Response) => {
   try {
     const wards = await prisma.wardMaster.findMany({
-      where: { isActive: true },
       select: {
         wardId: true,
         newWardNumber: true,
@@ -635,7 +634,6 @@ export const searchWards = async (req: Request, res: Response) => {
 export const getAllWardsWithStatus = async (req: Request, res: Response) => {
   try {
     const wards = await prisma.wardMaster.findMany({
-      where: { isActive: true },
       select: {
         wardId: true,
         newWardNumber: true,

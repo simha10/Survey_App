@@ -22,10 +22,10 @@ export default function StatusChangeModal({
 
   const queryClient = useQueryClient();
 
-  // Fetch all wards (no status filter)
+  // Fetch all wards (with status, no status filter)
   const { data: wards = [] } = useQuery({
     queryKey: ["all-wards"],
-    queryFn: masterDataApi.getAllWards,
+    queryFn: masterDataApi.getAllWardsWithStatus,
     enabled: isOpen,
   });
 
@@ -64,6 +64,13 @@ export default function StatusChangeModal({
     },
   });
 
+  // Refetch wards after status update to get the latest status
+  useEffect(() => {
+    if (updateStatusMutation.isSuccess) {
+      queryClient.invalidateQueries({ queryKey: ["all-wards"] });
+    }
+  }, [updateStatusMutation.isSuccess, queryClient]);
+
   // Get current status for selected ward
   useEffect(() => {
     if (selectedWard) {
@@ -80,7 +87,7 @@ export default function StatusChangeModal({
       setCurrentStatus("");
       setSelectedStatus(null);
     }
-  }, [selectedWard, wards]);
+  }, [selectedWard, wards, updateStatusMutation.isSuccess]);
 
   // Close dropdown when clicking outside
   useEffect(() => {

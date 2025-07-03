@@ -14,6 +14,7 @@ import zoneRoutes from './routes/zoneRoutes';
 import mohallaRoutes from './routes/mohallaRoutes';
 import qcRoutes from './routes/qcRoutes';
 import reportsRoutes from './routes/reportsRoutes';
+import assignmentRoutes from './routes/assignmentRoutes';
 
 dotenv.config();
 
@@ -92,6 +93,9 @@ app.use('/api/qc', authenticateJWT, qcRoutes);
 
 // Protected routes - Reports
 app.use('/api/reports', authenticateJWT, reportsRoutes);
+
+// Protected routes - Assignments
+app.use('/api/assignments', authenticateJWT, assignmentRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {
