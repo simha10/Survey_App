@@ -222,6 +222,9 @@ model UsersMaster {
   surveyors                     Surveyors?
   userRoleMaps                  UserRoleMapping[]
   wardStatusMaps                WardStatusMapping[]
+
+  @@index([username])
+  @@index([mobileNumber])
 }
 
 model RolePermissionMaster {
@@ -287,6 +290,9 @@ model SurveyorAssignment {
   ward           WardMaster  @relation(fields: [wardId], references: [wardId])
 
   @@unique([userId, wardId])
+  @@index([userId])
+  @@index([wardId])
+  @@index([isActive])
 }
 
 model WardStatusMapping {
@@ -300,6 +306,8 @@ model WardStatusMapping {
   status       WardStatusMaster @relation(fields: [wardStatusId], references: [wardStatusId])
 
   @@unique([wardId, wardStatusId])
+  @@index([wardId])
+  @@index([wardStatusId])
 }
 
 model SurveyStatusMapping {
@@ -315,6 +323,9 @@ model SurveyStatusMapping {
   survey           SurveyDetails       @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
 
   @@unique([surveyUniqueCode, surveyStatusId])
+  @@index([surveyUniqueCode])
+  @@index([surveyStatusId])
+  @@index([changedById])
 }
 
 model UserRoleMapping {
@@ -326,6 +337,8 @@ model UserRoleMapping {
   user          UsersMaster          @relation(fields: [userId], references: [userId])
 
   @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
 }
 
 model Session {
@@ -386,10 +399,6 @@ model SurveyDetails {
   mapId                             Int
   gisId                             String                             @db.VarChar(12)
   subGisId                          String?                            @db.VarChar(15)
-  isSynced                          Boolean                            @default(false)
-  syncStatus                        SyncStatusEnum                     @default(PENDING)
-  lastSyncAttempt                   DateTime?
-  syncErrorMessage                  String?
   createdAt                         DateTime                           @default(now())
   updatedAt                         DateTime                           @updatedAt
   locationDetails                   LocationDetails?
@@ -409,9 +418,11 @@ model SurveyDetails {
   surveyStatusMaps                  SurveyStatusMapping[]
 
   @@index([uploadedById])
-  @@index([isSynced])
-  @@index([syncStatus])
   @@index([createdAt])
+  @@index([ulbId])
+  @@index([zoneId])
+  @@index([wardId])
+  @@index([mohallaId])
 }
 
 model PropertyDetails {
@@ -441,7 +452,7 @@ model LocationDetails {
   propertyLatitude   Decimal?               @db.Decimal(9, 6)
   propertyLongitude  Decimal?               @db.Decimal(9, 6)
   assessmentYear     String                 @db.VarChar(20)
-  propertyTypeId     Int
+  propertyTypeId     Int?
   buildingName       String?
   roadTypeId         Int
   constructionYear   String                 @db.VarChar(20)
@@ -456,7 +467,7 @@ model LocationDetails {
   fourWaySouth       String?
   newWardNumber      String                 @db.VarChar(20)
   constructionType   ConstructionTypeMaster @relation(fields: [constructionTypeId], references: [constructionTypeId])
-  propertyType       PropertyTypeMaster     @relation(fields: [propertyTypeId], references: [propertyTypeId])
+  propertyType       PropertyTypeMaster?    @relation(fields: [propertyTypeId], references: [propertyTypeId])
   roadType           RoadTypeMaster         @relation(fields: [roadTypeId], references: [roadTypeId])
   survey             SurveyDetails          @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
 }
@@ -495,6 +506,9 @@ model ResidentialPropertyAssessment {
   floorMaster           FloorMaster              @relation(fields: [floorNumberId], references: [floorNumberId])
   occupancyStatus       OccupancyStatusMaster    @relation(fields: [occupancyStatusId], references: [occupancyStatusId])
   survey                SurveyDetails            @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
+
+  @@index([surveyUniqueCode])
+  @@index([floorNumberId])
 }
 
 model NonResidentialPropertyAssessment {
@@ -518,10 +532,12 @@ model NonResidentialPropertyAssessment {
 
   @@index([nrPropertyCategoryId])
   @@index([nrSubCategoryId])
+  @@index([surveyUniqueCode])
+  @@index([occupancyStatusId])
 }
 
 model PropertyAttachmentDetails {
-  surveyUniqueCode String        @id @db.Uuid
+  surveyUniqueCode String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   image1Url        String?       @db.VarChar(50)
   image2Url        String?       @db.VarChar(50)
   image3Url        String?       @db.VarChar(50)
@@ -536,7 +552,6 @@ model PropertyAttachmentDetails {
 }
 
 model QCRecord {
-  qcRecordId       String        @id @default(uuid())
   surveyUniqueCode String        @db.Uuid
   qcLevel          Int
   qcStatus         QCStatusEnum
@@ -545,6 +560,12 @@ model QCRecord {
   reviewedAt       DateTime      @default(now())
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
+  RIRemark         String?
+  errorType        QCErrorType?
+  gisTeamRemark    String?
+  isError          Boolean       @default(false)
+  surveyTeamRemark String?
+  qcRecordId       String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   reviewedBy       UsersMaster   @relation(fields: [reviewedById], references: [userId])
   survey           SurveyDetails @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode], onDelete: Cascade)
 
@@ -646,17 +667,17 @@ enum RolePermission {
   SURVEYOR
 }
 
-enum SyncStatusEnum {
-  PENDING
-  SYNCED
-  FAILED
-  CONFLICT
-}
-
 enum QCStatusEnum {
   PENDING
   APPROVED
   REJECTED
   DUPLICATE
   NEEDS_REVISION
+}
+
+enum QCErrorType {
+  MISSING
+  DUPLICATE
+  OTHER
+  NONE
 }

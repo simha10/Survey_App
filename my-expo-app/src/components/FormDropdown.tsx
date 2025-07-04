@@ -1,37 +1,82 @@
 import React, { forwardRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useState } from 'react';
 
 interface FormDropdownProps {
   label: string;
   required?: boolean;
-  items: { label: string; value: string | number }[];
+  items?: { label: string; value: string | number }[];
   value: string | number;
   onValueChange: (value: string | number) => void;
+  /**
+   * If provided, will load options from masterData[masterDataKey] in AsyncStorage
+   */
+  masterDataKey?: string;
+  labelKey?: string;
+  valueKey?: string;
 }
 
-const FormDropdown = forwardRef<Picker, FormDropdownProps>(({ label, required, items, value, onValueChange }, ref) => (
-  <View style={styles.container}>
-    <Text style={styles.label}>
-      {label}
-      {required && <Text style={styles.required}> *</Text>}
-    </Text>
-    <View style={styles.pickerContainer}>
-      <Picker
-        ref={ref}
-        selectedValue={value}
-        onValueChange={onValueChange}
-        style={styles.picker}
-        itemStyle={styles.pickerItem}
-      >
-        <Picker.Item label="Select an item..." value="" />
-        {items.map((item) => (
-          <Picker.Item key={item.value} label={item.label} value={item.value} />
-        ))}
-      </Picker>
-    </View>
-  </View>
-));
+/**
+ * FormDropdown is now offline-first: if masterDataKey is provided, options are always loaded from masterData in AsyncStorage.
+ * No direct API calls are made here.
+ */
+const FormDropdown = forwardRef<Picker, FormDropdownProps>(
+  ({ label, required, items = [], value, onValueChange, masterDataKey, labelKey = 'name', valueKey = 'id' }, ref) => {
+    const [options, setOptions] = useState(items);
+
+    useEffect(() => {
+      const loadOptionsFromMasterData = async () => {
+        if (masterDataKey) {
+          try {
+            const json = await AsyncStorage.getItem('masterData');
+            if (json) {
+              const masterData = JSON.parse(json);
+              const arr = masterData[masterDataKey] || [];
+              setOptions(
+                arr.map((item: any) => ({
+                  label: item[labelKey],
+                  value: item[valueKey],
+                }))
+              );
+            } else {
+              setOptions([]);
+            }
+          } catch (e) {
+            setOptions([]);
+          }
+        } else {
+          setOptions(items);
+        }
+      };
+      loadOptionsFromMasterData();
+    }, [masterDataKey, items, labelKey, valueKey]);
+
+    return (
+      <View style={styles.container}>
+        <Text style={styles.label}>
+          {label}
+          {required && <Text style={styles.required}> *</Text>}
+        </Text>
+        <View style={styles.pickerContainer}>
+          <Picker
+            ref={ref}
+            selectedValue={value}
+            onValueChange={onValueChange}
+            style={styles.picker}
+            itemStyle={styles.pickerItem}
+          >
+            <Picker.Item label="Select an item..." value="" />
+            {options.map((item) => (
+              <Picker.Item key={item.value} label={item.label} value={item.value} />
+            ))}
+          </Picker>
+        </View>
+      </View>
+    );
+  }
+);
 
 const styles = StyleSheet.create({
   container: {

@@ -14,19 +14,19 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
-import { getLocalSurvey, updateLocalSurvey } from '../utils/storage';
-import { fetchMasterData } from '../services/surveyService';
+import { getUnsyncedSurveys, saveSurveyLocally, getSelectedAssignment, getMasterData } from '../utils/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface FloorDetail {
   id: string;
   floorNumberId: number;
   occupancyStatusId: number;
   constructionNatureId: number;
-  coveredArea: string;
+  coveredArea: number;
   allRoomVerandaArea: string;
   allBalconyKitchenArea: string;
   allGarageArea: string;
-  carpetArea: string;
+  carpetArea: number;
 }
 
 interface MasterData {
@@ -57,17 +57,18 @@ export default function ResidentialFloorDetail() {
     floorNumberId: 0,
     occupancyStatusId: 0,
     constructionNatureId: 0,
-    coveredArea: '',
+    coveredArea: 0,
     allRoomVerandaArea: '',
     allBalconyKitchenArea: '',
     allGarageArea: '',
-    carpetArea: '',
+    carpetArea: 0,
   });
 
   const surveyId = (route.params as any)?.surveyId;
   const editMode = (route.params as any)?.editMode || false;
   const floorId = (route.params as any)?.floorId;
   const floorData = (route.params as any)?.floorData;
+  const [assignment, setAssignment] = useState<any>(null);
 
   useEffect(() => {
     loadMasterData();
@@ -80,11 +81,15 @@ export default function ResidentialFloorDetail() {
         id: `floor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       }));
     }
+    (async () => {
+      const selected = await getSelectedAssignment();
+      if (selected) setAssignment(selected);
+    })();
   }, []);
 
   const loadMasterData = async () => {
     try {
-      const data = await fetchMasterData();
+      const data = await getMasterData();
       setMasterData({
         floorNumbers: data.floorNumbers || [],
         occupancyStatuses: data.occupancyStatuses || [],
@@ -98,30 +103,25 @@ export default function ResidentialFloorDetail() {
     }
   };
 
-  const calculateCarpetArea = () => {
-    const coveredArea = parseFloat(formData.coveredArea) || 0;
-    // Carpet area is 80% of covered area
-    const carpet = coveredArea * 0.8;
-    return Number.isInteger(carpet) ? String(carpet) : carpet.toFixed(2);
-  };
-
   const handleInputChange = (field: keyof FloorDetail, value: string) => {
     setFormData(prev => {
       const newData = { ...prev };
-      
-      // Handle number fields
-      if (field === 'floorNumberId' || field === 'occupancyStatusId' || 
-          field === 'constructionNatureId') {
+      if (field === 'coveredArea') {
+        // Only allow numbers, parse as float, default to 0 if invalid
+        const num = parseFloat(value);
+        newData.coveredArea = isNaN(num) ? 0 : num;
+        // Auto-calculate carpet area as a number
+        newData.carpetArea = isNaN(num) ? 0 : parseFloat((num * 0.8).toFixed(2));
+      } else if (
+        field === 'floorNumberId' ||
+        field === 'occupancyStatusId' ||
+        field === 'constructionNatureId'
+      ) {
         newData[field] = parseInt(value) || 0;
       } else {
-        newData[field] = value;
+        // For string fields (allRoomVerandaArea, allBalconyKitchenArea, allGarageArea)
+        newData[field as keyof Pick<FloorDetail, 'allRoomVerandaArea' | 'allBalconyKitchenArea' | 'allGarageArea'>] = value;
       }
-      
-      // Auto-calculate carpet area when covered area changes
-      if (field === 'coveredArea') {
-        newData.carpetArea = calculateCarpetArea();
-      }
-      
       return newData;
     });
   };
@@ -139,7 +139,7 @@ export default function ResidentialFloorDetail() {
       Alert.alert('Validation Error', 'Please select Construction Nature');
       return false;
     }
-    if (!formData.coveredArea || parseFloat(formData.coveredArea) <= 0) {
+    if (!formData.coveredArea || formData.coveredArea <= 0) {
       Alert.alert('Validation Error', 'Please enter a valid Covered Area');
       return false;
     }
@@ -151,57 +151,59 @@ export default function ResidentialFloorDetail() {
 
     setSaving(true);
     try {
-      const survey = await getLocalSurvey(surveyId);
-      if (!survey || Array.isArray(survey)) {
-        Alert.alert('Error', 'Survey not found');
-        return;
-      }
+      const allSurveys = await getUnsyncedSurveys();
+      const idx = allSurveys.findIndex((s: any) => s.id === surveyId);
+      if (idx > -1) {
+        const survey = allSurveys[idx];
+        const processedFormData = {
+          ...formData,
+          coveredArea: formData.coveredArea || 0,
+          allRoomVerandaArea: formData.allRoomVerandaArea === '' ? null : parseFloat(formData.allRoomVerandaArea),
+          allBalconyKitchenArea: formData.allBalconyKitchenArea === '' ? null : parseFloat(formData.allBalconyKitchenArea),
+          allGarageArea: formData.allGarageArea === '' ? null : parseFloat(formData.allGarageArea),
+          carpetArea: formData.carpetArea || 0,
+          floorNumberId: Number(formData.floorNumberId),
+          occupancyStatusId: Number(formData.occupancyStatusId),
+          constructionNatureId: Number(formData.constructionNatureId),
+        };
 
-      const processedFormData = {
-        ...formData,
-        coveredArea: parseFloat(formData.coveredArea) || 0,
-        allRoomVerandaArea: formData.allRoomVerandaArea === '' ? null : parseFloat(formData.allRoomVerandaArea),
-        allBalconyKitchenArea: formData.allBalconyKitchenArea === '' ? null : parseFloat(formData.allBalconyKitchenArea),
-        allGarageArea: formData.allGarageArea === '' ? null : parseFloat(formData.allGarageArea),
-        carpetArea: parseFloat(formData.carpetArea) || 0,
-        floorNumberId: Number(formData.floorNumberId),
-        occupancyStatusId: Number(formData.occupancyStatusId),
-        constructionNatureId: Number(formData.constructionNatureId),
-      };
+        const existingFloors = survey.data && survey.data.residentialPropertyAssessments ? survey.data.residentialPropertyAssessments : [];
+        let updatedFloors;
 
-      const existingFloors = survey.data && survey.data.residentialPropertyAssessments ? survey.data.residentialPropertyAssessments : [];
-      let updatedFloors;
+        if (editMode) {
+          // Update existing floor
+          updatedFloors = existingFloors.map(floor =>
+            floor.id === floorId ? processedFormData : floor
+          );
+        } else {
+          // Add new floor
+          updatedFloors = [...existingFloors, processedFormData];
+        }
 
-      if (editMode) {
-        // Update existing floor
-        updatedFloors = existingFloors.map(floor =>
-          floor.id === floorId ? processedFormData : floor
-        );
-      } else {
-        // Add new floor
-        updatedFloors = [...existingFloors, processedFormData];
-      }
-
-      const updatedSurvey = {
-        ...survey,
-        data: {
-          ...survey.data,
-          residentialPropertyAssessments: updatedFloors,
-        },
-      };
-
-      await updateLocalSurvey(surveyId, updatedSurvey);
-      
-      Alert.alert(
-        'Success',
-        editMode ? 'Floor detail updated successfully' : 'Floor detail added successfully',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
+        const updatedSurvey = {
+          ...survey,
+          data: {
+            ...survey.data,
+            residentialPropertyAssessments: updatedFloors,
           },
-        ]
-      );
+        };
+
+        if (idx > -1) {
+          allSurveys[idx] = updatedSurvey;
+          await saveSurveyLocally(updatedSurvey);
+        }
+        
+        Alert.alert(
+          'Success',
+          editMode ? 'Floor detail updated successfully' : 'Floor detail added successfully',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.goBack(),
+            },
+          ]
+        );
+      }
     } catch (error) {
       console.error('Error saving floor detail:', error);
       Alert.alert('Error', 'Failed to save floor detail');
@@ -235,7 +237,7 @@ export default function ResidentialFloorDetail() {
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Floor Number */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Floor Number *</Text>
+            <Text style={{color: '#111'}}>Floor Number<Text style={{color: 'red'}}>*</Text></Text>
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.floorNumberId}
@@ -256,7 +258,7 @@ export default function ResidentialFloorDetail() {
 
           {/* Occupancy Status */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Occupancy Status *</Text>
+            <Text style={{color: '#111'}}>Occupancy Status<Text style={{color: 'red'}}>*</Text></Text>
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.occupancyStatusId}
@@ -277,7 +279,7 @@ export default function ResidentialFloorDetail() {
 
           {/* Construction Nature */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Construction Nature *</Text>
+            <Text style={{color: '#111'}}>Construction Nature<Text style={{color: 'red'}}>*</Text></Text>
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.constructionNatureId}
@@ -298,19 +300,19 @@ export default function ResidentialFloorDetail() {
 
           {/* Covered Area */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Covered Area (sq ft) *</Text>
+            <Text style={{color: '#111'}}>Covered Area (sq ft)<Text style={{color: 'red'}}>*</Text></Text>
             <TextInput
               style={styles.input}
-              value={formData.coveredArea}
+              value={formData.coveredArea === 0 ? '' : String(formData.coveredArea)}
               onChangeText={(value) => handleInputChange('coveredArea', value)}
               placeholder="Enter covered area"
-              keyboardType="numeric"
+              keyboardType="decimal-pad"
             />
           </View>
 
           {/* Total Rooms/Veranda Area */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Total Rooms/Veranda Area (sq ft)</Text>
+            <Text style={{color: '#111'}}>Total Rooms/Veranda Area (sq ft)</Text>
             <TextInput
               style={styles.input}
               value={formData.allRoomVerandaArea}
@@ -322,7 +324,7 @@ export default function ResidentialFloorDetail() {
 
           {/* Total Balcony/Kitchen Area */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Total Balcony/Kitchen Area (sq ft)</Text>
+            <Text style={{color: '#111'}}>Total Balcony/Kitchen Area (sq ft)</Text>
             <TextInput
               style={styles.input}
               value={formData.allBalconyKitchenArea}
@@ -334,7 +336,7 @@ export default function ResidentialFloorDetail() {
 
           {/* All Garage Area */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>All Garage Area (sq ft)</Text>
+            <Text style={{color: '#111'}}>All Garage Area (sq ft)</Text>
             <TextInput
               style={styles.input}
               value={formData.allGarageArea}
@@ -346,10 +348,10 @@ export default function ResidentialFloorDetail() {
 
           {/* Carpet Area (Auto-calculated) */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Carpet Area (sq ft) *</Text>
+            <Text style={{color: '#111'}}>Carpet Area (sq ft)<Text style={{color: 'red'}}>*</Text></Text>
             <TextInput
               style={[styles.input, styles.disabledInput]}
-              value={formData.carpetArea}
+              value={formData.carpetArea === 0 ? '' : String(formData.carpetArea)}
               editable={false}
               placeholder="Auto-calculated (80% of covered area)"
             />

@@ -1,842 +1,137 @@
-You're working on a full-stack React Native + Node.js + Prisma project for a GIS Survey Application. The backend uses Express and Prisma ORM with PostgreSQL. Authentication is handled with JWT. AsyncStorage is used for client-side persistence. The frontend follows a modular folder structure with Screens, Components, Services, and Constants directories.
+Prompt:
 
-### ✅ Existing Features:
-- Login
-- Register
-- Dashboards
-- Profile
-- Logout
-- Survey Form
+You are working on a React Native + Expo app for field Surveyors using Prisma + Express on the backend. The app already has working login, registration, dashboard, profile, and a dynamic Survey Form that supports Residential, Non-Residential, and Mixed assessments.
 
----
+Now, you need to redesign the data flow and offline handling for survey submission. Implement the following changes to the existing codebase without breaking any existing core functionality, and in full alignment with the current architecture:
 
-## 🔧 New Feature Requirements: Floor Details Integration
+🔧 Features to Implement:
 
-You are now extending the Survey workflow to support **Floor-Level Details** for Residential and Non-Residential property assessments.
+🛑 1. Stop Online Submission on Submit
 
-### 🧱 Step-by-Step Feature Breakdown
+- Modify the current Submit Survey functionality.
 
-#### 1. **Survey Form Extension**
-- Add a `Save` button at the bottom of the Survey Form screen.
-- On clicking “Save,” navigate to a new intermediate pane screen.
-- Save the partially completed survey to AsyncStorage.
-- Mark its status as **ongoing** (not yet submitted).
+- Instead of sending the survey to the backend, save it in AsyncStorage using a format like:
 
-#### 2. **Intermediate Pane (Survey Summary Screen)**
-This screen displays:
-- Survey metadata (GIS ID, Ward, Type, Respondent, etc.)
-- Four key actions:
-  - **Edit Survey**
-  - **Add Residential Floor Details**
-  - **Add Non-Residential Floor Details**
-  - **Delete Survey**
-- **Submit Survey** button at the bottom
-
-#### 3. **Survey Type Logic**
-- If `Survey Type` is `RESIDENTIAL`, show only Residential Floor Details option.
-- If `NON_RESIDENTIAL`, show only Non-Residential Floor Details option.
-- If `MIX`, show both options.
-
-#### 4. **Floor Details Flow**
-- Clicking on either Floor Details button navigates to a **Floor Details Dashboard screen**.
-- This dashboard:
-  - Lists already added floor entries as cards
-  - Each card has **Edit** and **Delete** options
-  - Includes a button to **Add New Floor Detail**
-
-#### 5. **Floor Detail Forms**
-Use the exact field structure below for the two forms:
-
----
-
-### 🏢 Residential Floor Details Form
-Fields:
-- *Floor Number: Dropdown (from Floor Number Master)
-- *Occupancy Status: Dropdown (from Occupancy Status Master)
-- *Occupancy Nature: Dropdown (from Occupancy Nature Master)
-- *Covered Area: TextInput
-- Total Rooms/Veranda Area: TextInput
-- Total Balcony/Kitchen Area: TextInput
-- All Garage Area: TextInput
-
----
-
-### 🏬 Non-Residential Floor Details Form
-Fields:
-- *Floor Number: Dropdown (from Floor Number Master)
-- *Property Category: Dropdown (from NR Property Category Master)
-- *Property Sub Category: Dropdown (from NR Property Sub Category Master)
-- *Establishment Name: TextInput
-- License Number: TextInput
-- License Expiry Date: Date Picker
-- *Occupancy Status: Dropdown (from Occupancy Status Master)
-- *Occupancy Nature: Dropdown (from Occupancy Nature Master)
-- *Built-up Area: TextInput
-
----
-
-### 🧠 Business Logic Rules
-- Floor Details must be tied to the specific `surveyUniqueCode`.
-- A survey should stay on the same intermediate screen (Survey Summary) **until submitted or deleted**.
-- `AsyncStorage` must persist the ongoing survey, so the user returns to the last survey until it’s complete.
-- Floor Details Dashboard must reflect the count of added floors with edit/delete capabilities.
-- Once submitted, floor data is synced to the backend via `/api/floorDetails` or a similar route.
-
----
-
-### 📁 Folder Structure
-
-Survey_App
-├── backend/
-│   ├── dist/
-│   │   ├── controllers/
-│   │   │   ├── authController.js
-│   │   │   └── surveyorController.js
-│   │   ├── dtos/
-│   │   │   ├── authDto.js
-│   │   │   └── surveyorDto.js
-│   │   ├── middleware/
-│   │   │   └── authMiddleware.js
-│   │   ├── routes/
-│   │   │   ├── authRoutes.js
-│   │   │   └── surveyorRoutes.js
-│   │   ├── services/
-│   │   │   ├── authService.js
-│   │   │   └── surveyorService.js
-│   │   └── app.js
-│   ├── prisma/
-│   │   ├── migrations/
-│   │   │   ├── 20250619160558_init/
-│   │   │   │   └── migration.sql
-│   │   │   ├── 20250619171739_increase_password_length/
-│   │   │   │   └── migration.sql
-│   │   │   ├── 20250620054225_updated_password_lengths/
-│   │   │   │   └── migration.sql
-│   │   │   ├── 20250620074809_add_unique_to_role_name/
-│   │   │   │   └── migration.sql
-│   │   │   ├── 20250620103158_make_wardid_optional/
-│   │   │   │   └── migration.sql
-│   │   │   ├── 20250620105333_make_surveyor_fields_optional/
-│   │   │   │   └── migration.sql
-│   │   │   └── migration_lock.toml
-│   │   ├── schema.prisma
-│   │   └── seed.ts
-│   ├── src/
-│   │   ├── controllers/
-│   │   │   ├── authController.ts
-│   │   │   ├── surveyorController.ts
-│   │   │   └── wardController.ts
-│   │   ├── dtos/
-│   │   │   ├── authDto.ts
-│   │   │   ├── surveyorDto.ts
-│   │   │   ├── userDto.ts
-│   │   │   └── wardDto.ts
-│   │   ├── middleware/
-│   │   │   └── authMiddleware.ts
-│   │   ├── routes/
-│   │   │   ├── authRoutes.ts
-│   │   │   ├── surveyorRoutes.ts
-│   │   │   └── wardRoutes.ts
-│   │   ├── services/
-│   │   │   ├── authService.ts
-│   │   │   ├── surveyorService.ts
-│   │   │   ├── userService.ts
-│   │   │   └── wardService.ts
-│   │   └── app.ts
-│   ├── .env
-│   ├── package-lock.json
-│   ├── package.json
-│   └── tsconfig.json
-├── my-expo-app/
-│   ├── .expo/
-│   │   ├── devices.json
-│   │   └── README.md
-│   ├── assets/
-│   │   ├── adaptive-icon.png
-│   │   ├── favicon.png
-│   │   ├── icon.png
-│   │   └── splash.png
-│   ├── components/
-│   │   ├── Container.tsx
-│   │   ├── EditScreenInfo.tsx
-│   │   └── ScreenContent.tsx
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── CustomHeader.tsx
-│   │   │   └── SideNav.tsx
-│   │   ├── context/
-│   │   │   └── ThemeContext.tsx
-│   │   ├── navigation/
-│   │   │   └── AppNavigator.tsx
-│   │   ├── screens/
-│   │   │   ├── AdminDashboard.tsx
-│   │   │   ├── LoginScreen.tsx
-│   │   │   ├── ProfileScreen.tsx
-│   │   │   ├── RegisterScreen.tsx
-│   │   │   ├── SplashScreen.tsx
-│   │   │   ├── SuperAdminDashboard.tsx
-│   │   │   ├── SupervisorDashboard.tsx
-│   │   │   └── SurveyorDashboard.tsx
-│   │   ├── services/
-│   │   │   └── authService.ts
-│   │   └── utils/
-│   │       └── validation.ts
-│   ├── .env
-│   ├── app-env.d.ts
-│   ├── app.json
-│   ├── App.tsx
-│   ├── babel.config.js
-│   ├── cesconfig.json
-│   ├── eslint.config.js
-│   ├── global.css
-│   ├── metro.config.js
-│   ├── nativewind-env.d.ts
-│   ├── package-lock.json
-│   ├── package.json
-│   ├── prettier.config.js
-│   ├── tailwind.config.js
-│   └── tsconfig.json
-└── PROJECT_STATUS.md
-
----
-
-## ✅ Generate the following:
-
-1. React Native **SurveySummaryPane** screen with 4 actions and Submit button.
-2. **ResidentialFloorForm** and **NonResidentialFloorForm** screens using provided fields.
-3. **FloorDetailsDashboard** screen to list added floor entries for a survey.
-4. Backend Express routes and controllers to:
-   - Save floor details (`POST /api/floorDetails`)
-   - Edit/delete floors (`PUT/DELETE`)
-   - Handle relational integrity via `surveyUniqueCode`
-5. AsyncStorage utility to:
-   - Store ongoing survey info
-   - Retrieve and navigate to last unsubmitted survey on app launch
-6. Zod schema for validating both types of floor detail inputs
-7. Prisma schema changes if needed (ensure model names are correct as per `schema.prisma`)
-
----
-
-💡 Note:
-- Ensure enum-based dropdowns use master data from backend (`GET /api/masters`)
-- All form fields must match database field names from `schema.prisma`
-- Add inline comments to explain screen behaviors
-
-
----
-
-## 🧬 Schema.prisma
-
-// ------------------------
-// schema.prisma (All Good)
-// ------------------------
-generator client {
-  provider = "prisma-client-js"
+{
+  id: string, // unique local ID like survey_<timestamp>_<random>
+  data: CreateSurveyDto,
+  synced: false,
+  createdAt: ISODate,
+  surveyType: 'Residential' | 'Non-Residential' | 'Mixed'
 }
+- Store it under the key unsyncedSurveys.
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-// ------
-// ENUMS
-// ------
-enum YesNo {
-  YES
-  NO
-}
-
-enum AssignmentType {
-  PRIMARY
-  SECONDARY
-}
-
-enum ResponseType {
-  OLD_PROPERTY
-  NEW_PROPERTY
-  DOOR_LOCK
-  ACCESS_DENIED
-}
-
-enum PropertyType {
-  HOUSE
-  FLAT
-  PLOT_LAND
-}
-
-enum RespondentStatus {
-  OWNER
-  OCCUPIER
-  TENANT
-  EMPLOYEE
-  OTHER   
-}
-
-enum RoadType {
-  WIDTH_LESS_THAN_3M
-  WIDTH_3_TO_11M
-  WIDTH_12_TO_24M
-  WIDTH_MORE_THAN_24M
-}
-
-enum ConstructionType {
-  CONSTRUCTED
-  NOT_CONSTRUCTED
-  UNDER_CONSTRUCTION
-}
-
-enum WaterSource {
-  OWN
-  MUNICIPAL
-  PUBLIC_TAP_WITHIN_100_YARDS
-  PUBLIC_TAP_MORE_THAN_100_YARDS
-}
-
-enum DisposalType {
-  SEWERAGE
-  SEPTIC_TANK
-}
-
-enum ConstructionNature {
-  PUCCKAA_RCC_RB_ROOF
-  OTHER_PUCCKAA
-  KUCCHHAA
-}
-
-enum SurveyType {
-  RESIDENTIAL
-  NON_RESIDENTIAL
-  MIX
-}
-
-enum OccupancyStatus {
-  SELF_OCCUPIED
-  RENTED
-  MIX
-}
-
-enum RolePermission {
-  SUPER_ADMIN
-  ADMIN
-  SUPERVISOR
-  SURVEYOR
-}
-
-// --------------
-// Master Tables
-// --------------
-
-model UlbMaster {
-  ulbId         String           @id @default(uuid())
-  ulbName       String           @db.VarChar(50)
-  isActive      Boolean          @default(false)
-  description   String?          @db.Text
-  ulbZoneMaps   UlbZoneMapping[]
-  surveyDetails SurveyDetails[]
-}
-
-model ZoneMaster {
-  zoneId        String            @id @default(uuid())
-  zoneNumber    String            @db.VarChar(50)
-  isActive      Boolean           @default(false)
-  description   String?           @db.Text
-  ulbZoneMaps   UlbZoneMapping[]
-  zoneWardMaps  ZoneWardMapping[]
-  surveyDetails SurveyDetails[]
-}
-
-model WardMaster {
-  wardId              String               @id @default(uuid())
-  wardNumber          String               @db.VarChar(20)
-  isActive            Boolean              @default(false)
-  wardName            String               @db.VarChar(12)
-  description         String?              @db.Text
-  zoneWardMaps        ZoneWardMapping[]
-  wardMohallaMaps     WardMohallaMapping[]
-  surveyorAssignments SurveyorAssignment[]
-  wardStatusMaps      WardStatusMapping[]
-  surveyDetails       SurveyDetails[]
-  supervisors         Supervisors[]
-}
-
-model MohallaMaster {
-  mohallaId           String               @id @default(uuid())
-  mohallaName         String               @db.VarChar(50)
-  isActive            Boolean              @default(false)
-  description         String?              @db.Text
-  wardMohallaMaps     WardMohallaMapping[]
-  surveyorAssignments SurveyorAssignment[]
-  surveyDetails       SurveyDetails[]
-}
-
-model ResponseTypeMaster {
-  responseTypeId   String            @id @default(uuid())
-  responseTypeName String            @db.VarChar(50)
-  isActive         Boolean           @default(false)
-  description      String?           @db.Text
-  propertyDetails  PropertyDetails[]
-}
-
-model PropertyTypeMaster {
-  propertyTypeId   String            @id @default(uuid())
-  propertyTypeName String            @db.Char(50)
-  isActive         Boolean           @default(false)
-  description      String?           @db.Text
-  locationDetails  LocationDetails[]
-}
-
-model RespondentStatusMaster {
-  respondentStatusId   String            @id @default(uuid())
-  respondentStatusName String            @db.VarChar(20)
-  isActive             Boolean           @default(false)
-  description          String?           @db.Text
-  propertyDetails      PropertyDetails[]
-}
-
-model RoadTypeMaster {
-  roadTypeId      String            @id @default(uuid())
-  roadTypeName    String            @db.VarChar(50)
-  isActive        Boolean           @default(false)
-  description     String?           @db.Text
-  locationDetails LocationDetails[]
-}
-
-model ConstructionTypeMaster {
-  constructionTypeId   String            @id @default(uuid())
-  constructionTypeName String            @db.VarChar(50)
-  isActive             Boolean           @default(false)
-  description          String?           @db.Text
-  locationDetails      LocationDetails[]
-}
-
-model WaterSourceMaster {
-  waterSourceId   String         @id @default(uuid())
-  waterSourceName String         @db.VarChar(50)
-  isActive        Boolean        @default(false)
-  description     String?        @db.Text
-  otherDetails    OtherDetails[]
-}
-
-model DisposalTypeMaster {
-  disposalTypeId   String         @id @default(uuid())
-  disposalTypeName String         @db.VarChar(50)
-  isActive         Boolean        @default(false)
-  description      String?        @db.Text
-  otherDetails     OtherDetails[]
-}
-
-model FloorMaster {
-  floorNumberId   String   @id @default(uuid())
-  floorNumberName String   @db.VarChar(50)
-  isActive        Boolean  @default(true)
-  description     String?  @db.Text
-  residentialPropertyAssessments    ResidentialPropertyAssessment[]
-  nonResidentialPropertyAssessments NonResidentialPropertyAssessment[]
-}
-
-model NrPropertyCategoryMaster {
-  propertyCategoryId                String                             @id @default(uuid())
-  propertyCategoryNumber            Int
-  propertyCategoryName              String                             @db.VarChar(100)
-  isActive                          Boolean                            @default(false)
-  description                       String?                            @db.Text
-  createdAt                         DateTime                           @default(now())
-  subCategories                     NrPropertySubCategoryMaster[]
-  nonResidentialPropertyAssessments NonResidentialPropertyAssessment[]
-}
-
-model NrPropertySubCategoryMaster {
-  subCategoryId                     String                             @id @default(uuid())
-  subCategoryNumber                 Int
-  subCategoryName                   String                             @db.VarChar(100)
-  isActive                          Boolean                            @default(false)
-  description                       String?                            @db.Text
-  createdAt                         DateTime                           @default(now())
-  propertyCategoryId                String
-  propertyCategory                  NrPropertyCategoryMaster           @relation(fields: [propertyCategoryId], references: [propertyCategoryId], onDelete: Restrict)
-  nonResidentialPropertyAssessments NonResidentialPropertyAssessment[]
-
-  @@index([propertyCategoryId])
-  @@index([isActive])
-}
-
-model ConstructionNatureMaster {
-  constructionNatureId              String                             @id @default(uuid())
-  constructionNatureName            String                             @db.VarChar(50)
-  isActive                          Boolean                            @default(false)
-  description                       String?                            @db.Text
-  residentialPropertyAssessments    ResidentialPropertyAssessment[]
-  nonResidentialPropertyAssessments NonResidentialPropertyAssessment[]
-}
-
-model SurveyTypeMaster {
-  surveyTypeId   String          @id @default(uuid())
-  surveyTypeName String          @db.Char(20)
-  isActive       Boolean         @default(true)
-  description    String?         @db.Text
-  surveyDetails  SurveyDetails[]
-}
-
-model OccupancyStatusMaster {
-  occupancyStatusId                 String                             @id @default(uuid())
-  occupancyStatusName               String                             @db.VarChar(50)
-  isActive                          Boolean                            @default(true)
-  description                       String?                            @db.Text
-  residentialPropertyAssessments    ResidentialPropertyAssessment[]
-  nonResidentialPropertyAssessments NonResidentialPropertyAssessment[]
-}
-
-model SurveyStatusMaster {
-  statusId                 String                @id @default(uuid())
-  statusName               String                @db.VarChar(50)
-  isActive                 Boolean               @default(true)
-  description              String?               @db.Text
-  surveyStatusMaps         SurveyStatusMapping[]
-  surveyStatusMapsReverted SurveyStatusMapping[] @relation("RevertedFrom")
-}
-
-model WardStatusMaster {
-  statusId       String              @id @default(uuid())
-  statusName     String              @db.VarChar(50)
-  isActive       Boolean             @default(true)
-  description    String?             @db.Text
-  wardStatusMaps WardStatusMapping[]
-}
-
-model UsersMaster {
-  userId                        String                @id @default(uuid())
-  username                      String                @db.Char(50)
-  name                          String?               @db.VarChar(100)
-  password                      String                @db.VarChar(200)
-  mobileNumber                  String?               @db.VarChar(20)
-  isCreatedAt                   DateTime              @default(now())
-  isActive                      Boolean               @default(false)
-  description                   String?               @db.Text
-  surveyorAssignments           SurveyorAssignment[]
-  surveyorAssignmentsAssignedBy SurveyorAssignment[]  @relation("AssignedBy")
-  wardStatusMaps                WardStatusMapping[]
-  surveyStatusMaps              SurveyStatusMapping[]
-  userRoleMaps                  UserRoleMapping[]
-  sessions                      Session[]
-  surveyors                     Surveyors[]
-  supervisors                   Supervisors[]
-  admins                        Admins[]
-  uploadedSurveys               SurveyDetails[]       @relation("UsersMasterToSurveyDetails")
-}
-
-model RolePermissionMaster {
-  roleId       String            @id @default(uuid())
-  roleName     String            @db.VarChar(30) @unique
-  isActive     Boolean           @default(false)
-  description  String?           @db.Text
-  userRoleMaps UserRoleMapping[]
-}
-
-// ---------------
-// Mapping Tables
-// ---------------
-
-model UlbZoneMapping {
-  ulbZoneMapId String      @id @default(uuid())
-  ulbId        String
-  zoneId       String
-  isActive     Boolean     @default(true)
-  ulb          UlbMaster   @relation(fields: [ulbId], references: [ulbId])
-  zone         ZoneMaster  @relation(fields: [zoneId], references: [zoneId])
-  surveyors    Surveyors[]
-
-  @@unique([ulbId, zoneId])
-}
-
-model ZoneWardMapping {
-  zoneWardMapId String      @id @default(uuid())
-  zoneId        String
-  wardId        String
-  isActive      Boolean     @default(true)
-  zone          ZoneMaster  @relation(fields: [zoneId], references: [zoneId])
-  ward          WardMaster  @relation(fields: [wardId], references: [wardId])
-  surveyors     Surveyors[]
-
-  @@unique([zoneId, wardId])
-}
-
-model WardMohallaMapping {
-  wardMohallaMapId    String               @id @default(uuid())
-  wardId              String
-  mohallaId           String
-  isActive            Boolean              @default(true)
-  ward                WardMaster           @relation(fields: [wardId], references: [wardId])
-  mohalla             MohallaMaster        @relation(fields: [mohallaId], references: [mohallaId])
-  surveyorAssignments SurveyorAssignment[]
-  surveyors           Surveyors[]
-
-  @@unique([wardId, mohallaId])
-}
-
-model SurveyorAssignment {
-  assignmentId     String             @id @default(uuid())
-  userId           String
-  assignmentType   String             @db.VarChar(10)
-  wardId           String
-  mohallaId        String
-  wardMohallaMapId String
-  assignedById     String
-  isActive         Boolean            @default(true)
-  user             UsersMaster        @relation(fields: [userId], references: [userId])
-  ward             WardMaster         @relation(fields: [wardId], references: [wardId])
-  mohalla          MohallaMaster      @relation(fields: [mohallaId], references: [mohallaId])
-  wardMohallaMap   WardMohallaMapping @relation(fields: [wardMohallaMapId], references: [wardMohallaMapId])
-  assignedBy       UsersMaster        @relation("AssignedBy", fields: [assignedById], references: [userId])
-
-  @@unique([userId, wardId, mohallaId])
-}
-
-model WardStatusMapping {
-  wardStatusId String           @id @default(uuid())
-  wardId       String
-  statusId     String
-  changedById  String
-  isActive     Boolean          @default(true)
-  ward         WardMaster       @relation(fields: [wardId], references: [wardId])
-  status       WardStatusMaster @relation(fields: [statusId], references: [statusId])
-  changedBy    UsersMaster      @relation(fields: [changedById], references: [userId])
-
-  @@unique([wardId, statusId])
-}
-
-model SurveyStatusMapping {
-  statusMappingId  String              @id @default(uuid())
-  surveyUniqueCode String
-  statusId         String
-  revertedFromId   String?
-  changedById      String
-  isActive         Boolean             @default(true)
-  survey           SurveyDetails       @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
-  status           SurveyStatusMaster  @relation(fields: [statusId], references: [statusId])
-  revertedFrom     SurveyStatusMaster? @relation("RevertedFrom", fields: [revertedFromId], references: [statusId])
-  changedBy        UsersMaster         @relation(fields: [changedById], references: [userId])
-
-  @@unique([surveyUniqueCode, statusId])
-}
-
-model UserRoleMapping {
-  userRoleMapId String               @id @default(uuid())
-  userId        String
-  roleId        String
-  isActive      Boolean              @default(true)
-  user          UsersMaster          @relation(fields: [userId], references: [userId])
-  role          RolePermissionMaster @relation(fields: [roleId], references: [roleId])
-
-  @@unique([userId, roleId])
-}
-
-model Session {
-  sessionId  String      @id @default(uuid())
-  userId     String
-  loginTime  DateTime
-  logoutTime DateTime
-  isActive   Boolean     @default(true)
-  user       UsersMaster @relation(fields: [userId], references: [userId], onDelete: Cascade)
-
-  @@index([userId])
-}
-
-// ------
-// Users
-// ------
-
-model Surveyors {
-  userId           String             @id
-  surveyorName     String             @db.VarChar(50)
-  username         String             @db.VarChar(50)
-  password         String             @db.VarChar(250)
-  wardNumber       String?             @db.VarChar(12)
-  wardMohallaMapId String?
-  zoneWardMapId    String?
-  ulbZoneMapId     String?
-  user             UsersMaster        @relation(fields: [userId], references: [userId])
-  wardMohallaMap   WardMohallaMapping? @relation(fields: [wardMohallaMapId], references: [wardMohallaMapId])
-  zoneWardMap      ZoneWardMapping?    @relation(fields: [zoneWardMapId], references: [zoneWardMapId])
-  ulbZoneMap       UlbZoneMapping?     @relation(fields: [ulbZoneMapId], references: [ulbZoneMapId])
-}
-
-model Supervisors {
-  userId         String      @id
-  supervisorName String      @db.VarChar(50)
-  username       String      @db.VarChar(50)
-  password       String      @db.VarChar(250)
-  wardId         String?
-  user           UsersMaster @relation(fields: [userId], references: [userId])
-  ward           WardMaster?  @relation(fields: [wardId], references: [wardId])
-}
-
-model Admins {
-  userId    String      @id
-  adminName String      @db.VarChar(50)
-  username  String      @db.VarChar(50)
-  password  String      @db.VarChar(250)
-  user      UsersMaster @relation(fields: [userId], references: [userId])
-}
-
-// --------
-// Surveys
-// --------
-
-model SurveyDetails {
-  surveyUniqueCode                  String                             @id @default(uuid())
-  uploadedById                      String
-  ulbId                             String
-  zoneId                            String
-  wardId                            String
-  mohallaId                         String
-  surveyTypeId                      String
-  entryDate                         DateTime                           @db.Timestamp(0)
-  parcelId                          Int?
-  mapId                             Int
-  gisId                             String                             @db.VarChar(12)
-  subGisId                          String?                            @db.VarChar(15)
-  uploadedBy                        UsersMaster                        @relation("UsersMasterToSurveyDetails", fields: [uploadedById], references: [userId], onDelete: Restrict)
-  ulb                               UlbMaster                          @relation(fields: [ulbId], references: [ulbId])
-  zone                              ZoneMaster                         @relation(fields: [zoneId], references: [zoneId])
-  ward                              WardMaster                         @relation(fields: [wardId], references: [wardId])
-  mohalla                           MohallaMaster                      @relation(fields: [mohallaId], references: [mohallaId])
-  surveyType                        SurveyTypeMaster                   @relation(fields: [surveyTypeId], references: [surveyTypeId])
-  propertyDetails                   PropertyDetails[]
-  ownerDetails                      OwnerDetails[]
-  locationDetails                   LocationDetails[]
-  otherDetails                      OtherDetails[]
-  residentialPropertyAssessments    ResidentialPropertyAssessment[]
-  nonResidentialPropertyAssessments NonResidentialPropertyAssessment[]
-  propertyAttachments               PropertyAttachmentDetails[]
-  surveyStatusMaps                  SurveyStatusMapping[]
-
-  @@index([uploadedById])
-}
-
-model PropertyDetails {
-  surveyUniqueCode              String                 @id
-  responseTypeId                String
-  oldHouseNumber                String?                @db.VarChar(15)
-  electricityConsumerName       String?                @db.VarChar(50)
-  waterSewerageConnectionNumber String?                @db.VarChar(50)
-  respondentName                String                 @db.Char(50)
-  respondentStatusId            String
-  survey                        SurveyDetails          @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
-  responseType                  ResponseTypeMaster     @relation(fields: [responseTypeId], references: [responseTypeId])
-  respondentStatus              RespondentStatusMaster @relation(fields: [respondentStatusId], references: [respondentStatusId])
-}
-
-model OwnerDetails {
-  surveyUniqueCode  String        @id
-  ownerName         String        @db.VarChar(50)
-  fatherHusbandName String        @db.VarChar(50)
-  mobileNumber      String?       @db.VarChar(20)
-  aadharNumber      String?       @db.Char(12)
-  survey            SurveyDetails @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
-}
-
-model LocationDetails {
-  surveyUniqueCode   String                 @id
-  propertyLatitude   Decimal                @db.Decimal(9, 6) // changed type from Float to Decimal
-  propertyLongitude  Decimal                @db.Decimal(9, 6) // changed type from Float to Decimal
-  assessmentYear     String                 @db.VarChar(20)
-  propertyTypeId     String
-  buildingName       String?                @db.Text
-  roadTypeId         String
-  constructionYear   String                 @db.VarChar(20)
-  constructionTypeId String
-  addressRoadName    String                 @db.Text
-  locality           String?                @db.Text
-  pinCode            Int
-  landmark           String?                @db.Text
-  fourWayEast        String?                @db.Text
-  fourWayWest        String?                @db.Text
-  fourWayNorth       String?                @db.Text
-  fourWaySouth       String?                @db.Text
-  newWard            String                 @db.VarChar(20)
-  survey             SurveyDetails          @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
-  propertyType       PropertyTypeMaster     @relation(fields: [propertyTypeId], references: [propertyTypeId])
-  roadType           RoadTypeMaster         @relation(fields: [roadTypeId], references: [roadTypeId])
-  constructionType   ConstructionTypeMaster @relation(fields: [constructionTypeId], references: [constructionTypeId])
-}
-
-model OtherDetails {
-  surveyUniqueCode            String             @id
-  waterSourceId               String
-  rainWaterHarvestingSystem   String?            @db.Char(3)
-  plantation                  String?            @db.Char(3)
-  parking                     String?            @db.Char(3)
-  pollution                   String?            @db.Char(3)
-  pollutionMeasurementTaken   String?            @db.Text
-  waterSupplyWithin200Meters  String?            @db.Char(3)
-  sewerageLineWithin100Meters String?            @db.Char(3)
-  disposalTypeId              String
-  totalPlotArea               Float              @db.DoublePrecision
-  builtupAreaOfGroundFloor    Float              @db.DoublePrecision
-  remarks                     String?            @db.Text
-  survey                      SurveyDetails      @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
-  waterSource                 WaterSourceMaster  @relation(fields: [waterSourceId], references: [waterSourceId])
-  disposalType                DisposalTypeMaster @relation(fields: [disposalTypeId], references: [disposalTypeId])
-}
-
-
-
-model ResidentialPropertyAssessment {
-  floorAssessmentId     String                   @id @default(uuid())
-  surveyUniqueCode      String
-  floorNumberId         String
-  occupancyStatusId     String
-  constructionNatureId  String
-  coveredArea           Decimal                  @db.Decimal(10, 2) // changed type from Float to Decimal
-  allRoomVerandaArea    Decimal                  @db.Decimal(10, 2) // changed type from Float to Decimal
-  allBalconyKitchenArea Decimal                  @db.Decimal(10, 2) // changed type from Float to Decimal
-  allGarageArea         Decimal                  @db.Decimal(10, 2) // changed type from Float to Decimal
-  carpetArea            Decimal                  @db.Decimal(10, 2) // changed type from Float to Decimal
-  survey                SurveyDetails            @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
-  floorMaster           FloorMaster              @relation(fields: [floorNumberId], references: [floorNumberId])
-  occupancyStatus       OccupancyStatusMaster    @relation(fields: [occupancyStatusId], references: [occupancyStatusId])
-  constructionNature    ConstructionNatureMaster @relation(fields: [constructionNatureId], references: [constructionNatureId])
-}
-
-model NonResidentialPropertyAssessment {
-  floorAssessmentId    String                      @id @default(uuid())
-  surveyUniqueCode     String
-  floorNumberId        String
-  nrPropertyCategoryId String
-  nrSubCategoryId      String
-  establishmentName    String                      @db.Text
-  licenseNo            String?                     @db.VarChar(20)
-  licenseExpiryDate    DateTime?
-  occupancyStatusId    String
-  constructionNatureId String
-  builtupArea          Decimal                     @db.Decimal(10, 2) // changed type from Float to Decimal
-  floorMaster          FloorMaster                 @relation(fields: [floorNumberId], references: [floorNumberId])
-  nrPropertyCategory   NrPropertyCategoryMaster    @relation(fields: [nrPropertyCategoryId], references: [propertyCategoryId], onDelete: Restrict)
-  nrSubCategory        NrPropertySubCategoryMaster @relation(fields: [nrSubCategoryId], references: [subCategoryId], onDelete: Restrict)
-  occupancyStatus      OccupancyStatusMaster       @relation(fields: [occupancyStatusId], references: [occupancyStatusId])
-  constructionNature   ConstructionNatureMaster    @relation(fields: [constructionNatureId], references: [constructionNatureId])
-  survey               SurveyDetails               @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
-
-  @@index([nrPropertyCategoryId])
-  @@index([nrSubCategoryId])
-}
-
-model PropertyAttachmentDetails {
-  surveyUniqueCode String        @id
-  image1Url        String?       @db.VarChar(50)
-  image2Url        String?       @db.VarChar(50)
-  image3Url        String?       @db.VarChar(50)
-  image4Url        String?       @db.VarChar(50)
-  image5Url        String?       @db.VarChar(50)
-  image6Url        String?       @db.VarChar(50)
-  image7Url        String?       @db.VarChar(50)
-  image8Url        String?       @db.VarChar(50)
-  image9Url        String?       @db.VarChar(50)
-  image10Url       String?       @db.VarChar(50)
-  survey           SurveyDetails @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
-}
-
----
-
-Use modular, commented, maintainable code.
+💾 2. Implement Local Master Data Caching
+
+- During login or initial app load, fetch all master data (like propertyTypes, roadTypes, etc.) from the backend, and cache it in AsyncStorage using key masterData.
+
+await AsyncStorage.setItem('masterData', JSON.stringify(fetchedData));
+
+- Update all dropdown components to read from this local masterData cache.
+
+🧭 3. Fetch and Store Assignments
+
+- After successful login, fetch SurveyorAssignment data.
+
+- Store it in AsyncStorage as userAssignments.
+
+- Modify survey flow to:
+
+- Detect if multiple assignments exist.
+
+- Prompt surveyor to choose one assignment before proceeding to Survey Form every time.
+
+- Once selected, auto-fill and lock ULB, Zone, Ward.
+
+- Mohalla dropdown should show only mohallas from the selected assignment (which are stored as an array of UUIDs).
+
+🚫 4. Offline-First Design
+- After login, the entire app (survey creation, form filling, saving, etc.) should work without internet.
+
+- Only Sync Survey feature requires network access.
+
+☁️ 5. Implement Sync Data Logic
+
+- Use the existing "Sync Data" button in the Surveyor Dashboard.
+
+- It should:
+
+  - Fetch unsynced surveys from AsyncStorage.
+
+  - For each:
+
+    - Send to /surveys/addSurvey API with auth token.
+
+    - If successful:
+
+      - Mark survey as synced: true and remove from AsyncStorage.
+
+      - Or update local status for partial sync support.
+
+  - Notify surveyor of how many surveys synced successfully or failed.
+
+✅ 6. Keep Only Relevant Data in AsyncStorage
+- Keep AsyncStorage size in check (~5MB limit).
+
+- After each successful sync, remove synced survey records from unsyncedSurveys.
+
+- Compress or flatten records if needed.
+
+📁 File Modifications (Structure-Aware):
+Frontend (React Native)
+
+- src/screens/SurveyForm.tsx → Modify save & submit flow to use local storage.
+
+- src/screens/SurveyorDashboard.tsx → Add Sync Data button and status indicator.
+
+- src/screens/LoginScreen.tsx → Store user, assignments, masterData.
+
+- src/utils/storage.ts → Add helper functions for AsyncStorage handling:
+
+  - saveSurveyLocally()
+
+  - getUnsyncedSurveys()
+
+  - syncSurveysToBackend()
+
+- src/components/FormDropdown.tsx → Support loading options from masterData cache.
+
+- src/navigation/AppNavigator.tsx → Handle assignment selection screen if multiple assignments exist.
+
+Backend (Express + Prisma)
+
+- No changes to API logic unless you want to validate duplicate survey IDs.
+
+- Ensure /surveys/addSurvey accepts fully-formed survey DTO as it already does.
+
+📦 Tech Stack Reminder:
+
+- Frontend: React Native + Expo + AsyncStorage
+
+- Backend: Express + Prisma + PostgreSQL (Supabase)
+
+- Database: UUID usage for IDs
+
+- Auth: JWT-based
+
+- Master Data: Cached locally
+
+- Survey Assignments: Referenced via SurveyorAssignment table with Mohalla array (UUID[])
+
+🚫 DO NOT:
+
+- Do not run any migration or DB commands automatically — output migration scripts if needed and let the user apply them manually.
+
+- Do not submit surveys immediately after clicking “Submit Survey”.
+
+- Do not assume network availability during survey filling.
+
+- Do not hardcode backend URLs — use EXPO_PUBLIC_API_BASE_URL.
+
+✅ DO:
+
+- Respect the 5MB AsyncStorage limit.
+
+- Use the selected assignment context throughout the survey.
+
+- Support full offline mode post-login

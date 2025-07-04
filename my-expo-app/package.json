@@ -23,6 +23,7 @@
     "expo": "^53.0.13",
     "expo-secure-store": "^14.2.3",
     "expo-status-bar": "~2.2.3",
+    "lz-string": "^1.5.0",
     "nativewind": "latest",
     "react": "19.0.0",
     "react-hook-form": "^7.58.0",

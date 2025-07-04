@@ -3,10 +3,9 @@ import { ScrollView, View, Text, StyleSheet, Button, Alert, findNodeHandle } fro
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FormInput from '../components/FormInput';
 import FormDropdown from '../components/FormDropdown';
-import { saveSurveyLocally, getLocalSurvey } from '../utils/storage';
+import { saveSurveyLocally, getLocalSurvey, getUnsyncedSurveys, getMasterData } from '../utils/storage';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fetchAllMasterData } from '../services/masterDataService';
 
 interface FormData {
   ulbId: string;
@@ -71,21 +70,18 @@ export default function SurveyForm({ route }: any) {
   const [masterData, setMasterData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Dummy master data arrays for ULB, Zone, Ward, and Mohalla (as requested)
-  const ulbOptions = [
-    { label: 'Lucknow', value: '00000000-0000-0000-0000-000000000001' },
-  ];
-  const zoneOptions = [
-    { label: 'Zone 1', value: '00000000-0000-0000-0000-000000000002' },
-  ];
-  const wardOptions = [
-    { label: 'Ward No. 1', value: '00000000-0000-0000-0000-000000000003' },
-  ];
-  const mohallaOptions = [
-    { label: 'Jankipuram', value: '00000000-0000-0000-0000-000000000004' },
-    { label: 'Aliganj', value: '00000000-0000-0000-0000-000000000005' },
-    { label: 'Gomti Nagar', value: '00000000-0000-0000-0000-000000000006' },
-  ];
+  // Use assignment data for ULB, Zone, Ward, and Mohalla options
+  const [assignment, setAssignment] = useState<any>(null);
+
+  // Add surveyId state to track current survey being edited or created
+  const [surveyIdState, setSurveyIdState] = useState<string | undefined>(surveyId);
+
+  useEffect(() => {
+    (async () => {
+      const json = await AsyncStorage.getItem('primaryAssignment');
+      if (json) setAssignment(JSON.parse(json));
+    })();
+  }, []);
 
   // Integer IDs for SurveyTypeMaster (replace with real IDs from your DB/seed)
   const SURVEY_TYPE_IDS = {
@@ -96,10 +92,10 @@ export default function SurveyForm({ route }: any) {
 
   const [formData, setFormData] = useState<FormData>({
     // Default initial state
-    ulbId: ulbOptions[0].value,
-    zoneId: zoneOptions[0].value,
-    wardId: wardOptions[0].value,
-    mohallaId: mohallaOptions[0].value,
+    ulbId: assignment?.ulb ? assignment.ulb.ulbId : '',
+    zoneId: assignment?.zone ? assignment.zone.zoneId : '',
+    wardId: assignment?.ward ? assignment.ward.wardId : '',
+    mohallaId: assignment?.mohallas && assignment.mohallas.length > 0 ? assignment.mohallas[0].mohallaId : '',
     parcelId: '',
     mapId: '',
     gisId: '',
@@ -145,25 +141,23 @@ export default function SurveyForm({ route }: any) {
     remarks: '',
   });
 
-  const [assignmentData, setAssignmentData] = useState<any>(null);
-
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
-        const data = await fetchAllMasterData();
+        const data = await getMasterData();
         setMasterData(data);
-        
         let surveyToLoad = null;
-        if (editMode && initialSurveyData) {
-          surveyToLoad = initialSurveyData;
-        } else if (editMode && surveyId) {
+        let loadedSurveyId = surveyId;
+        if (editMode && surveyId) {
           const localSurvey = await getLocalSurvey(surveyId);
           if (localSurvey && !Array.isArray(localSurvey)) {
             surveyToLoad = localSurvey.data;
+            loadedSurveyId = localSurvey.id;
           }
+        } else if (editMode && initialSurveyData) {
+          surveyToLoad = initialSurveyData;
         }
-        
         if (surveyToLoad) {
           const flatData = {
             ...surveyToLoad.surveyDetails,
@@ -173,6 +167,10 @@ export default function SurveyForm({ route }: any) {
             ...surveyToLoad.otherDetails,
           };
           setFormData(prev => ({ ...prev, ...flatData }));
+        }
+        // Always set surveyId state for use in save
+        if (loadedSurveyId) {
+          setSurveyIdState(loadedSurveyId);
         }
       } catch (error) {
         console.error('Failed to load data:', error);
@@ -185,26 +183,16 @@ export default function SurveyForm({ route }: any) {
   }, [editMode, surveyId, initialSurveyData]);
 
   useEffect(() => {
-    const loadAssignment = async () => {
-      try {
-        const assignmentStr = await AsyncStorage.getItem('surveyorAssignment');
-        if (assignmentStr) {
-          const assignment = JSON.parse(assignmentStr);
-          setFormData(prev => ({
-            ...prev,
-            ulbId: assignment.ulbId,
-            zoneId: assignment.zoneId,
-            wardId: assignment.wardId,
-            mohallaId: assignment.mohallaIds[0] || '',
-          }));
-          setAssignmentData(assignment);
-        }
-      } catch (e) {
-        console.error('Failed to load surveyor assignment', e);
-      }
-    };
-    loadAssignment();
-  }, []);
+    if (assignment) {
+      setFormData(prev => ({
+        ...prev,
+        ulbId: assignment.ulb ? assignment.ulb.ulbId : '',
+        zoneId: assignment.zone ? assignment.zone.zoneId : '',
+        wardId: assignment.ward ? assignment.ward.wardId : '',
+        mohallaId: assignment.mohallas && assignment.mohallas.length > 0 ? assignment.mohallas[0].mohallaId : '',
+      }));
+    }
+  }, [assignment]);
 
   const createDropdownOptions = (items: any[], labelKey: string, valueKey: string) => {
     if (!items) return [{ label: 'No selection', value: 0 }];
@@ -260,7 +248,6 @@ export default function SurveyForm({ route }: any) {
       { key: 'mapId', label: 'Map ID' },
       { key: 'gisId', label: 'GIS ID' },
       { key: 'responseTypeId', label: 'Response Type' },
-      { key: 'oldHouseNumber', label: 'Old House No.' },
       { key: 'respondentName', label: 'Respondent Name' },
       { key: 'respondentStatusId', label: 'Respondent Status' },
       { key: 'ownerName', label: 'Owner Name' },
@@ -270,7 +257,6 @@ export default function SurveyForm({ route }: any) {
       { key: 'constructionYear', label: 'Construction Year' },
       { key: 'constructionTypeId', label: 'Construction Type' },
       { key: 'addressRoadName', label: 'Address/Road Name' },
-      { key: 'locality', label: 'Locality' },
       { key: 'pinCode', label: 'PIN Code' },
       { key: 'waterSourceId', label: 'Source of Water' },
       { key: 'rainWaterHarvestingSystem', label: 'Rain Water Harvesting' },
@@ -288,6 +274,13 @@ export default function SurveyForm({ route }: any) {
         { key: 'parking', label: 'Parking Available' },
         { key: 'pollution', label: 'Pollution Created' }
       );
+    }
+
+    // Remove propertyTypeId from requiredFields for Non-Residential
+    if (surveyTypeKey === 'Non-Residential') {
+      // Remove propertyTypeId if present
+      const idx = requiredFields.findIndex(f => f.key === 'propertyTypeId');
+      if (idx !== -1) requiredFields.splice(idx, 1);
     }
 
     const firstMissingField = requiredFields.find(field => {
@@ -318,189 +311,137 @@ export default function SurveyForm({ route }: any) {
     return true;
   };
 
-  const transformDataForSaving = (data: FormData) => {
-    const transformedData = { ...data };
-
-    // Numeric fields that are required (not nullable)
-    const requiredNumericFields: (keyof FormData)[] = [
-      'mapId', 'responseTypeId', 'respondentStatusId', 'propertyTypeId',
-      'roadTypeId', 'constructionTypeId', 'pinCode', 'waterSourceId',
-      'disposalTypeId', 'totalPlotArea', 'builtupAreaOfGroundFloor'
-    ];
-
-    requiredNumericFields.forEach(field => {
-      const value = transformedData[field];
-      if (value === '' || value === null || value === undefined) {
-        (transformedData[field] as any) = undefined;
-      } else if (typeof value === 'string') {
-        (transformedData[field] as any) = Number(value);
-      }
-    });
-
-    // Numeric fields that are optional/nullable
-    const optionalNumericFields: (keyof FormData)[] = [
-      'parcelId', 'propertyLatitude', 'propertyLongitude'
-    ];
-    optionalNumericFields.forEach(field => {
-      const value = transformedData[field];
-      if (value === '' || value === undefined) {
-        (transformedData[field] as any) = null;
-      } else if (typeof value === 'string') {
-        (transformedData[field] as any) = Number(value);
-      }
-    });
-
-    // Optional string fields (convert empty to null)
-    const optionalStringFields: (keyof FormData)[] = [
-      'subGisId', 'electricityConsumerName', 'waterSewerageConnectionNumber', 
-      'mobileNumber', 'aadharNumber', 'buildingName', 'addressRoadName',
-      'landmark', 'fourWayEast', 'fourWayWest', 'fourWayNorth', 'fourWaySouth',
-      'pollutionMeasurementTaken', 'remarks'
-    ];
-    optionalStringFields.forEach(field => {
-      if (transformedData[field] === '') {
-        (transformedData[field] as any) = null;
-      }
-    });
-
-    // YesNo fields (must be 'YES' or 'NO', not null)
-    // Already handled by dropdowns, but ensure no empty string
-    const yesNoFields: (keyof FormData)[] = [
-      'rainWaterHarvestingSystem', 'waterSupplyWithin200Meters', 'sewerageLineWithin100Meters'
-    ];
-    yesNoFields.forEach(field => {
-      if (transformedData[field] === '') {
-        (transformedData[field] as any) = 'NO';
-      }
-    });
-
-    return transformedData;
-  };
-
   const handleSave = async () => {
-    if (!validateForm()) {
-      return; // Stop submission if validation fails
-    }
-
     try {
-      const userJson = await AsyncStorage.getItem('user');
-      if (!userJson) {
-        Alert.alert('Error', 'User not authenticated. Please log in again.');
-        return;
-      }
-      const user = JSON.parse(userJson);
-      const uploadedById = user.userId || user.id;
-
-      if (!uploadedById) {
-        Alert.alert('Error', 'Could not determine surveyor ID.');
-        return;
-      }
-
-      // Validate mohallaId is in assignment
-      if (assignmentData && !assignmentData.mohallaIds.includes(formData.mohallaId)) {
-        Alert.alert('Error', 'Selected mohalla is not assigned to you.');
-        return;
-      }
-
-      const processedData = transformDataForSaving(formData);
-
-      // Build DTO as per backend schema
-      const surveyDataPayload = {
-        surveyDetails: {
-          ulbId: processedData.ulbId,
-          zoneId: processedData.zoneId,
-          wardId: processedData.wardId,
-          mohallaId: processedData.mohallaId,
-          surveyTypeId: SURVEY_TYPE_IDS[surveyTypeKey],
-          entryDate: new Date().toISOString(),
-          parcelId: processedData.parcelId,
-          mapId: processedData.mapId,
-          gisId: processedData.gisId,
-          subGisId: processedData.subGisId,
-        },
-        propertyDetails: {
-          responseTypeId: processedData.responseTypeId,
-          oldHouseNumber: processedData.oldHouseNumber,
-          electricityConsumerName: processedData.electricityConsumerName,
-          waterSewerageConnectionNumber: processedData.waterSewerageConnectionNumber,
-          respondentName: processedData.respondentName,
-          respondentStatusId: processedData.respondentStatusId,
-        },
-        ownerDetails: {
-          ownerName: processedData.ownerName,
-          fatherHusbandName: processedData.fatherHusbandName,
-          mobileNumber: processedData.mobileNumber,
-          aadharNumber: processedData.aadharNumber,
-        },
-        locationDetails: {
-          propertyLatitude: processedData.propertyLatitude,
-          propertyLongitude: processedData.propertyLongitude,
-          assessmentYear: processedData.assessmentYear,
-          propertyTypeId: processedData.propertyTypeId,
-          buildingName: processedData.buildingName,
-          roadTypeId: processedData.roadTypeId,
-          constructionYear: processedData.constructionYear,
-          constructionTypeId: processedData.constructionTypeId,
-          addressRoadName: processedData.addressRoadName,
-          locality: processedData.locality,
-          pinCode: processedData.pinCode,
-          landmark: processedData.landmark,
-          fourWayEast: processedData.fourWayEast,
-          fourWayWest: processedData.fourWayWest,
-          fourWayNorth: processedData.fourWayNorth,
-          fourWaySouth: processedData.fourWaySouth,
-          newWardNumber: processedData.newWardNumber,
-        },
-        otherDetails: {
-          waterSourceId: processedData.waterSourceId,
-          rainWaterHarvestingSystem: processedData.rainWaterHarvestingSystem,
-          plantation: processedData.plantation,
-          parking: processedData.parking,
-          pollution: processedData.pollution,
-          pollutionMeasurementTaken: processedData.pollutionMeasurementTaken,
-          waterSupplyWithin200Meters: processedData.waterSupplyWithin200Meters,
-          sewerageLineWithin100Meters: processedData.sewerageLineWithin100Meters,
-          disposalTypeId: processedData.disposalTypeId,
-          totalPlotArea: processedData.totalPlotArea,
-          builtupAreaOfGroundFloor: processedData.builtupAreaOfGroundFloor,
-          remarks: processedData.remarks,
-        },
-        residentialPropertyAssessments: initialSurveyData?.residentialPropertyAssessments || [],
-        nonResidentialPropertyAssessments: initialSurveyData?.nonResidentialPropertyAssessments || [],
+      if (!validateForm()) return;
+      const toNumber = (v: any) => v === '' || v === null || v === undefined ? undefined : Number(v);
+      const surveyTypeId = SURVEY_TYPE_IDS[surveyTypeKey];
+      const surveyDetails = {
+        ulbId: formData.ulbId,
+        zoneId: formData.zoneId,
+        wardId: formData.wardId,
+        mohallaId: formData.mohallaId,
+        surveyTypeId, // required by backend
+        parcelId: toNumber(formData.parcelId),
+        mapId: toNumber(formData.mapId),
+        gisId: formData.gisId,
+        subGisId: formData.subGisId,
+        entryDate: new Date().toISOString(),
       };
-
+      const propertyDetails = {
+        responseTypeId: formData.responseTypeId,
+        oldHouseNumber: formData.oldHouseNumber,
+        electricityConsumerName: formData.electricityConsumerName,
+        waterSewerageConnectionNumber: formData.waterSewerageConnectionNumber,
+        respondentName: formData.respondentName,
+        respondentStatusId: formData.respondentStatusId,
+      };
+      const ownerDetails = {
+        ownerName: formData.ownerName,
+        fatherHusbandName: formData.fatherHusbandName,
+        mobileNumber: formData.mobileNumber,
+        aadharNumber: formData.aadharNumber && formData.aadharNumber.length === 12 ? formData.aadharNumber : undefined,
+      };
+      const locationDetails = {
+        propertyLatitude: toNumber(formData.propertyLatitude),
+        propertyLongitude: toNumber(formData.propertyLongitude),
+        assessmentYear: formData.assessmentYear,
+        propertyTypeId: formData.propertyTypeId,
+        buildingName: formData.buildingName,
+        roadTypeId: formData.roadTypeId,
+        constructionYear: formData.constructionYear,
+        constructionTypeId: formData.constructionTypeId,
+        addressRoadName: formData.addressRoadName,
+        locality: formData.locality,
+        pinCode: toNumber(formData.pinCode),
+        landmark: formData.landmark,
+        fourWayEast: formData.fourWayEast,
+        fourWayWest: formData.fourWayWest,
+        fourWayNorth: formData.fourWayNorth,
+        fourWaySouth: formData.fourWaySouth,
+        newWardNumber: formData.newWardNumber,
+      };
+      const otherDetails = {
+        waterSourceId: formData.waterSourceId,
+        rainWaterHarvestingSystem: formData.rainWaterHarvestingSystem,
+        plantation: formData.plantation,
+        parking: formData.parking,
+        pollution: formData.pollution,
+        pollutionMeasurementTaken: formData.pollutionMeasurementTaken,
+        waterSupplyWithin200Meters: formData.waterSupplyWithin200Meters,
+        sewerageLineWithin100Meters: formData.sewerageLineWithin100Meters,
+        disposalTypeId: formData.disposalTypeId,
+        totalPlotArea: toNumber(formData.totalPlotArea),
+        builtupAreaOfGroundFloor: toNumber(formData.builtupAreaOfGroundFloor),
+        remarks: formData.remarks,
+      };
+      let idToUse = surveyIdState || surveyId || (editMode && route.params?.surveyId) || undefined;
       let surveyToSave;
-
-      if (editMode && surveyId) {
-        const existingSurvey = await getLocalSurvey(surveyId);
-        if (existingSurvey && !Array.isArray(existingSurvey)) {
+      if (editMode && idToUse) {
+        // Update existing survey
+        const allSurveys = await getUnsyncedSurveys();
+        const idx = allSurveys.findIndex((s: any) => s.id === idToUse);
+        if (idx > -1) {
           surveyToSave = {
-            ...existingSurvey,
-            data: surveyDataPayload,
+            ...allSurveys[idx],
+            data: {
+              surveyDetails,
+              propertyDetails,
+              ownerDetails,
+              locationDetails,
+              otherDetails,
+              // preserve any floor details or extra data
+              ...allSurveys[idx].data,
+            },
+            synced: false,
+            status: 'incomplete',
           };
+          await saveSurveyLocally(surveyToSave);
+          Alert.alert('Updated', 'Survey updated locally.');
         } else {
-           Alert.alert('Error', 'Original survey not found for editing.');
-           return;
+          // fallback: treat as new
+          idToUse = `survey_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+          surveyToSave = {
+            id: idToUse,
+            data: {
+              surveyDetails,
+              propertyDetails,
+              ownerDetails,
+              locationDetails,
+              otherDetails,
+            },
+            synced: false,
+            createdAt: new Date().toISOString(),
+            surveyType: surveyTypeKey,
+            status: 'incomplete',
+          };
+          await saveSurveyLocally(surveyToSave);
+          Alert.alert('Saved', 'Survey saved locally.');
         }
       } else {
+        // Create new survey
+        idToUse = `survey_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
         surveyToSave = {
-          id: `survey_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          surveyType: surveyTypeKey,
-          data: surveyDataPayload,
-          createdAt: new Date().toISOString(),
+          id: idToUse,
+          data: {
+            surveyDetails,
+            propertyDetails,
+            ownerDetails,
+            locationDetails,
+            otherDetails,
+          },
           synced: false,
+          createdAt: new Date().toISOString(),
+          surveyType: surveyTypeKey,
+          status: 'incomplete',
         };
+        await saveSurveyLocally(surveyToSave);
+        Alert.alert('Saved', 'Survey saved locally.');
       }
-      
-      await saveSurveyLocally(surveyToSave);
-
-      // Navigate to survey intermediate screen
-      (navigation as any).navigate('SurveyIntermediate', {
-        surveyId: surveyToSave.id,
-        surveyType: surveyTypeKey,
-      });
-    } catch (error) {
-      Alert.alert('Error', 'Failed to save survey data.');
+      setSurveyIdState(idToUse); // always update state
+      (navigation as any).navigate('SurveyIntermediate', { surveyId: idToUse, surveyType: surveyTypeKey });
+    } catch (e) {
+      Alert.alert('Error', 'Failed to save survey locally.');
     }
   };
 
@@ -527,13 +468,13 @@ export default function SurveyForm({ route }: any) {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>1. Survey Details</Text>
-          <FormInput label="ULB" value="Lucknow" editable={false} />
-          <FormInput label="Zone" value="Zone 1" editable={false} />
-          <FormInput label="Ward" value="Ward No. 1" editable={false} />
+          <FormInput label="ULB" value={assignment?.ulb?.ulbName || ''} editable={false} />
+          <FormInput label="Zone" value={assignment?.zone?.zoneName || ''} editable={false} />
+          <FormInput label="Ward" value={assignment?.ward?.wardName || ''} editable={false} />
           <FormDropdown
             label="Mohalla"
             required
-            items={assignmentData?.mohallas?.map((m: any) => ({ label: m.mohallaName, value: m.mohallaId })) || []}
+            items={assignment?.mohallas?.map((m: any) => ({ label: m.mohallaName, value: m.mohallaId })) || []}
             onValueChange={(value: string | number) => handleInputChange('mohallaId', value)}
             value={formData.mohallaId}
           />
@@ -574,7 +515,6 @@ export default function SurveyForm({ route }: any) {
           />
           <FormInput
               label="Old House No."
-              required
               onChangeText={(value) => handleInputChange('oldHouseNumber', value)}
               value={formData.oldHouseNumber}
           />
@@ -650,13 +590,16 @@ export default function SurveyForm({ route }: any) {
             value={formData.assessmentYear}
             editable={false}
           />
-          <FormDropdown
-            label="Property Type"
-            required
-            items={createDropdownOptions(masterData?.propertyTypes, 'propertyTypeName', 'propertyTypeId')}
-            onValueChange={(value) => handleInputChange('propertyTypeId', value)}
-            value={formData.propertyTypeId}
-          />
+          {/* Property Type: Only for Residential and Mixed */}
+          {(surveyTypeKey === 'Residential' || surveyTypeKey === 'Mixed') && (
+            <FormDropdown
+              label="Property Type"
+              required
+              items={createDropdownOptions(masterData?.propertyTypes, 'propertyTypeName', 'propertyTypeId')}
+              onValueChange={(value) => handleInputChange('propertyTypeId', value)}
+              value={formData.propertyTypeId}
+            />
+          )}
           <FormInput
             label="Building Name"
             onChangeText={(value) => handleInputChange('buildingName', value)}
@@ -691,7 +634,6 @@ export default function SurveyForm({ route }: any) {
           />
           <FormInput
             label="Locality"
-            required
             onChangeText={(value) => handleInputChange('locality', value)}
             value={formData.locality}
           />

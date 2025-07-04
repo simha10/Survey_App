@@ -36,10 +36,12 @@ export const createSurvey = async (surveyData: CreateSurveyDto, uploadedById: st
       locality: locationDetails.locality,
       pinCode: locationDetails.pinCode,
       newWardNumber: locationDetails.newWardNumber,
-      propertyType: { connect: { propertyTypeId: locationDetails.propertyTypeId } },
       roadType: { connect: { roadTypeId: locationDetails.roadTypeId } },
       constructionType: { connect: { constructionTypeId: locationDetails.constructionTypeId } },
     };
+    if (locationDetails.propertyTypeId) {
+      locationCreate.propertyType = { connect: { propertyTypeId: locationDetails.propertyTypeId } };
+    }
     if (locationDetails.buildingName) locationCreate.buildingName = locationDetails.buildingName;
     if (locationDetails.addressRoadName) locationCreate.addressRoadName = locationDetails.addressRoadName;
     if (locationDetails.landmark) locationCreate.landmark = locationDetails.landmark;

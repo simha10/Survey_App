@@ -1,6 +1,5 @@
 // src/services/authService.ts
 import api from '../api/axiosConfig';
-import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export async function login({ username, password, role }: { username: string; password: string; role: string }) {

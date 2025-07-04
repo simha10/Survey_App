@@ -27,9 +27,10 @@ export interface NrPropertySubCategory {
 }
 
 // Fetch all master data at once
-export const fetchAllMasterData = async (): Promise<MasterDataResponse> => {
+export const fetchAllMasterData = async (token?: string): Promise<MasterDataResponse> => {
   try {
-    const response = await api.get('/master-data/all');
+    const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    const response = await api.get('/master-data/all', config);
     return response.data;
   } catch (error) {
     console.error('Error fetching all master data:', error);
