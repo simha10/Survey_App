@@ -28,7 +28,6 @@ const USER_TYPES = [
 const UserAssignmentPage: React.FC = () => {
   const { user } = useAuth();
   const [userType, setUserType] = useState("");
-  const [assignmentDate, setAssignmentDate] = useState("");
   const [selectedUlb, setSelectedUlb] = useState("");
   const [selectedZone, setSelectedZone] = useState("");
   const [selectedWards, setSelectedWards] = useState<string[]>([]);
@@ -42,6 +41,9 @@ const UserAssignmentPage: React.FC = () => {
   }>({});
   const [mohallaAssignments, setMohallaAssignments] = useState<{
     [wardId: string]: { [mohallaId: string]: any };
+  }>({});
+  const [wardAssignments, setWardAssignments] = useState<{
+    [wardId: string]: any;
   }>({});
 
   useEffect(() => {
@@ -107,6 +109,7 @@ const UserAssignmentPage: React.FC = () => {
       const newMohallaAssignments: {
         [wardId: string]: { [mohallaId: string]: any };
       } = {};
+      const newWardAssignments: { [wardId: string]: any } = {};
       const token = localStorage.getItem("auth_token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -119,6 +122,10 @@ const UserAssignmentPage: React.FC = () => {
           headers,
         });
         const assignments = res.data.assignments || [];
+        // Track ward-level assignments
+        if (assignments.length > 0) {
+          newWardAssignments[wardId] = assignments[0].user;
+        }
         const mohallaMap: { [mohallaId: string]: any } = {};
         assignments.forEach((a: any) => {
           a.mohallaIds.forEach((mid: string) => {
@@ -129,12 +136,14 @@ const UserAssignmentPage: React.FC = () => {
       }
       setWardMohallaMap(newWardMohallaMap);
       setMohallaAssignments(newMohallaAssignments);
+      setWardAssignments(newWardAssignments);
     };
     if (selectedWards.length > 0) {
       fetchMohallasAndAssignments();
     } else {
       setWardMohallaMap({});
       setMohallaAssignments({});
+      setWardAssignments({});
     }
   }, [selectedWards]);
 
@@ -244,15 +253,15 @@ const UserAssignmentPage: React.FC = () => {
                 User Type <span className="text-red-500">*</span>
               </Label>
               <Select value={userType} onValueChange={setUserType} required>
-                <SelectTrigger className="h-12 text-base font-medium bg-white border text-black border-gray-900 rounded-lg">
+                <SelectTrigger className="h-12 text-base font-medium">
                   <SelectValue placeholder="SELECT" />
                 </SelectTrigger>
-                <SelectContent className="bg-white text-black">
+                <SelectContent>
                   {USER_TYPES.map((type) => (
                     <SelectItem
                       key={type.value}
                       value={type.value}
-                      className="text-black border-2 border-amber-950"
+                      className="text-black bg-white border-2 border-black hover:bg-blue-300"
                     >
                       {type.label}
                     </SelectItem>
@@ -262,15 +271,35 @@ const UserAssignmentPage: React.FC = () => {
             </div>
             <div className="flex flex-col gap-2">
               <Label>
-                Assignment Date <span className="text-red-500">*</span>
+                User <span className="text-red-500">*</span>
               </Label>
-              <input
-                type="date"
-                className="border rounded px-3 py-2 h-12 text-base font-medium bg-white text-black border-gray-900"
-                value={assignmentDate}
-                onChange={(e) => setAssignmentDate(e.target.value)}
+              <Select
+                value={selectedUser}
+                onValueChange={setSelectedUser}
                 required
-              />
+                disabled={!userType}
+              >
+                <SelectTrigger className="h-12 text-base font-medium">
+                  <SelectValue placeholder="Select User..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {users.length === 0 ? (
+                    <SelectItem value="loading" disabled>
+                      {userType ? "No users found" : "Select user type first"}
+                    </SelectItem>
+                  ) : (
+                    users.map((user: any) => (
+                      <SelectItem
+                        key={user.userId}
+                        value={user.userId}
+                        className="text-black bg-white border-2 border-black hover:bg-blue-300"
+                      >
+                        {user.name || user.username}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex flex-col gap-2">
               <Label>
@@ -281,7 +310,7 @@ const UserAssignmentPage: React.FC = () => {
                 onValueChange={setSelectedUlb}
                 required
               >
-                <SelectTrigger className="h-12 text-base font-medium bg-white border text-black border-gray-900 rounded-lg">
+                <SelectTrigger className="h-12 text-base font-medium">
                   <SelectValue placeholder="Select ULB..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -289,7 +318,7 @@ const UserAssignmentPage: React.FC = () => {
                     <SelectItem
                       value="loading"
                       disabled
-                      className="text-black border-2 border-amber-50"
+                      className="text-black bg-white border-2 border-black hover:bg-blue-300"
                     >
                       Loading...
                     </SelectItem>
@@ -298,7 +327,7 @@ const UserAssignmentPage: React.FC = () => {
                       <SelectItem
                         key={ulb.ulbId}
                         value={ulb.ulbId}
-                        className="text-black border-2 bg-amber-50 border-blue-500"
+                        className="text-black bg-white border-2 border-black hover:bg-blue-300"
                       >
                         {ulb.ulbName}
                       </SelectItem>
@@ -317,7 +346,7 @@ const UserAssignmentPage: React.FC = () => {
                 required
                 disabled={!selectedUlb}
               >
-                <SelectTrigger className="h-12 text-base font-medium bg-white border text-black border-gray-900 rounded-lg">
+                <SelectTrigger className="h-12 text-base font-medium">
                   <SelectValue placeholder="Select Zone..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -330,7 +359,7 @@ const UserAssignmentPage: React.FC = () => {
                       <SelectItem
                         key={zone.zoneId}
                         value={zone.zoneId}
-                        className="text-white bg-black border border-white "
+                        className="text-black bg-white border-2 border-black hover:bg-blue-300"
                       >
                         {zone.zoneNumber}
                       </SelectItem>
@@ -339,126 +368,183 @@ const UserAssignmentPage: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex flex-col gap-2 md:col-span-2">
-              <Label>
-                Ward(s) <span className="text-red-500">*</span>
+            {/* Wards Table */}
+            <div className="md:col-span-2">
+              <Label className="text-lg font-semibold mb-4 block">
+                Wards <span className="text-red-500">*</span>
               </Label>
               {wardsLoading ? (
-                <div>Loading...</div>
+                <div className="text-center py-4">Loading wards...</div>
               ) : wards.length === 0 ? (
-                <div>No wards found</div>
+                <div className="text-center py-4 text-gray-500">
+                  No wards found
+                </div>
               ) : (
-                <div className="flex flex-wrap gap-4">
-                  {wards.map((ward: any) => (
-                    <label
-                      key={ward.wardId}
-                      className="flex items-center gap-2"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedWards.includes(ward.wardId)}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setSelectedWards((prev) =>
-                            checked
-                              ? [...prev, ward.wardId]
-                              : prev.filter((id) => id !== ward.wardId)
-                          );
-                        }}
-                      />
-                      {ward.wardName}
-                    </label>
-                  ))}
+                <div className="bg-white shadow-md rounded-lg overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Select
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Ward Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Assigned To
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {wards.map((ward: any) => {
+                        const assignedUser = wardAssignments[ward.wardId];
+                        const isAssigned = Boolean(assignedUser);
+                        return (
+                          <tr key={ward.wardId} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <input
+                                type="checkbox"
+                                checked={selectedWards.includes(ward.wardId)}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  setSelectedWards((prev) =>
+                                    checked
+                                      ? [...prev, ward.wardId]
+                                      : prev.filter((id) => id !== ward.wardId)
+                                  );
+                                }}
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                              />
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900">
+                                {ward.wardName}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span
+                                className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                  isAssigned
+                                    ? "bg-orange-100 text-orange-800"
+                                    : "bg-green-100 text-green-800"
+                                }`}
+                              >
+                                {isAssigned ? "Assigned" : "Available"}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {assignedUser
+                                ? assignedUser.name || assignedUser.username
+                                : "-"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
-            {/* Mohalla selection per ward */}
-            {selectedWards.map((wardId) => {
-              const mohallaIds = wardMohallaMap[wardId] || [];
-              return (
-                <div key={wardId} className="flex flex-col gap-2 md:col-span-2">
-                  <Label>
-                    Mohalla(s) for Ward:{" "}
-                    {wards.find((w: any) => w.wardId === wardId)?.wardName}
-                  </Label>
-                  {mohallaIds.length === 0 ? (
-                    <div>No mohallas found</div>
-                  ) : (
-                    <div className="flex flex-wrap gap-4">
-                      {mohallaIds.map((mohallaId) => {
-                        const assignedUser =
-                          mohallaAssignments[wardId]?.[mohallaId];
-                        const isAssigned = Boolean(assignedUser);
-                        return (
-                          <label
-                            key={mohallaId}
-                            className="flex items-center gap-2"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedMohallas.includes(mohallaId)}
-                              disabled={isAssigned}
-                              onChange={(e) => {
-                                const checked = e.target.checked;
-                                setSelectedMohallas((prev) =>
-                                  checked
-                                    ? [...prev, mohallaId]
-                                    : prev.filter((id) => id !== mohallaId)
-                                );
-                              }}
-                            />
-                            {(() => {
-                              const mohalla = mohallas.find(
-                                (m: any) => m.mohallaId === mohallaId
-                              );
-                              return mohalla ? mohalla.mohallaName : mohallaId;
-                            })()}
-                            {isAssigned && (
-                              <span className="text-xs text-red-500 ml-2">
-                                (Assigned to{" "}
-                                {assignedUser.name || assignedUser.username})
-                              </span>
-                            )}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            <div className="flex flex-col gap-2">
-              <Label>
-                User <span className="text-red-500">*</span>
+
+            {/* Mohallas Table */}
+            <div className="md:col-span-2">
+              <Label className="text-lg font-semibold mb-4 block">
+                Mohallas <span className="text-red-500">*</span>
               </Label>
-              <Select
-                value={selectedUser}
-                onValueChange={setSelectedUser}
-                required
-                disabled={!userType}
-              >
-                <SelectTrigger className="h-12 text-base font-medium bg-white border text-black border-gray-900 rounded-lg">
-                  <SelectValue placeholder="Select User..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {users.length === 0 ? (
-                    <SelectItem value="loading" disabled>
-                      {userType ? "No users found" : "Select user type first"}
-                    </SelectItem>
-                  ) : (
-                    users.map((user: any) => (
-                      <SelectItem
-                        key={user.userId}
-                        value={user.userId}
-                        className="text-white border-2 border-black"
-                      >
-                        {user.name || user.username}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+              {selectedWards.length === 0 ? (
+                <div className="text-center py-4 text-gray-500">
+                  Select wards first to view mohallas
+                </div>
+              ) : (
+                <div className="bg-white shadow-md rounded-lg overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Select
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Mohalla Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Assigned To
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {selectedWards
+                        .map((wardId) => {
+                          const mohallaIds = wardMohallaMap[wardId] || [];
+                          const wardName = wards.find(
+                            (w: any) => w.wardId === wardId
+                          )?.wardName;
+                          return mohallaIds.map((mohallaId) => {
+                            const assignedUser =
+                              mohallaAssignments[wardId]?.[mohallaId];
+                            const isAssigned = Boolean(assignedUser);
+                            const mohalla = mohallas.find(
+                              (m: any) => m.mohallaId === mohallaId
+                            );
+
+                            return (
+                              <tr key={mohallaId} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedMohallas.includes(
+                                      mohallaId
+                                    )}
+                                    onChange={(e) => {
+                                      const checked = e.target.checked;
+                                      setSelectedMohallas((prev) =>
+                                        checked
+                                          ? [...prev, mohallaId]
+                                          : prev.filter(
+                                              (id) => id !== mohallaId
+                                            )
+                                      );
+                                    }}
+                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                  />
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {mohalla ? mohalla.mohallaName : mohallaId}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span
+                                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                      isAssigned
+                                        ? "bg-orange-100 text-orange-800"
+                                        : "bg-green-100 text-green-800"
+                                    }`}
+                                  >
+                                    {isAssigned ? "Assigned" : "Available"}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {assignedUser
+                                    ? assignedUser.name || assignedUser.username
+                                    : "-"}
+                                </td>
+                              </tr>
+                            );
+                          });
+                        })
+                        .flat()}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
+
             <div className="col-span-1 md:col-span-2 flex justify-end mt-4">
               <Button
                 type="submit"
@@ -480,9 +566,6 @@ const UserAssignmentPage: React.FC = () => {
               <div>
                 <b>User:</b>{" "}
                 {users.find((u: any) => u.userId === selectedUser)?.name || "-"}
-              </div>
-              <div>
-                <b>Assignment Date:</b> {assignmentDate}
               </div>
               <div>
                 <b>ULB:</b>{" "}

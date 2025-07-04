@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest, { params }: { params: { ulbId: string } }) {
   const token = req.cookies.get("token")?.value;
-  const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
+  const backendUrl = process.env.BACKEND_URL || "http://localhost:4000";
   const { ulbId } = params;
   const res = await fetch(`${backendUrl}/zones/ulb/${ulbId}`, {
     headers: {

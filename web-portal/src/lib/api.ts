@@ -579,6 +579,12 @@ export const masterDataApi = {
     });
     return response.data;
   },
+
+  // Survey Type Master Data
+  getSurveyTypes: async (): Promise<any[]> => {
+    const response = await apiClient.get('/api/master-data/survey-types');
+    return response.data;
+  },
 };
 
 // Survey Status APIs

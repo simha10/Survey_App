@@ -222,9 +222,9 @@ model UsersMaster {
   surveyors                     Surveyors?
   userRoleMaps                  UserRoleMapping[]
   wardStatusMaps                WardStatusMapping[]
-
   @@index([username])
   @@index([mobileNumber])
+
 }
 
 model RolePermissionMaster {
@@ -293,6 +293,7 @@ model SurveyorAssignment {
   @@index([userId])
   @@index([wardId])
   @@index([isActive])
+
 }
 
 model WardStatusMapping {
@@ -326,6 +327,7 @@ model SurveyStatusMapping {
   @@index([surveyUniqueCode])
   @@index([surveyStatusId])
   @@index([changedById])
+
 }
 
 model UserRoleMapping {
@@ -506,9 +508,9 @@ model ResidentialPropertyAssessment {
   floorMaster           FloorMaster              @relation(fields: [floorNumberId], references: [floorNumberId])
   occupancyStatus       OccupancyStatusMaster    @relation(fields: [occupancyStatusId], references: [occupancyStatusId])
   survey                SurveyDetails            @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
-
   @@index([surveyUniqueCode])
   @@index([floorNumberId])
+
 }
 
 model NonResidentialPropertyAssessment {

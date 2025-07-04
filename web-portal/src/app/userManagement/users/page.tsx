@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import ProtectedRoute from "@/features/auth/ProtectedRoute";
-import { userApi, User } from "@/lib/api";
+import { userApi, authApi, User, RegisterRequest } from "@/lib/api";
 import toast from "react-hot-toast";
 import { useAuth } from "@/features/auth/AuthContext";
 import MainLayout from "@/components/layout/MainLayout";
@@ -17,6 +17,7 @@ const UserManagementPage: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [creatingUser, setCreatingUser] = useState(false);
 
   const [formData, setFormData] = useState({
     username: "",
@@ -46,8 +47,60 @@ const UserManagementPage: React.FC = () => {
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Form validation
+    if (!formData.username || formData.username.length < 3) {
+      toast.error("Username must be at least 3 characters long");
+      return;
+    }
+
+    if (!formData.name || formData.name.length < 3) {
+      toast.error("Name must be at least 3 characters long");
+      return;
+    }
+
+    if (!formData.password || formData.password.length < 8) {
+      toast.error("Password must be at least 8 characters long");
+      return;
+    }
+
+    if (!formData.mobileNumber || formData.mobileNumber.length !== 10) {
+      toast.error("Mobile number must be exactly 10 digits");
+      return;
+    }
+
+    if (!formData.role) {
+      toast.error("Please select a role");
+      return;
+    }
+
+    // Confirmation dialog
+    const confirmed = window.confirm(
+      `Are you sure you want to create a new user?\n\n` +
+        `Name: ${formData.name}\n` +
+        `Username: ${formData.username}\n` +
+        `Role: ${formData.role}\n` +
+        `Mobile: ${formData.mobileNumber}`
+    );
+
+    if (!confirmed) return;
+
+    setCreatingUser(true);
     try {
-      await userApi.register(formData);
+      // Prepare the data according to RegisterRequest interface
+      const userData: RegisterRequest = {
+        name: formData.name,
+        username: formData.username,
+        password: formData.password,
+        role: formData.role as
+          | "SUPERADMIN"
+          | "ADMIN"
+          | "SUPERVISOR"
+          | "SURVEYOR",
+        mobileNumber: formData.mobileNumber,
+      };
+
+      await authApi.register(userData);
       toast.success("User created successfully");
       setShowCreateModal(false);
       setFormData({
@@ -60,7 +113,11 @@ const UserManagementPage: React.FC = () => {
       });
       fetchUsers();
     } catch (error: any) {
-      toast.error(error.response?.data?.error || "Failed to create user");
+      const errorMessage =
+        error.response?.data?.error || error.message || "Failed to create user";
+      toast.error(errorMessage);
+    } finally {
+      setCreatingUser(false);
     }
   };
 
@@ -376,11 +433,20 @@ const UserManagementPage: React.FC = () => {
                       <input
                         type="text"
                         placeholder="Enter mobile number"
+                        pattern="[0-9]{10}"
+                        maxLength={10}
+                        onKeyPress={(e) => {
+                          if (!/[0-9]/.test(e.key)) {
+                            e.preventDefault();
+                          }
+                        }}
                         value={formData.mobileNumber}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            mobileNumber: e.target.value,
+                            mobileNumber: e.target.value
+                              .replace(/\D/g, "")
+                              .slice(0, 10),
                           })
                         }
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
@@ -396,9 +462,14 @@ const UserManagementPage: React.FC = () => {
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                        disabled={creatingUser}
+                        className={`px-4 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          creatingUser
+                            ? "bg-blue-400 cursor-not-allowed"
+                            : "bg-blue-600 hover:bg-blue-700"
+                        }`}
                       >
-                        Create User
+                        {creatingUser ? "Creating..." : "Create User"}
                       </button>
                     </div>
                   </form>

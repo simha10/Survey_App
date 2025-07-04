@@ -1,0 +1,47 @@
+model QCLevelMaster {
+  qcLevelId   Int        @id @default(autoincrement())
+  levelName   String
+  description String?
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  qcRecords   QCRecord[]
+}
+
+model QCErrorTypeMaster {
+  errorTypeId   Int      @id @default(autoincrement())
+  errorTypeCode String   @unique
+  description   String?
+  isActive      Boolean  @default(true)
+  qcRecords     QCRecord[]
+}
+
+model BulkActionLog {
+  bulkActionId        String      @id @default(uuid())
+  actionType          String
+  performedById       String
+  performedAt         DateTime    @default(now())
+  remarks             String?
+  qcRecords           QCRecord[]
+  performedBy         UsersMaster @relation(fields: [performedById], references: [userId])
+}
+
+model QCRecord {
+  qcRecordId       String            @id @default(uuid())
+  surveyUniqueCode String            @db.Uuid
+  qcLevel          Int               // Deprecated, use qcLevelId
+  qcStatus         QCStatusEnum
+  reviewedById     String
+  remarks          String?
+  reviewedAt       DateTime          @default(now())
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  errorTypeId      Int?              // New: FK to QCErrorTypeMaster
+  qcLevelId        Int?              // New: FK to QCLevelMaster
+  bulkActionId     String?           // New: FK to BulkActionLog
+  reviewedBy       UsersMaster       @relation(fields: [reviewedById], references: [userId])
+  survey           SurveyDetails     @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode], onDelete: Cascade)
+  errorType        QCErrorTypeMaster? @relation(fields: [errorTypeId], references: [errorTypeId])
+  qcLevelMaster    QCLevelMaster?    @relation(fields: [qcLevelId], references: [qcLevelId])
+  bulkAction       BulkActionLog?    @relation(fields: [bulkActionId], references: [bulkActionId])
+}
