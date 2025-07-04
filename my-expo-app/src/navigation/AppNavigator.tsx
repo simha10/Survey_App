@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createStackNavigator } from '@react-navigation/stack';
-import { View } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity } from 'react-native';
 import SideNav from '../components/SideNav';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -21,6 +21,7 @@ import NonResidentialFloorDetail from '../screens/NonResidentialFloorDetail';
 import { useAuth } from '../context/AuthContext';
 import CustomHeader from '../components/CustomHeader';
 import { useTheme } from '../context/ThemeContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Drawer = createDrawerNavigator();
 const Stack = createStackNavigator();
@@ -71,6 +72,23 @@ function AuthenticatedDrawer({ initialRouteName, userRole }: { initialRouteName:
 export default function AppNavigator() {
   const { userRole, isLoading } = useAuth();
   const { theme } = useTheme();
+  const [showAssignmentSelection, setShowAssignmentSelection] = useState(false);
+  useEffect(() => {
+    const checkAssignments = async () => {
+      if (userRole === 'SURVEYOR') {
+        const json = await AsyncStorage.getItem('userAssignments');
+        const assignments = json ? JSON.parse(json) : [];
+        if (Array.isArray(assignments) && assignments.length > 1) {
+          setShowAssignmentSelection(true);
+        } else {
+          setShowAssignmentSelection(false);
+        }
+      } else {
+        setShowAssignmentSelection(false);
+      }
+    };
+    checkAssignments();
+  }, [userRole]);
 
   if (isLoading) {
     return <SplashScreen />;

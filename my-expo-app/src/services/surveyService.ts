@@ -1,45 +1,41 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SurveyData } from '../utils/storage';
 import { fetchAllMasterData } from './masterDataService';
+import api from '../api/axiosConfig';
 
-const API_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:4000/api';
+const API_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.18.206:4000/api';
 
 export const submitSurvey = async (surveyData: SurveyData): Promise<any> => {
   try {
-    const token = await AsyncStorage.getItem('userToken');
-    if (!token) {
-      throw new Error('No auth token found');
+    // No need to manually get token, axios interceptor handles it
+    const response = await api.post('/surveys/addSurvey', surveyData.data);
+    return response.data;
+  } catch (error: any) {
+    let errorMsg = 'Failed to submit survey';
+    if (error.response && error.response.data) {
+      if (error.response.data.message) errorMsg = error.response.data.message;
+      else if (error.response.data.errors && Array.isArray(error.response.data.errors)) errorMsg = error.response.data.errors.map((e: any) => e.message).join(', ');
+    } else if (error.message) {
+      errorMsg = error.message;
     }
-
-    const response = await fetch(`${API_URL}/surveys/addSurvey`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(surveyData.data),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to submit survey');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error submitting survey:', error);
-    throw error;
+    console.error('Error submitting survey:', errorMsg);
+    throw new Error(errorMsg);
   }
 };
 
 export const fetchSurveyorAssignments = async () => {
-  const token = await AsyncStorage.getItem('userToken');
-  if (!token) throw new Error('No auth token found');
-  const response = await fetch(`${API_URL}/surveyor/my-assignments`, {
-    headers: { 'Authorization': `Bearer ${token}` },
-  });
-  if (!response.ok) throw new Error('Failed to fetch assignments');
-  return response.json();
+  try {
+    const response = await api.get('/surveyor/my-assignments');
+    return response.data;
+  } catch (error: any) {
+    let errorMsg = 'Failed to fetch assignments';
+    if (error.response && error.response.data && error.response.data.error) {
+      errorMsg = error.response.data.error;
+    } else if (error.message) {
+      errorMsg = error.message;
+    }
+    throw new Error(errorMsg);
+  }
 };
 
 export const fetchMasterData = async () => {

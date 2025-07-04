@@ -15,8 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { getLocalSurvey, updateLocalSurvey } from '../utils/storage';
-import { fetchMasterData } from '../services/surveyService';
+import { getUnsyncedSurveys, saveSurveyLocally, getSelectedAssignment, getMasterData } from '../utils/storage';
 import { fetchNrPropertySubCategories } from '../services/masterDataService';
 
 interface FloorDetail {
@@ -33,11 +32,11 @@ interface FloorDetail {
 }
 
 interface MasterData {
-  floorNumbers: Array<{ floorNumberId: number; floorNumberName: string }>;
-  occupancyStatuses: Array<{ occupancyStatusId: number; occupancyStatusName: string }>;
-  constructionNatures: Array<{ constructionNatureId: number; constructionNatureName: string }>;
-  nrPropertyCategories: Array<{ propertyCategoryId: number; propertyCategoryName: string }>;
-  nrPropertySubCategories: Array<{ subCategoryId: number; subCategoryName: string; propertyCategoryId: number }>;
+  floorNumbers: { floorNumberId: number; floorNumberName: string }[];
+  occupancyStatuses: { occupancyStatusId: number; occupancyStatusName: string }[];
+  constructionNatures: { constructionNatureId: number; constructionNatureName: string }[];
+  nrPropertyCategories: { propertyCategoryId: number; propertyCategoryName: string }[];
+  nrPropertySubCategories: { subCategoryId: number; subCategoryName: string; propertyCategoryId: number }[];
 }
 
 type Navigation = {
@@ -58,7 +57,7 @@ export default function NonResidentialFloorDetail() {
     nrPropertyCategories: [],
     nrPropertySubCategories: [],
   });
-  const [subCategories, setSubCategories] = useState<MasterData['nrPropertySubCategories']>([]);
+  const [subCategories, setSubCategories] = useState<{ subCategoryId: number; subCategoryName: string; propertyCategoryId: number }[]>([]);
 
   // Form state
   const [formData, setFormData] = useState<FloorDetail>({
@@ -94,7 +93,7 @@ export default function NonResidentialFloorDetail() {
 
   const loadMasterData = async () => {
     try {
-      const data = await fetchMasterData();
+      const data = await getMasterData();
       setMasterData({
         floorNumbers: data.floorNumbers || [],
         occupancyStatuses: data.occupancyStatuses || [],
@@ -192,57 +191,59 @@ export default function NonResidentialFloorDetail() {
 
     setSaving(true);
     try {
-      const survey = await getLocalSurvey(surveyId);
-      if (!survey || Array.isArray(survey)) {
-        Alert.alert('Error', 'Survey not found');
-        return;
-      }
+      const allSurveys = await getUnsyncedSurveys();
+      const idx = allSurveys.findIndex((s: any) => s.id === surveyId);
+      if (idx > -1) {
+        const survey = allSurveys[idx];
+        const processedFormData = {
+          ...formData,
+          builtupArea: parseFloat(formData.builtupArea) || 0,
+          licenseNo: formData.licenseNo === '' ? null : formData.licenseNo,
+          licenseExpiryDate: !formData.licenseExpiryDate ? null : formData.licenseExpiryDate,
+          floorNumberId: Number(formData.floorNumberId),
+          nrPropertyCategoryId: Number(formData.nrPropertyCategoryId),
+          nrSubCategoryId: Number(formData.nrSubCategoryId),
+          occupancyStatusId: Number(formData.occupancyStatusId),
+          constructionNatureId: Number(formData.constructionNatureId),
+        };
 
-      const processedFormData = {
-        ...formData,
-        builtupArea: parseFloat(formData.builtupArea) || 0,
-        licenseNo: formData.licenseNo === '' ? null : formData.licenseNo,
-        licenseExpiryDate: !formData.licenseExpiryDate ? null : formData.licenseExpiryDate,
-        floorNumberId: Number(formData.floorNumberId),
-        nrPropertyCategoryId: Number(formData.nrPropertyCategoryId),
-        nrSubCategoryId: Number(formData.nrSubCategoryId),
-        occupancyStatusId: Number(formData.occupancyStatusId),
-        constructionNatureId: Number(formData.constructionNatureId),
-      };
+        const existingFloors = survey.data && survey.data.nonResidentialPropertyAssessments ? survey.data.nonResidentialPropertyAssessments : [];
+        let updatedFloors;
 
-      const existingFloors = survey.data && survey.data.nonResidentialPropertyAssessments ? survey.data.nonResidentialPropertyAssessments : [];
-      let updatedFloors;
+        if (editMode) {
+          // Update existing floor
+          updatedFloors = existingFloors.map((floor: any) =>
+            floor.id === floorId ? processedFormData : floor
+          );
+        } else {
+          // Add new floor
+          updatedFloors = [...existingFloors, processedFormData];
+        }
 
-      if (editMode) {
-        // Update existing floor
-        updatedFloors = existingFloors.map(floor =>
-          floor.id === floorId ? processedFormData : floor
-        );
-      } else {
-        // Add new floor
-        updatedFloors = [...existingFloors, processedFormData];
-      }
-
-      const updatedSurvey = {
-        ...survey,
-        data: {
-          ...survey.data,
-          nonResidentialPropertyAssessments: updatedFloors,
-        },
-      };
-
-      await updateLocalSurvey(surveyId, updatedSurvey);
-      
-      Alert.alert(
-        'Success',
-        editMode ? 'Floor detail updated successfully' : 'Floor detail added successfully',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
+        const updatedSurvey = {
+          ...survey,
+          data: {
+            ...survey.data,
+            nonResidentialPropertyAssessments: updatedFloors,
           },
-        ]
-      );
+        };
+
+        if (idx > -1) {
+          allSurveys[idx] = updatedSurvey;
+          await saveSurveyLocally(updatedSurvey);
+        }
+        
+        Alert.alert(
+          'Success',
+          editMode ? 'Floor detail updated successfully' : 'Floor detail added successfully',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.goBack(),
+            },
+          ]
+        );
+      }
     } catch (error) {
       console.error('Error saving floor detail:', error);
       Alert.alert('Error', 'Failed to save floor detail');
@@ -276,7 +277,7 @@ export default function NonResidentialFloorDetail() {
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Floor Number */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Floor Number *</Text>
+            <Text style={{color: '#111'}}>Floor Number<Text style={{color: 'red'}}>*</Text></Text>
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.floorNumberId}
@@ -297,7 +298,7 @@ export default function NonResidentialFloorDetail() {
 
           {/* Property Category */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Property Category *</Text>
+            <Text style={{color: '#111'}}>Property Category *</Text>
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.nrPropertyCategoryId}
@@ -320,7 +321,7 @@ export default function NonResidentialFloorDetail() {
 
           {/* Property Sub Category */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Property Sub Category *</Text>
+            <Text style={{color: '#111'}}>Property Sub Category *</Text>
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.nrSubCategoryId}
@@ -342,7 +343,7 @@ export default function NonResidentialFloorDetail() {
 
           {/* Establishment Name */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Establishment Name *</Text>
+            <Text style={{color: '#111'}}>Establishment Name *</Text>
             <TextInput
               style={styles.input}
               value={formData.establishmentName}
@@ -353,7 +354,7 @@ export default function NonResidentialFloorDetail() {
 
           {/* License Number */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>License Number</Text>
+            <Text style={{color: '#111'}}>License Number</Text>
             <TextInput
               style={styles.input}
               value={formData.licenseNo}
@@ -364,7 +365,7 @@ export default function NonResidentialFloorDetail() {
 
           {/* License Expiry Date */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>License Expiry Date</Text>
+            <Text style={{color: '#111'}}>License Expiry Date</Text>
             <TouchableOpacity
               style={styles.dateInput}
               onPress={() => setShowDatePicker(true)}
@@ -377,7 +378,7 @@ export default function NonResidentialFloorDetail() {
 
           {/* Occupancy Status */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Occupancy Status *</Text>
+            <Text style={{color: '#111'}}>Occupancy Status *</Text>
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.occupancyStatusId}
@@ -398,7 +399,7 @@ export default function NonResidentialFloorDetail() {
 
           {/* Construction Nature */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Construction Nature *</Text>
+            <Text style={{color: '#111'}}>Construction Nature *</Text>
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.constructionNatureId}
@@ -419,7 +420,7 @@ export default function NonResidentialFloorDetail() {
 
           {/* Built-up Area */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Built-up Area (sq ft) *</Text>
+            <Text style={{color: '#111'}}>Built-up Area (sq ft) *</Text>
             <TextInput
               style={styles.input}
               value={formData.builtupArea}

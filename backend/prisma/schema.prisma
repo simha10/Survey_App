@@ -222,9 +222,9 @@ model UsersMaster {
   surveyors                     Surveyors?
   userRoleMaps                  UserRoleMapping[]
   wardStatusMaps                WardStatusMapping[]
-
-  @@index([mobileNumber])
   @@index([username])
+  @@index([mobileNumber])
+
 }
 
 model RolePermissionMaster {
@@ -290,9 +290,10 @@ model SurveyorAssignment {
   ward           WardMaster  @relation(fields: [wardId], references: [wardId])
 
   @@unique([userId, wardId])
-  @@index([isActive])
   @@index([userId])
   @@index([wardId])
+  @@index([isActive])
+
 }
 
 model WardStatusMapping {
@@ -323,9 +324,10 @@ model SurveyStatusMapping {
   survey           SurveyDetails       @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
 
   @@unique([surveyUniqueCode, surveyStatusId])
-  @@index([changedById])
-  @@index([surveyStatusId])
   @@index([surveyUniqueCode])
+  @@index([surveyStatusId])
+  @@index([changedById])
+
 }
 
 model UserRoleMapping {
@@ -337,8 +339,8 @@ model UserRoleMapping {
   user          UsersMaster          @relation(fields: [userId], references: [userId])
 
   @@unique([userId, roleId])
-  @@index([roleId])
   @@index([userId])
+  @@index([roleId])
 }
 
 model Session {
@@ -419,10 +421,10 @@ model SurveyDetails {
 
   @@index([uploadedById])
   @@index([createdAt])
-  @@index([mohallaId])
   @@index([ulbId])
-  @@index([wardId])
   @@index([zoneId])
+  @@index([wardId])
+  @@index([mohallaId])
 }
 
 model PropertyDetails {
@@ -506,9 +508,9 @@ model ResidentialPropertyAssessment {
   floorMaster           FloorMaster              @relation(fields: [floorNumberId], references: [floorNumberId])
   occupancyStatus       OccupancyStatusMaster    @relation(fields: [occupancyStatusId], references: [occupancyStatusId])
   survey                SurveyDetails            @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
-
-  @@index([floorNumberId])
   @@index([surveyUniqueCode])
+  @@index([floorNumberId])
+
 }
 
 model NonResidentialPropertyAssessment {
@@ -532,8 +534,8 @@ model NonResidentialPropertyAssessment {
 
   @@index([nrPropertyCategoryId])
   @@index([nrSubCategoryId])
-  @@index([occupancyStatusId])
   @@index([surveyUniqueCode])
+  @@index([occupancyStatusId])
 }
 
 model PropertyAttachmentDetails {

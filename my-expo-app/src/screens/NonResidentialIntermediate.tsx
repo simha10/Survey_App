@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
-import { getLocalSurvey, updateLocalSurvey } from '../utils/storage';
+import { getUnsyncedSurveys, updateLocalSurvey } from '../utils/storage';
 
 interface FloorDetail {
   id: string;
@@ -37,7 +37,7 @@ export default function NonResidentialIntermediate() {
   const [surveyData, setSurveyData] = useState<SurveyData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const surveyId = route.params?.surveyId;
+  const surveyId = (route.params as any)?.surveyId;
   const surveyType = route.params?.surveyType;
 
   useFocusEffect(
@@ -54,7 +54,8 @@ export default function NonResidentialIntermediate() {
         return;
       }
 
-      const survey = await getLocalSurvey(surveyId);
+      const allSurveys = await getUnsyncedSurveys();
+      const survey = allSurveys.find((s: any) => s.id === surveyId);
       setSurveyData(survey);
     } catch (error) {
       console.error('Error loading survey data:', error);

@@ -167,10 +167,45 @@ export async function getSurveyorAssignments(userId: string) {
       orderBy: { assignmentId: 'desc' },
     });
 
+    // Enrich each assignment with zone, ulb, and mohalla names
+    const enrichedAssignments = await Promise.all(assignments.map(async (a) => {
+      // 1. Get zone for the ward
+      const zoneWardMap = await prisma.zoneWardMapping.findFirst({
+        where: { wardId: a.wardId, isActive: true },
+      });
+      let zone = null;
+      let ulb = null;
+      if (zoneWardMap) {
+        zone = await prisma.zoneMaster.findUnique({ where: { zoneId: zoneWardMap.zoneId } });
+        // 2. Get ulb for the zone
+        const ulbZoneMap = await prisma.ulbZoneMapping.findFirst({
+          where: { zoneId: zoneWardMap.zoneId, isActive: true },
+        });
+        if (ulbZoneMap) {
+          ulb = await prisma.ulbMaster.findUnique({ where: { ulbId: ulbZoneMap.ulbId } });
+        }
+      }
+      // 3. Get mohalla names
+      let mohallas: any[] = [];
+      if (a.mohallaIds && a.mohallaIds.length > 0) {
+        mohallas = await prisma.mohallaMaster.findMany({
+          where: { mohallaId: { in: a.mohallaIds } },
+          select: { mohallaId: true, mohallaName: true },
+        });
+      }
+      return {
+        ...a,
+        ulb: ulb ? { ulbId: ulb.ulbId, ulbName: ulb.ulbName } : null,
+        zone: zone ? { zoneId: zone.zoneId, zoneName: zone.zoneName } : null,
+        ward: a.ward ? { wardId: a.ward.wardId, wardName: a.ward.wardName } : null,
+        mohallas,
+      };
+    }));
+
     return {
       userId,
-      assignments,
-      total: assignments.length,
+      assignments: enrichedAssignments,
+      total: enrichedAssignments.length,
     };
   } catch (err: any) {
     if (!err.status) console.error(err);

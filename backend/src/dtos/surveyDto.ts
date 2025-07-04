@@ -35,7 +35,7 @@ const LocationDetailsSchema = z.object({
   propertyLatitude: z.number().min(0).max(180).optional().nullable(),
   propertyLongitude: z.number().min(0).max(360).optional().nullable(),
   assessmentYear: z.string().max(20),
-  propertyTypeId: z.number().int().positive(),
+  propertyTypeId: z.number().int().positive().optional().nullable(),
   buildingName: z.string().optional().nullable(),
   roadTypeId: z.number().int().positive(),
   constructionYear: z.string().max(20),
@@ -93,6 +93,13 @@ const NonResidentialPropertyAssessmentSchema = z.object({
   builtupArea: z.number(), // Built-up Area (manual entry)
 });
 
+// Helper: surveyTypeId to name mapping (should match DB seed)
+const surveyTypeIdToName: Record<number, string> = {
+  1: 'RESIDENTIAL',
+  2: 'NON RESIDENTIAL',
+  3: 'MIX',
+};
+
 export const CreateSurveyDtoSchema = z.object({
   surveyDetails: SurveyDetailsSchema,
   propertyDetails: PropertyDetailsSchema,
@@ -101,6 +108,27 @@ export const CreateSurveyDtoSchema = z.object({
   otherDetails: OtherDetailsSchema,
   residentialPropertyAssessments: z.array(ResidentialPropertyAssessmentSchema).optional().nullable(),
   nonResidentialPropertyAssessments: z.array(NonResidentialPropertyAssessmentSchema).optional().nullable(),
+}).superRefine((data, ctx) => {
+  const surveyTypeId = data.surveyDetails?.surveyTypeId;
+  const surveyTypeName = surveyTypeIdToName[surveyTypeId];
+  const propertyTypeId = data.locationDetails?.propertyTypeId;
+  if (surveyTypeName === 'RESIDENTIAL' || surveyTypeName === 'MIX') {
+    if (!propertyTypeId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'propertyTypeId is required for Residential and Mix survey types.',
+        path: ['locationDetails', 'propertyTypeId'],
+      });
+    }
+  } else if (surveyTypeName === 'NON RESIDENTIAL') {
+    if (propertyTypeId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'propertyTypeId should not be present for Non-Residential survey type.',
+        path: ['locationDetails', 'propertyTypeId'],
+      });
+    }
+  }
 });
 
 export type CreateSurveyDto = z.infer<typeof CreateSurveyDtoSchema>; 

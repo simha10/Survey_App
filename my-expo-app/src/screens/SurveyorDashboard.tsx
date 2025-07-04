@@ -12,12 +12,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import {
-  getLocalSurveys,
-  clearLocalSurveys,
-  getOngoingSurvey,
-  isSurveyInProgress,
+  getUnsyncedSurveys,
+  syncSurveysToBackend,
+  getSelectedAssignment,
+  setSelectedAssignment,
 } from '../utils/storage';
-import { submitSurvey, fetchSurveyorAssignments } from '../services/surveyService';
+import { fetchSurveyorAssignments } from '../services/surveyService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Navigation = {
   navigate: (screen: string, params?: any) => void;
@@ -53,6 +54,8 @@ export default function SurveyorDashboard() {
   const [assignments, setAssignments] = useState<any[]>([]);
   const [assignmentsLoading, setAssignmentsLoading] = useState(true);
   const [assignmentsError, setAssignmentsError] = useState<string | null>(null);
+  const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
+  const [primaryAssignment, setPrimaryAssignment] = useState<any>(null);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -80,12 +83,17 @@ export default function SurveyorDashboard() {
   useEffect(() => {
     checkOngoingSurvey();
     fetchAssignments();
+    loadPrimaryAssignment();
   }, []);
 
   const checkOngoingSurvey = async () => {
     try {
-      const ongoing = await getOngoingSurvey();
-      setOngoingSurvey(ongoing && isSurveyInProgress(ongoing) ? ongoing : null);
+      const allSurveys = await getUnsyncedSurveys();
+      // Only show ongoing if there is a survey that is not yet submitted
+      const ongoing = Array.isArray(allSurveys)
+        ? allSurveys.find((s: any) => (s.status === 'incomplete'))
+        : null;
+      setOngoingSurvey(ongoing && ongoing.surveyType ? ongoing : null);
     } catch (error) {
       console.error('Error checking ongoing survey:', error);
       setOngoingSurvey(null);
@@ -106,6 +114,18 @@ export default function SurveyorDashboard() {
     } finally {
       setAssignmentsLoading(false);
     }
+  };
+
+  const loadPrimaryAssignment = async () => {
+    const json = await AsyncStorage.getItem('primaryAssignment');
+    if (json) setPrimaryAssignment(JSON.parse(json));
+  };
+
+  const handleSetPrimary = async (assignment: any) => {
+    await AsyncStorage.setItem('primaryAssignment', JSON.stringify(assignment));
+    setPrimaryAssignment(assignment);
+    await setSelectedAssignment(assignment); // keep selectedAssignment in sync
+    Alert.alert('Primary Assignment Set', 'This assignment is now your primary.');
   };
 
   const handleCardPress = (surveyType: string) => {
@@ -149,18 +169,24 @@ export default function SurveyorDashboard() {
   const handleSyncData = async () => {
     setIsSyncing(true);
     try {
-      const localSurveys = await getLocalSurveys();
-      if (localSurveys.length === 0) {
+      const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+      const token = await AsyncStorage.getItem('userToken');
+      if (!apiBaseUrl || !token) {
+        Alert.alert('Error', 'Missing API base URL or auth token.');
+        setIsSyncing(false);
+        return;
+      }
+      const unsynced = await getUnsyncedSurveys();
+      if (unsynced.length === 0) {
         Alert.alert('No Data', 'There are no surveys to sync.');
         setIsSyncing(false);
         return;
       }
-      for (const survey of localSurveys) {
-        await submitSurvey(survey);
-      }
-      await clearLocalSurveys();
+      const { success, failed } = await syncSurveysToBackend(apiBaseUrl, token);
+      let msg = `${success} survey(s) synced successfully.`;
+      if (failed > 0) msg += ` ${failed} failed.`;
+      Alert.alert('Sync Complete', msg);
       setOngoingSurvey(null);
-      Alert.alert('Success', 'All local surveys have been synced successfully!');
     } catch (error) {
       console.error(error);
       Alert.alert('Sync Error', 'An error occurred while syncing data. Please try again.');
@@ -186,7 +212,7 @@ export default function SurveyorDashboard() {
 
       {/* Assignments Section */}
       <View className="mb-4">
-        <Text className="mb-2 text-lg font-bold">Your Assignments</Text>
+        <Text className="mb-2 text-lg font-bold">Your Assignment</Text>
         {assignmentsLoading ? (
           <ActivityIndicator size="small" color="#3B82F6" />
         ) : (
@@ -201,16 +227,41 @@ export default function SurveyorDashboard() {
               </View>
             ) : (
               assignments.map((a, idx) => (
-                <View key={a.assignmentId || idx} className="mb-2 rounded-lg bg-indigo-100 p-4">
-                  <Text className="font-bold text-indigo-900">
-                    Ward: {a.ward?.wardName || a.wardId}
+                <View key={a.assignmentId || idx} className="mb-2 rounded-lg bg-indigo-100 p-4" style={{ position: 'relative' }}>
+                  {/* Primary Button Top Right */}
+                  <TouchableOpacity
+                    style={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      backgroundColor: primaryAssignment && a.assignmentId === primaryAssignment.assignmentId ? '#22c55e' : '#3b82f6',
+                      paddingVertical: 4,
+                      paddingHorizontal: 12,
+                      borderRadius: 16,
+                      zIndex: 10,
+                    }}
+                    onPress={() => handleSetPrimary(a)}
+                    disabled={primaryAssignment && a.assignmentId === primaryAssignment.assignmentId}
+                  >
+                    <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 12 }}>
+                      Primary
+                    </Text>
+                  </TouchableOpacity>
+                  <Text>
+                    <Text style={{ fontWeight: 'bold', color: '#1e293b' }}>ULB: </Text>
+                    <Text style={{ color: '#3b82f6', fontWeight: '600' }}>{a.ulb?.ulbName || a.ulb?.ulbId || 'N/A'}</Text>
                   </Text>
-                  <Text className="text-indigo-800">
-                    Mohalla: {a.mohalla?.mohallaName || a.mohallaId}
+                  <Text>
+                    <Text style={{ fontWeight: 'bold', color: '#1e293b' }}>Zone: </Text>
+                    <Text style={{ color: '#3b82f6', fontWeight: '600' }}>{a.zone?.zoneName || a.zone?.zoneId || 'N/A'}</Text>
                   </Text>
-                  <Text className="text-indigo-800">Assignment Type: {a.assignmentType}</Text>
-                  <Text className="text-indigo-800">
-                    Status: {a.isActive ? 'Active' : 'Inactive'}
+                  <Text>
+                    <Text style={{ fontWeight: 'bold', color: '#1e293b' }}>Ward: </Text>
+                    <Text style={{ color: '#3b82f6', fontWeight: '600' }}>{a.ward?.wardName || a.ward?.wardId || 'N/A'}</Text>
+                  </Text>
+                  <Text>
+                    <Text style={{ fontWeight: 'bold', color: '#1e293b' }}>Mohallas: </Text>
+                    <Text style={{ color: '#3b82f6', fontWeight: '600' }}>{a.mohallas && a.mohallas.length > 0 ? a.mohallas.map((m: any) => m.mohallaName).join(', ') : 'N/A'}</Text>
                   </Text>
                 </View>
               ))
@@ -274,7 +325,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F3F4F6',
-    padding: 16,
+    padding: 12,
+    paddingTop: 0,
   },
   loadingContainer: {
     flex: 1,
@@ -289,7 +341,8 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 24,
+    marginBottom: 12,
+    marginTop: 0,
     textAlign: 'center',
     color: '#111827',
   },

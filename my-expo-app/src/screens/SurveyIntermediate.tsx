@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
-import { getLocalSurvey, deleteLocalSurvey } from '../utils/storage';
+import { getUnsyncedSurveys, removeUnsyncedSurvey, getSelectedAssignment, saveSurveyLocally, getLocalSurvey } from '../utils/storage';
 import { submitSurvey } from '../services/surveyService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -50,20 +50,13 @@ export default function SurveyIntermediate() {
       // Get the survey ID from route params or load the latest ongoing survey
       const surveyId = (route.params as any)?.surveyId;
       let survey: SurveyData | null = null;
-      
+      const allSurveys = await getUnsyncedSurveys();
       if (surveyId) {
-        const result = await getLocalSurvey(surveyId);
-        if (result && !Array.isArray(result)) {
-          survey = result;
-        }
+        survey = allSurveys.find((s: SurveyData) => s.id === surveyId) || null;
       } else {
         // Load the latest ongoing survey
-        const result = await getLocalSurvey();
-        if (Array.isArray(result)) {
-          survey = result.find((s: SurveyData) => !s.synced) || null;
-        }
+        survey = allSurveys.find((s: SurveyData) => !s.synced) || null;
       }
-      
       setSurveyData(survey);
     } catch (error) {
       console.error('Error loading survey data:', error);
@@ -73,12 +66,20 @@ export default function SurveyIntermediate() {
     }
   };
 
-  const handleEditSurvey = () => {
+  const handleEditSurvey = async () => {
     if (!surveyData) return;
+    let assignment = null;
+    try {
+      assignment = await getSelectedAssignment();
+    } catch (e) {
+      assignment = null;
+    }
     navigation.navigate('SurveyForm', { 
       surveyType: surveyData.surveyType,
       editMode: true,
-      surveyData: surveyData.data 
+      surveyData: surveyData.data,
+      surveyId: surveyData.id,
+      assignment // pass assignment for edit mode
     });
   };
 
@@ -95,7 +96,7 @@ export default function SurveyIntermediate() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteLocalSurvey(surveyData.id);
+              await removeUnsyncedSurvey(surveyData.id);
               Alert.alert('Success', 'Survey deleted successfully', [
                 { text: 'OK', onPress: () => {
                   navigation.goBack();
@@ -103,6 +104,7 @@ export default function SurveyIntermediate() {
               ]);
             } catch (error) {
               Alert.alert('Error', 'Failed to delete survey');
+              console.error(error);
             }
           }
         }
@@ -110,46 +112,41 @@ export default function SurveyIntermediate() {
     );
   };
 
-  const handleSubmitSurvey = () => {
+  const handleSubmitSurvey = async () => {
     if (!surveyData) return;
-    
-    Alert.alert(
-      'Submit Survey',
-      'Are you sure you want to submit this survey? This will sync the data to the server.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Submit',
-          onPress: async () => {
-            try {
-              // The service now handles token retrieval internally
-              await submitSurvey(surveyData);
-
-              // Then delete locally
-              await deleteLocalSurvey(surveyData.id);
-
-              Alert.alert('Success', 'Survey submitted successfully', [
-                { text: 'OK', onPress: () => {
-                  navigation.reset({
-                    index: 0,
-                    routes: [
-                      { name: 'SurveyorDashboard' }
-                    ],
-                  });
-                }}
-              ]);
-            } catch (error: any) {
-              // Check for specific auth error from the service
-              if (error.message === 'No auth token found') {
-                Alert.alert('Error', 'You are not logged in. Please log in to submit.');
-              } else {
-                Alert.alert('Error', 'Failed to submit survey');
-              }
+    try {
+      // Fetch the latest version of the survey from storage
+      const latest = await getLocalSurvey(surveyData.id);
+      if (!latest) throw new Error('Survey not found in storage');
+      await saveSurveyLocally({ ...latest, status: 'submitted' });
+      // Optionally reload survey data to update UI
+      await loadSurveyData();
+      Alert.alert(
+        'Survey Saved',
+        'Your survey has been saved locally. To sync it to the server, please use the Sync Data button on the dashboard.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              navigation.reset({
+                index: 0,
+                routes: [
+                  {
+                    name: 'AuthenticatedDrawer',
+                    // @ts-expect-error: nested state is valid for React Navigation, but not in type
+                    state: {
+                      routes: [{ name: 'SurveyorDashboard' }]
+                    }
+                  }
+                ],
+              });
             }
           }
-        }
-      ]
-    );
+        ]
+      );
+    } catch (e) {
+      Alert.alert('Error', 'Failed to mark survey as submitted.');
+    }
   };
 
   const handleAddResidentialFloor = () => {

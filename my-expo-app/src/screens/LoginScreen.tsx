@@ -7,6 +7,10 @@ import api from '../api/axiosConfig';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { saveMasterData, saveAssignments } from '../utils/storage';
+import { fetchAllMasterData } from '../services/masterDataService';
+import { fetchSurveyorAssignments } from '../services/surveyService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const roles = ['SUPERADMIN', 'ADMIN', 'SUPERVISOR', 'SURVEYOR'];
 
@@ -17,7 +21,7 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const { theme } = useTheme();
   const animatedValue = React.useRef(new Animated.Value(0)).current;
-  const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+  //const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
   React.useEffect(() => {
     Animated.timing(animatedValue, {
@@ -48,10 +52,16 @@ export default function LoginScreen() {
     try {
       const res = await api.post('/auth/login', form);
       const { token, user } = res.data;
+      await AsyncStorage.setItem('userToken', token);
+      const masterData = await fetchAllMasterData(token);
+      await saveMasterData(masterData);
+      const assignments = await fetchSurveyorAssignments();
+      await saveAssignments(assignments);
       await login(user.role, token, user);
       Toast.show({ type: 'success', text1: 'Login successful' });
     } catch (err: any) {
-      Toast.show({ type: 'error', text1: err.response?.data?.error || 'Network error' });
+      console.error('Login error:', err, err?.response, err?.message);
+      Toast.show({ type: 'error', text1: err.response?.data?.error || err.message || 'Network error' });
     } finally {
       setLoading(false);
     }
