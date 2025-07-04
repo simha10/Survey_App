@@ -441,7 +441,7 @@ model LocationDetails {
   propertyLatitude   Decimal?               @db.Decimal(9, 6)
   propertyLongitude  Decimal?               @db.Decimal(9, 6)
   assessmentYear     String                 @db.VarChar(20)
-  propertyTypeId     Int
+  propertyTypeId     Int?
   buildingName       String?
   roadTypeId         Int
   constructionYear   String                 @db.VarChar(20)
@@ -456,7 +456,7 @@ model LocationDetails {
   fourWaySouth       String?
   newWardNumber      String                 @db.VarChar(20)
   constructionType   ConstructionTypeMaster @relation(fields: [constructionTypeId], references: [constructionTypeId])
-  propertyType       PropertyTypeMaster     @relation(fields: [propertyTypeId], references: [propertyTypeId])
+  propertyType       PropertyTypeMaster?    @relation(fields: [propertyTypeId], references: [propertyTypeId])
   roadType           RoadTypeMaster         @relation(fields: [roadTypeId], references: [roadTypeId])
   survey             SurveyDetails          @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
 }

@@ -90,3 +90,36 @@ This project digitizes the manual property survey process for municipalities. It
 - Assignment logic, dashboards, and all major flows are implemented and tested.
 - Mobile app and web portal are ready for end-to-end testing.
 - Further enhancements (e.g., supervisor analytics, messaging) can be added as needed.
+
+# Product Requirements Document (PRD) — QC Workflow
+
+## Current Functionality
+
+- Users can filter and view property lists for QC.
+- Backend supports single and bulk QC actions (approve, reject, mark error, add remarks).
+- QC history is available for each property.
+
+## Planned Features
+
+- **QC Levels:** Add QCLevelMaster table for dynamic QC workflow (Field QC, Supervisor QC, etc.).
+- **Bulk Action Logging:** Add BulkActionLog table to track all bulk QC actions.
+- **Error Types:** Add QCErrorTypeMaster for flexible error management.
+- **Frontend Enhancements:**
+  - Results table with all required columns, inline editing, and bulk actions bar.
+  - QC Edit page for full property review and audit trail.
+  - Admin UI for managing QC levels and error types.
+- **API Enhancements:**
+  - Extend property list API for all required data.
+  - Add endpoints for QC level and error type management.
+  - Log all QC actions for auditability.
+
+## User Stories
+
+- As a QC user, I want to select multiple properties and perform bulk QC actions with remarks and error types.
+- As an admin, I want to configure QC levels and error types without code changes.
+- As a supervisor, I want to see a full audit trail of QC actions for any property.
+
+## References
+
+- See QCPLAN.md for technical blueprint and future-proofing.
+- See Backend Documentation for API details.
