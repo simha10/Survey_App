@@ -31,7 +31,7 @@ export const getPropertyList = async (req: Request, res: Response) => {
 export const updateSurveyQC = async (req: Request, res: Response) => {
   try {
     const { surveyUniqueCode } = req.params;
-    const { updateData, qcLevel, qcStatus, remarks, reviewedById } = req.body;
+    const { updateData, qcLevel, qcStatus, remarks, reviewedById, isError, errorType, gisTeamRemark, surveyTeamRemark, RIRemark } = req.body;
     const result = await qcService.updateSurveyAndQC({
       surveyUniqueCode,
       updateData,
@@ -39,6 +39,11 @@ export const updateSurveyQC = async (req: Request, res: Response) => {
       qcStatus,
       remarks,
       reviewedById,
+      isError,
+      errorType,
+      gisTeamRemark,
+      surveyTeamRemark,
+      RIRemark,
     });
     res.json(result);
   } catch (error: any) {
@@ -48,13 +53,18 @@ export const updateSurveyQC = async (req: Request, res: Response) => {
 
 export const bulkQCAction = async (req: Request, res: Response) => {
   try {
-    const { surveyCodes, qcLevel, qcStatus, remarks, reviewedById } = req.body;
+    const { surveyCodes, qcLevel, qcStatus, remarks, reviewedById, isError, errorType, gisTeamRemark, surveyTeamRemark, RIRemark } = req.body;
     const result = await qcService.bulkQCAction({
       surveyCodes,
       qcLevel,
       qcStatus,
       remarks,
       reviewedById,
+      isError,
+      errorType,
+      gisTeamRemark,
+      surveyTeamRemark,
+      RIRemark,
     });
     res.json(result);
   } catch (error: any) {
@@ -75,6 +85,16 @@ export const getQCHistory = async (req: Request, res: Response) => {
 export const getQCStats = async (req: Request, res: Response) => {
   try {
     const result = await qcService.getQCStats();
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const getFullPropertyDetails = async (req: Request, res: Response) => {
+  try {
+    const { surveyUniqueCode } = req.params;
+    const result = await qcService.getFullPropertyDetails(surveyUniqueCode);
     res.json(result);
   } catch (error: any) {
     res.status(500).json({ error: error.message });

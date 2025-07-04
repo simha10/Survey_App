@@ -1,4 +1,4 @@
-import { PrismaClient, QCStatusEnum } from '@prisma/client';
+import { PrismaClient, QCStatusEnum, QCErrorType } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -80,13 +80,23 @@ export async function updateSurveyAndQC({
   qcStatus,
   remarks,
   reviewedById,
+  isError,
+  errorType,
+  gisTeamRemark,
+  surveyTeamRemark,
+  RIRemark,
 }: {
   surveyUniqueCode: string;
   updateData: any;
   qcLevel: number;
-  qcStatus: QCStatusEnum;
+  qcStatus: any;
   remarks?: string;
   reviewedById: string;
+  isError?: boolean;
+  errorType?: string;
+  gisTeamRemark?: string;
+  surveyTeamRemark?: string;
+  RIRemark?: string;
 }) {
   // Check GIS ID uniqueness if approving
   if (qcStatus === 'APPROVED' && updateData.gisId) {
@@ -101,13 +111,19 @@ export async function updateSurveyAndQC({
     }
   }
 
+  // Validate errorType as QCErrorType enum
+  const validErrorTypes = ['MISSING', 'DUPLICATE', 'OTHER', 'NONE'];
+  const safeErrorType = validErrorTypes.includes(errorType as string)
+    ? (errorType as QCErrorType)
+    : QCErrorType.NONE;
+  
   // Update survey details
   await prisma.surveyDetails.update({
     where: { surveyUniqueCode },
     data: updateData,
   });
 
-  // Create QC record
+  // Create QC record with new fields
   const qcRecord = await prisma.qCRecord.create({
     data: {
       surveyUniqueCode,
@@ -115,6 +131,11 @@ export async function updateSurveyAndQC({
       qcStatus,
       reviewedById,
       remarks,
+      isError,
+      errorType: safeErrorType,
+      gisTeamRemark,
+      surveyTeamRemark,
+      RIRemark,
     },
   });
 
@@ -130,17 +151,23 @@ export async function bulkQCAction({
   qcStatus,
   remarks,
   reviewedById,
+  isError,
+  errorType,
+  gisTeamRemark,
+  surveyTeamRemark,
+  RIRemark,
 }: {
   surveyCodes: string[];
   qcLevel: number;
   qcStatus: QCStatusEnum;
   remarks?: string;
   reviewedById: string;
+  isError?: boolean;
+  errorType?: string;
+  gisTeamRemark?: string;
+  surveyTeamRemark?: string;
+  RIRemark?: string;
 }) {
-  // Check all surveys are at the same QC level
-  // (Optional: can add logic to enforce this)
-
-  // Bulk update
   const results = [];
   for (const surveyUniqueCode of surveyCodes) {
     const qcRecord = await updateSurveyAndQC({
@@ -150,6 +177,11 @@ export async function bulkQCAction({
       qcStatus,
       remarks,
       reviewedById,
+      isError,
+      errorType,
+      gisTeamRemark,
+      surveyTeamRemark,
+      RIRemark,
     });
     results.push(qcRecord);
   }
@@ -196,4 +228,26 @@ export async function getQCStats() {
     totalSurveys,
     pendingCount,
   };
+}
+
+export async function getFullPropertyDetails(surveyUniqueCode: string) {
+  return prisma.surveyDetails.findUnique({
+    where: { surveyUniqueCode },
+    include: {
+      ulb: true,
+      zone: true,
+      ward: true,
+      mohalla: true,
+      locationDetails: true,
+      propertyDetails: true,
+      ownerDetails: true,
+      otherDetails: true,
+      residentialPropertyAssessments: true,
+      nonResidentialPropertyAssessments: true,
+      propertyAttachments: true,
+      qcRecords: {
+        orderBy: [{ qcLevel: 'asc' }, { reviewedAt: 'desc' }],
+      },
+    },
+  });
 } 
