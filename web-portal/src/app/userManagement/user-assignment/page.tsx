@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { masterDataApi, userApi, wardApi } from "@/lib/api";
+import { masterDataApi, userApi, wardApi, assignmentApi } from "@/lib/api";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,7 @@ import toast from "react-hot-toast";
 import axios from "axios";
 import { Loader2 } from "lucide-react"; // For loading spinner
 import { useAuth } from "@/features/auth/AuthContext";
+
 
 const USER_TYPES = [
   { label: "Surveyor", value: "SURVEYOR" },
@@ -239,7 +240,7 @@ const UserAssignmentPage: React.FC = () => {
 
   return (
     <MainLayout>
-      <Card className="w-full max-w-6xl">
+      <Card className="w-full ">
         <CardHeader className="bg-black text-white text-2xl font-bold p-4 mb-4 border-2 border-amber-50 rounded-lg">
           User Assignment
         </CardHeader>

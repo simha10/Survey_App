@@ -11,6 +11,7 @@ import {
   GetUserStatsSchema,
   GetUserActivitySchema,
   SearchUsersSchema,
+  UpdateUserSchema,
 } from '../dtos/userDto';
 
 // 1. Update User Profile
@@ -294,6 +295,26 @@ export const getActiveUsersCount = async (req: Request, res: Response) => {
       inactiveUsers: totalUsers - activeUsers,
     });
   } catch (error: any) {
+    console.error(error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// 15. Update User (for admin purposes)
+export const updateUser = async (req: Request, res: Response) => {
+  try {
+    const parsed = UpdateUserSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid input data' });
+    }
+
+    const updatedById = (req as any).user.userId;
+    const result = await userService.updateUser(parsed.data, updatedById);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    if (error.status) {
+      return res.status(error.status).json({ error: error.message });
+    }
     console.error(error);
     return res.status(500).json({ error: 'Internal server error' });
   }

@@ -21,8 +21,8 @@ export default function MISReportsPage() {
 
   return (
     <MainLayout>
-      <div className="p-6">
-        <h1 className="text-2xl font-bold">Search by GISID</h1>
+      <div className="p-6 items-center justify-center">
+        <h1>Search ny GIS page</h1>
       </div>
     </MainLayout>
   );

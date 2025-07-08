@@ -23,7 +23,7 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-} from "recharts";
+} from "recharts";     
 
 const STATUS_COLORS: Record<string, string> = {
   APPROVED: "#22c55e",
@@ -136,17 +136,17 @@ const QCManagementPage: React.FC = () => {
       <MainLayout>
         <div className="p-6">
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-gray-100">
               Quality Control Dashboard
             </h1>
-            <p className="text-gray-600 mt-2">
+            <p className="text-gray-400 mt-2">
               Overview of survey QC status, trends, and recent actions
             </p>
           </div>
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-            <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="bg-black p-6 rounded-lg shadow-md">
               <div className="flex items-center">
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <svg
@@ -164,16 +164,16 @@ const QCManagementPage: React.FC = () => {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">
+                  <p className="text-sm font-medium text-gray-400">
                     Total Surveys
                   </p>
-                  <p className="text-2xl font-semibold text-gray-900">
+                  <p className="text-2xl font-semibold text-gray-300">
                     {stats?.totalSurveys ?? "-"}
                   </p>
                 </div>
               </div>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="bg-black p-6 rounded-lg shadow-md">
               <div className="flex items-center">
                 <div className="p-2 bg-yellow-100 rounded-lg">
                   <svg
@@ -191,16 +191,16 @@ const QCManagementPage: React.FC = () => {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">
+                  <p className="text-sm font-medium text-gray-400">
                     Pending Review
                   </p>
-                  <p className="text-2xl font-semibold text-gray-900">
+                  <p className="text-2xl font-semibold text-gray-300">
                     {stats?.pendingCount ?? "-"}
                   </p>
                 </div>
               </div>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="bg-black p-6 rounded-lg shadow-md">
               <div className="flex items-center">
                 <div className="p-2 bg-green-100 rounded-lg">
                   <svg
@@ -218,15 +218,15 @@ const QCManagementPage: React.FC = () => {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Approved</p>
-                  <p className="text-2xl font-semibold text-gray-900">
+                  <p className="text-sm font-medium text-gray-400">Approved</p>
+                  <p className="text-2xl font-semibold text-gray-300">
                     {stats?.statusCounts?.find((s) => s.qcStatus === "APPROVED")
                       ?._count.qcRecordId ?? 0}
                   </p>
                 </div>
               </div>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="bg-black p-6 rounded-lg shadow-md">
               <div className="flex items-center">
                 <div className="p-2 bg-red-100 rounded-lg">
                   <svg
@@ -244,8 +244,8 @@ const QCManagementPage: React.FC = () => {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Rejected</p>
-                  <p className="text-2xl font-semibold text-gray-900">
+                  <p className="text-sm font-medium text-gray-400">Rejected</p>
+                  <p className="text-2xl font-semibold text-gray-300">
                     {stats?.statusCounts?.find((s) => s.qcStatus === "REJECTED")
                       ?._count.qcRecordId ?? 0}
                   </p>
@@ -256,7 +256,7 @@ const QCManagementPage: React.FC = () => {
 
           {/* Charts */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="bg-black p-6 rounded-lg shadow-md">
               <h2 className="text-lg font-semibold mb-4">
                 QC Status Breakdown
               </h2>
@@ -286,7 +286,7 @@ const QCManagementPage: React.FC = () => {
                 <div className="text-gray-500">No data</div>
               )}
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="bg-black p-6 rounded-lg shadow-md">
               <h2 className="text-lg font-semibold mb-4">
                 QC Actions by Level
               </h2>
@@ -304,7 +304,7 @@ const QCManagementPage: React.FC = () => {
           </div>
 
           {/* Recent QC Actions */}
-          <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+          <div className="bg-black p-6 rounded-lg shadow-md mb-6">
             <h2 className="text-lg font-semibold mb-4">Recent QC Actions</h2>
             <Table>
               <TableHeader>

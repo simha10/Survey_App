@@ -5,10 +5,34 @@ import MainLayout from "@/components/layout/MainLayout";
 import ProtectedRoute from "@/features/auth/ProtectedRoute";
 import { useAuth } from "@/features/auth/AuthContext";
 import Loading from "@/components/ui/loading";
+import { useQuery } from "@tanstack/react-query";
+import { reportsApi } from "@/lib/api";
+import { formatDistanceToNow } from "date-fns";
 
 const Dashboard: React.FC = () => {
   const { user, hasRole } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [activityFilter, setActivityFilter] = useState<string>("");
+
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    error: statsError,
+  } = useQuery({
+    queryKey: ["dashboardStats"],
+    queryFn: reportsApi.getDashboardStats,
+  });
+
+  // Fetch recent activity logs with filter
+  const {
+    data: recentActivity,
+    isLoading: activityLoading,
+    error: activityError,
+    refetch: refetchActivity,
+  } = useQuery({
+    queryKey: ["recentActivity", activityFilter],
+    queryFn: () => reportsApi.getRecentActivity(activityFilter),
+  });
 
   useEffect(() => {
     // Simulate loading time for consistency
@@ -90,10 +114,22 @@ const Dashboard: React.FC = () => {
     </a>
   );
 
-  if (loading) {
+  if (loading || statsLoading) {
     return (
       <ProtectedRoute>
         <Loading fullScreen />
+      </ProtectedRoute>
+    );
+  }
+
+  if (statsError) {
+    return (
+      <ProtectedRoute>
+        <MainLayout>
+          <div className="p-6 text-red-500">
+            Failed to load dashboard stats.
+          </div>
+        </MainLayout>
       </ProtectedRoute>
     );
   }
@@ -116,7 +152,7 @@ const Dashboard: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard
               title="Total Users"
-              value="1,234"
+              value={stats?.totalUsers ?? "NA"}
               icon={
                 <svg
                   className="h-6 w-6 text-white"
@@ -136,7 +172,7 @@ const Dashboard: React.FC = () => {
             />
             <StatCard
               title="Active Wards"
-              value="45"
+              value={stats?.activeWards ?? "NA"}
               icon={
                 <svg
                   className="h-6 w-6 text-white"
@@ -156,7 +192,7 @@ const Dashboard: React.FC = () => {
             />
             <StatCard
               title="Surveyors Assigned"
-              value="89"
+              value={stats?.surveyorsAssigned ?? "NA"}
               icon={
                 <svg
                   className="h-6 w-6 text-white"
@@ -176,7 +212,7 @@ const Dashboard: React.FC = () => {
             />
             <StatCard
               title="QC Completed"
-              value="156"
+              value={stats?.qcCompleted ?? "NA"}
               icon={
                 <svg
                   className="h-6 w-6 text-white"
@@ -206,7 +242,7 @@ const Dashboard: React.FC = () => {
                 <QuickActionCard
                   title="Manage Users"
                   description="Add, edit, or remove user accounts"
-                  href="/users"
+                  href="/userManagement/users"
                   icon={
                     <svg
                       className="h-6 w-6"
@@ -230,7 +266,7 @@ const Dashboard: React.FC = () => {
                   <QuickActionCard
                     title="Ward Management"
                     description="Assign surveyors and supervisors to wards"
-                    href="/wards"
+                    href="/masters/ward"
                     icon={
                       <svg
                         className="h-6 w-6"
@@ -294,89 +330,70 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Recent Activity */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">
-              Recent Activity
-            </h2>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                    <svg
-                      className="h-4 w-4 text-green-600"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                      />
-                    </svg>
-                  </div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">
-                    New surveyor assigned to Ward 15
-                  </p>
-                  <p className="text-sm text-gray-500">2 hours ago</p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <svg
-                      className="h-4 w-4 text-blue-600"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  </div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">
-                    QC completed for Ward 8
-                  </p>
-                  <p className="text-sm text-gray-500">4 hours ago</p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                    <svg
-                      className="h-4 w-4 text-yellow-600"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"
-                      />
-                    </svg>
-                  </div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">
-                    New user account created
-                  </p>
-                  <p className="text-sm text-gray-500">6 hours ago</p>
-                </div>
-              </div>
+          <div className="bg-black shadow rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-medium text-gray-100">
+                Recent Activity
+              </h2>
+              <select
+                className="border rounded px-2 py-1 text-sm bg-black"
+                value={activityFilter}
+                onChange={(e) => setActivityFilter(e.target.value)}
+              >
+                <option value="">Last 5</option>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+              </select>
             </div>
+            {activityLoading ? (
+              <div>Loading recent activity...</div>
+            ) : activityError ? (
+              <div className="text-red-500">
+                Failed to load recent activity.
+              </div>
+            ) : recentActivity?.logs?.length === 0 ? (
+              <div>No recent activity found.</div>
+            ) : (
+              <div className="space-y-4">
+                {recentActivity.logs.map((log: any) => (
+                  <div
+                    key={log.actionId}
+                    className="flex items-center space-x-3"
+                  >
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <svg
+                          className="h-4 w-4 text-blue-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-300">
+                        {log.user?.name || log.user?.username || "Unknown User"}
+                        : {log.action}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {formatDistanceToNow(new Date(log.createdAt), {
+                          addSuffix: true,
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </MainLayout>

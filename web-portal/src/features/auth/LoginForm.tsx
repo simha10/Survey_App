@@ -104,7 +104,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError }) => {
             type="text"
             value={formData.username}
             onChange={(e) => handleInputChange("username", e.target.value)}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 ${
+            className={`w-full px-3 py-2 border rounded-md shadow-sm text-gray-300 focus:bg-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
               errors.username ? "border-red-500" : "border-gray-300"
             }`}
             placeholder="Enter your username"
@@ -122,13 +122,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError }) => {
             className="block text-sm font-medium text-gray-700 mb-1"
           >
             Password
-          </label>
+          </label>  
           <input
             id="password"
             type="password"
             value={formData.password}
             onChange={(e) => handleInputChange("password", e.target.value)}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 ${
+            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-300 ${
               errors.password ? "border-red-500" : "border-gray-300"
             }`}
             placeholder="Enter your password"
@@ -151,13 +151,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError }) => {
             id="role"
             value={formData.role}
             onChange={(e) => handleInputChange("role", e.target.value)}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 ${
+            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-300 ${
               errors.role ? "border-red-500" : "border-gray-300"
             }`}
             disabled={isLoading}
           >
             {roles.map((role) => (
-              <option key={role.value} value={role.value}>
+              <option key={role.value} value={role.value} className="bg-black">
                 {role.label}
               </option>
             ))}
