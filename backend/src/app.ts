@@ -69,7 +69,7 @@ app.use('/api/master-data', masterDataRoutes);
 
 // Protected routes - Web Portal Only (ADMIN/SUPERADMIN)
 app.use('/api/ward', authenticateJWT, restrictToWebPortal, wardRoutes);
-app.use('/api/user', authenticateJWT, restrictToWebPortal, userRoutes);
+app.use('/api/user', authenticateJWT, userRoutes);
 
 // Protected routes - All Authenticated Users
 app.use('/api/surveyors', authenticateJWT, surveyorRoutes);

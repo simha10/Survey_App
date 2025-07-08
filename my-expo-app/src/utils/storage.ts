@@ -7,6 +7,7 @@ const UNSYNCED_SURVEYS_KEY = 'unsyncedSurveys';
 const MASTER_DATA_KEY = 'masterData';
 const USER_ASSIGNMENTS_KEY = 'userAssignments';
 const SELECTED_ASSIGNMENT_KEY = 'selectedAssignment';
+const SYNCED_SURVEYS_LOG_KEY = '@syncedSurveysLog';
 
 export interface SurveyData {
   id: string;
@@ -87,12 +88,42 @@ export const getAssignments = async (): Promise<any> => {
 export const syncSurveysToBackend = async (apiBaseUrl: string, token: string): Promise<{success: number, failed: number}> => {
   const unsynced = (await getUnsyncedSurveys()).filter(s => s.status === 'submitted');
   let success = 0, failed = 0;
+  // Read userId from 'user' (primary) or 'userInfo' (fallback)
+  let userRaw = await AsyncStorage.getItem('user');
+  if (!userRaw) userRaw = await AsyncStorage.getItem('userInfo');
+  let userId = userRaw ? JSON.parse(userRaw)?.id : null;
+  // If userId is still null, try to fetch from backend and update AsyncStorage
+  if (!userId && token) {
+    try {
+      const res = await api.get('/user/profile', { headers: { Authorization: `Bearer ${token}` } });
+      if (res.data && res.data.id) {
+        await AsyncStorage.setItem('user', JSON.stringify(res.data));
+        userId = res.data.id;
+        console.log('Fetched user profile from backend and updated AsyncStorage:', res.data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch user profile for userId recovery', e);
+    }
+  }
   for (const survey of unsynced) {
     try {
-      // Use axios instance for consistent auth and error handling
-      const res = await api.post('/surveys/addSurvey', survey.data);
+      // Deep clone the survey data to avoid mutating local storage
+      const payload = JSON.parse(JSON.stringify(survey.data));
+      // If Non-Residential, remove propertyTypeId from locationDetails
+      if (survey.surveyType === 'Non-Residential' && payload.locationDetails) {
+        delete payload.locationDetails.propertyTypeId;
+      }
+      const res = await api.post('/surveys/addSurvey', payload);
       if (res.status === 200 || res.status === 201) {
         await removeUnsyncedSurvey(survey.id);
+        if (userId) {
+          console.log('Logging synced survey:', survey.id, userId);
+          await logSyncedSurvey(survey.id, userId);
+          const logRaw = await AsyncStorage.getItem(SYNCED_SURVEYS_LOG_KEY);
+          console.log('Log after syncing:', logRaw);
+        } else {
+          console.log('UserId is null, not logging synced survey:', survey.id);
+        }
         success++;
       } else {
         failed++;
@@ -212,4 +243,57 @@ export const removeUnsyncedSurvey = async (id: string): Promise<void> => {
 export const getLocalSurvey = async (id: string): Promise<any | null> => {
   const all = await getUnsyncedSurveys();
   return all.find((s: any) => s.id === id) || null;
+};
+
+/**
+ * Update a survey in unsyncedSurveys by id
+ */
+export const updateLocalSurvey = async (id: string, updatedSurvey: any): Promise<void> => {
+  try {
+    const all = await getUnsyncedSurveys();
+    const updated = all.map((s: any) => s.id === id ? updatedSurvey : s);
+    const compressed = LZString.compressToUTF16(JSON.stringify(updated));
+    await AsyncStorage.setItem(UNSYNCED_SURVEYS_KEY, compressed);
+  } catch (e) {
+    console.error('Failed to update local survey', e);
+    throw e;
+  }
+};
+
+export const logSyncedSurvey = async (surveyId: string, userId: string) => {
+  try {
+    const now = new Date().toISOString();
+    const logRaw = await AsyncStorage.getItem(SYNCED_SURVEYS_LOG_KEY);
+    let log: any[] = logRaw ? JSON.parse(logRaw) : [];
+    if (!log.some(entry => entry.id === surveyId && entry.userId === userId)) {
+      const entry = { id: surveyId, userId, syncedAt: now };
+      log.push(entry);
+      console.log('Adding log entry:', entry);
+      await AsyncStorage.setItem(SYNCED_SURVEYS_LOG_KEY, JSON.stringify(log));
+    } else {
+      console.log('Log entry already exists for:', surveyId, userId);
+    }
+  } catch (e) {
+    console.error('Failed to log synced survey', e);
+  }
+};
+
+/**
+ * Migrate user object in AsyncStorage to ensure both 'id' and 'userId' fields are present
+ */
+export const migrateUserObject = async () => {
+  try {
+    const userRaw = await AsyncStorage.getItem('user');
+    if (userRaw) {
+      const user = JSON.parse(userRaw);
+      if (!user.id || !user.userId || user.id !== user.userId) {
+        const id = user.userId || user.id;
+        const normalizedUser = { ...user, id, userId: id };
+        await AsyncStorage.setItem('user', JSON.stringify(normalizedUser));
+        console.log('Migrated user object in AsyncStorage:', normalizedUser);
+      }
+    }
+  } catch (e) {
+    console.error('Failed to migrate user object in AsyncStorage', e);
+  }
 };

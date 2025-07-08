@@ -14,7 +14,6 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import {
   getUnsyncedSurveys,
   syncSurveysToBackend,
-  getSelectedAssignment,
   setSelectedAssignment,
 } from '../utils/storage';
 import { fetchSurveyorAssignments } from '../services/surveyService';
@@ -29,19 +28,28 @@ const Card = ({
   onPress,
   disabled,
   subtitle,
+  badge,
 }: {
   title: string;
   onPress: () => void;
   disabled?: boolean;
   subtitle?: string;
+  badge?: number;
 }) => {
   return (
     <TouchableOpacity
       style={[styles.card, disabled && styles.disabledCard]}
       onPress={onPress}
       disabled={disabled}>
-      <Text style={styles.cardText}>{title}</Text>
-      {subtitle && <Text style={styles.cardSubtext}>{subtitle}</Text>}
+      <View style={styles.cardContent}>
+        <Text style={styles.cardText}>{title}</Text>
+        {subtitle && <Text style={styles.cardSubtext}>{subtitle}</Text>}
+      </View>
+      {badge !== undefined && badge > 0 && (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{badge}</Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 };
@@ -54,8 +62,8 @@ export default function SurveyorDashboard() {
   const [assignments, setAssignments] = useState<any[]>([]);
   const [assignmentsLoading, setAssignmentsLoading] = useState(true);
   const [assignmentsError, setAssignmentsError] = useState<string | null>(null);
-  const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   const [primaryAssignment, setPrimaryAssignment] = useState<any>(null);
+  const [unsyncedCount, setUnsyncedCount] = useState(0);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -75,6 +83,7 @@ export default function SurveyorDashboard() {
 
       // Always re-check for ongoing survey on focus
       checkOngoingSurvey();
+      loadUnsyncedCount();
 
       return () => subscription.remove();
     }, [])
@@ -84,6 +93,7 @@ export default function SurveyorDashboard() {
     checkOngoingSurvey();
     fetchAssignments();
     loadPrimaryAssignment();
+    loadUnsyncedCount();
   }, []);
 
   const checkOngoingSurvey = async () => {
@@ -109,6 +119,7 @@ export default function SurveyorDashboard() {
       const data = await fetchSurveyorAssignments();
       setAssignments(data.assignments || []);
     } catch (err: any) {
+      console.error(err);
       setAssignmentsError('Failed to load assignments');
       setAssignments([]);
     } finally {
@@ -121,11 +132,36 @@ export default function SurveyorDashboard() {
     if (json) setPrimaryAssignment(JSON.parse(json));
   };
 
+  const loadUnsyncedCount = async () => {
+    try {
+      const allSurveys = await getUnsyncedSurveys();
+      const submittedUnsynced = allSurveys.filter(
+        (s: any) => s.status === 'submitted' && !s.synced
+      );
+      setUnsyncedCount(submittedUnsynced.length);
+    } catch (error) {
+      console.error('Error loading unsynced count:', error);
+      setUnsyncedCount(0);
+    }
+  };
+
   const handleSetPrimary = async (assignment: any) => {
-    await AsyncStorage.setItem('primaryAssignment', JSON.stringify(assignment));
-    setPrimaryAssignment(assignment);
-    await setSelectedAssignment(assignment); // keep selectedAssignment in sync
-    Alert.alert('Primary Assignment Set', 'This assignment is now your primary.');
+    Alert.alert(
+      'Set Primary Assignment',
+      `Are you sure you want to set this assignment as your primary?\n\nULB: ${assignment.ulb?.ulbName || assignment.ulb?.ulbId || 'N/A'}\nZone: ${assignment.zone?.zoneName || assignment.zone?.zoneId || 'N/A'}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Set Primary',
+          onPress: async () => {
+            await AsyncStorage.setItem('primaryAssignment', JSON.stringify(assignment));
+            setPrimaryAssignment(assignment);
+            await setSelectedAssignment(assignment); // keep selectedAssignment in sync
+            Alert.alert('Primary Assignment Set', 'This assignment is now your primary.');
+          }
+        }
+      ]
+    );
   };
 
   const handleCardPress = (surveyType: string) => {
@@ -136,15 +172,38 @@ export default function SurveyorDashboard() {
         [
           {
             text: 'Continue Ongoing',
-            onPress: () =>
-              navigation.navigate('SurveyIntermediate', {
-                surveyId: ongoingSurvey.id,
-                surveyType: ongoingSurvey.surveyType,
-              }),
+            onPress: () => {
+              Alert.alert(
+                'Continue Survey',
+                `Do you want to continue the ongoing ${ongoingSurvey.surveyType} survey?`,
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Continue',
+                    onPress: () => navigation.navigate('SurveyIntermediate', {
+                      surveyId: ongoingSurvey.id,
+                      surveyType: ongoingSurvey.surveyType,
+                    })
+                  }
+                ]
+              );
+            },
           },
           {
             text: 'Start New',
-            onPress: () => navigation.navigate('SurveyForm', { surveyType }),
+            onPress: () => {
+              Alert.alert(
+                'Start New Survey',
+                `Are you sure you want to start a new ${surveyType} survey?`,
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Start New',
+                    onPress: () => navigation.navigate('SurveyForm', { surveyType })
+                  }
+                ]
+              );
+            },
           },
           {
             text: 'Cancel',
@@ -153,46 +212,85 @@ export default function SurveyorDashboard() {
         ]
       );
     } else {
-      navigation.navigate('SurveyForm', { surveyType });
+      Alert.alert(
+        'Start New Survey',
+        `Are you sure you want to start a new ${surveyType} survey?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Start New',
+            onPress: () => navigation.navigate('SurveyForm', { surveyType })
+          }
+        ]
+      );
     }
   };
 
   const handleContinueOngoing = () => {
     if (ongoingSurvey) {
-      navigation.navigate('SurveyIntermediate', {
-        surveyId: ongoingSurvey.id,
-        surveyType: ongoingSurvey.surveyType,
-      });
+      Alert.alert(
+        'Continue Survey',
+        `Do you want to continue the ongoing ${ongoingSurvey.surveyType} survey?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Continue',
+            onPress: () => {
+              navigation.navigate('SurveyIntermediate', {
+                surveyId: ongoingSurvey.id,
+                surveyType: ongoingSurvey.surveyType,
+              });
+            }
+          }
+        ]
+      );
     }
   };
 
   const handleSyncData = async () => {
-    setIsSyncing(true);
-    try {
-      const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
-      const token = await AsyncStorage.getItem('userToken');
-      if (!apiBaseUrl || !token) {
-        Alert.alert('Error', 'Missing API base URL or auth token.');
-        setIsSyncing(false);
-        return;
-      }
-      const unsynced = await getUnsyncedSurveys();
-      if (unsynced.length === 0) {
-        Alert.alert('No Data', 'There are no surveys to sync.');
-        setIsSyncing(false);
-        return;
-      }
-      const { success, failed } = await syncSurveysToBackend(apiBaseUrl, token);
-      let msg = `${success} survey(s) synced successfully.`;
-      if (failed > 0) msg += ` ${failed} failed.`;
-      Alert.alert('Sync Complete', msg);
-      setOngoingSurvey(null);
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Sync Error', 'An error occurred while syncing data. Please try again.');
-    } finally {
-      setIsSyncing(false);
-    }
+    Alert.alert(
+      'Sync All Surveys',
+      'This will upload all submitted surveys to the server and remove them from your device. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sync All',
+          onPress: async () => {
+            setIsSyncing(true);
+            try {
+              const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+              const token = await AsyncStorage.getItem('userToken');
+              if (!apiBaseUrl || !token) {
+                Alert.alert('Error', 'Missing API base URL or auth token.');
+                setIsSyncing(false);
+                return;
+              }
+              const unsynced = await getUnsyncedSurveys();
+              if (unsynced.length === 0) {
+                Alert.alert('No Data', 'There are no surveys to sync.');
+                setIsSyncing(false);
+                return;
+              }
+              const { success, failed } = await syncSurveysToBackend(apiBaseUrl, token);
+              let msg = `${success} survey(s) synced successfully.`;
+              if (failed > 0) msg += ` ${failed} failed.`;
+              Alert.alert('Sync Complete', msg);
+              setOngoingSurvey(null);
+              loadUnsyncedCount(); // Refresh count after sync
+            } catch (error) {
+              console.error(error);
+              Alert.alert('Sync Error', 'An error occurred while syncing data. Please try again.');
+            } finally {
+              setIsSyncing(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleSurveyRecords = () => {
+    navigation.navigate('SurveyRecordsScreen');
   };
 
   if (loading) {
@@ -208,11 +306,9 @@ export default function SurveyorDashboard() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Survey Dashboard</Text>
-
       {/* Assignments Section */}
-      <View className="mb-4">
-        <Text className="mb-2 text-lg font-bold">Your Assignment</Text>
+      <View className="mb-4 items-center">
+        <Text className="mb-2 items-center text-lg font-bold">Your Ward Assignment</Text>
         {assignmentsLoading ? (
           <ActivityIndicator size="small" color="#3B82F6" />
         ) : (
@@ -223,7 +319,7 @@ export default function SurveyorDashboard() {
               </View>
             ) : assignments.length === 0 ? (
               <View className="mb-2 items-center rounded-lg bg-yellow-100 p-4">
-                <Text className="text-yellow-700">No assignments for you.</Text>
+                <Text className="text-yellow-700">No Ward Assignment for you.</Text>
               </View>
             ) : (
               assignments.map((a, idx) => (
@@ -288,26 +384,37 @@ export default function SurveyorDashboard() {
           title="Residential"
           onPress={() => handleCardPress('Residential')}
           subtitle={
-            ongoingSurvey ? 'Continue ongoing survey first' : 'Start new residential survey'
+            ongoingSurvey ? 'Continue ongoing survey first' : 'Non-Commercial Category'
           }
         />
         <Card
           title="Non-Residential"
           onPress={() => handleCardPress('Non-Residential')}
           subtitle={
-            ongoingSurvey ? 'Continue ongoing survey first' : 'Start new non-residential survey'
+            ongoingSurvey ? 'Continue ongoing survey first' : 'Commercial Category'
           }
         />
         <Card
           title="Mixed"
           onPress={() => handleCardPress('Mixed')}
-          subtitle={ongoingSurvey ? 'Continue ongoing survey first' : 'Start new mixed survey'}
+          subtitle={ongoingSurvey ? 'Continue ongoing survey first' : 'Commercial & Non-Commercial'}
+        />
+        <Card
+          title="Unsynced Surveys"
+          onPress={handleSurveyRecords}
+          subtitle="View unsynced surveys"
+          badge={unsyncedCount}
         />
         <Card
           title="Sync Data"
           onPress={handleSyncData}
           disabled={isSyncing}
           subtitle={isSyncing ? 'Syncing...' : 'Sync all surveys to server'}
+        />
+        <Card
+          title="Survey Count"
+          onPress={() => navigation.navigate('SurveyCountScreen')}
+          subtitle="View synced survey count"
         />
       </View>
 
@@ -327,6 +434,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
     padding: 12,
     paddingTop: 0,
+    paddingBottom: 0,
   },
   loadingContainer: {
     flex: 1,
@@ -337,14 +445,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     color: '#6B7280',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    marginTop: 0,
-    textAlign: 'center',
-    color: '#111827',
   },
   ongoingSurveyCard: {
     backgroundColor: '#FEF3C7',
@@ -395,6 +495,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    position: 'relative',
+  },
+  cardContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   disabledCard: {
     backgroundColor: '#E5E7EB',
@@ -421,5 +526,22 @@ const styles = StyleSheet.create({
     color: 'white',
     marginTop: 10,
     fontSize: 16,
+  },
+  badge: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: '#EF4444',
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  badgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });

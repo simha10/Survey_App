@@ -1,6 +1,7 @@
 // src/services/authService.ts
 import api from '../api/axiosConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 export async function login({ username, password, role }: { username: string; password: string; role: string }) {
   try {
@@ -8,7 +9,20 @@ export async function login({ username, password, role }: { username: string; pa
     const res = await api.post('/auth/login', { username, password, role });
     console.log('Login response:', res.data);
     await AsyncStorage.setItem('userToken', res.data.token);
-    await AsyncStorage.setItem('user', JSON.stringify(res.data.user));
+    // Normalize user object to have both id and userId
+    const normalizedUser = { ...res.data.user, id: res.data.userId || res.data.user?.id, userId: res.data.userId || res.data.user?.id };
+    await AsyncStorage.setItem('user', JSON.stringify(normalizedUser));
+    // Fetch and store latest profile after login
+    try {
+      const profileRes = await api.get('/user/profile', {
+        headers: { Authorization: `Bearer ${res.data.token}` },
+      });
+      const normalizedProfile = { ...profileRes.data, id: profileRes.data.userId || profileRes.data.id, userId: profileRes.data.userId || profileRes.data.id };
+      await AsyncStorage.setItem('user', JSON.stringify(normalizedProfile));
+    } catch (profileErr) {
+      // If profile fetch fails, keep the login user data
+      console.warn('Failed to fetch latest profile after login:', profileErr);
+    }
     return res.data.user;
   } catch (err: any) {
     console.log('Login error:', err);
@@ -59,6 +73,20 @@ export async function getUlbZoneOptions() {
   ];
 }
 export async function logout() {
+    // Cache last used credentials if available
+    try {
+      const userStr = await AsyncStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        if (user.username && user.password && user.role) {
+          await SecureStore.setItemAsync('cachedUsername', user.username);
+          await SecureStore.setItemAsync('cachedPassword', user.password);
+          await SecureStore.setItemAsync('cachedRole', user.role);
+        }
+      }
+    } catch (e) {
+      // Ignore errors, do not block logout
+    }
     await AsyncStorage.removeItem('userToken');
     await AsyncStorage.removeItem('user');
     return true;
@@ -70,8 +98,9 @@ export async function getProfile() {
     const res = await api.get('/user/profile', {
       headers: { Authorization: `Bearer ${token}` },
     });
-    await AsyncStorage.setItem('user', JSON.stringify(res.data));
-    return res.data;
+    const normalizedProfile = { ...res.data, id: res.data.userId || res.data.id, userId: res.data.userId || res.data.id };
+    await AsyncStorage.setItem('user', JSON.stringify(normalizedProfile));
+    return normalizedProfile;
   } catch (err) {
     // fallback to cached user
     const cached = await AsyncStorage.getItem('user');

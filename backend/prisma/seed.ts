@@ -28,7 +28,7 @@ async function main() {
   const propertyTypes = [
     { propertyTypeName: 'HOUSE', description: 'House property' },
     { propertyTypeName: 'FLAT', description: 'Flat property' },
-    { propertyTypeName: 'PLOT LAND', description: 'Plot or land' },
+    { propertyTypeName: 'PLOT/LAND', description: 'Plot or land' },
   ];
 
   await prisma.propertyTypeMaster.createMany({
