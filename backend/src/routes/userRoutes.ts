@@ -57,6 +57,14 @@ router.put(
   userController.updateUserStatus
 );
 
+// Update user (for admin purposes)
+router.put(
+  '/update',
+  authenticateJWT,
+  restrictToRoles(['SUPERADMIN', 'ADMIN']),
+  userController.updateUser
+);
+
 // Delete user (soft delete)
 router.delete(
   '/',

@@ -32,7 +32,7 @@ export async function login(dto: LoginDto) {
     const token = jwt.sign(
       { userId: user.userId, role: userRoleMap.role.roleName },
       JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '24h' }
     );
     return {
       token,

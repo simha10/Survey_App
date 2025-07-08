@@ -125,35 +125,87 @@ const UserManagementPage: React.FC = () => {
     e.preventDefault();
     if (!selectedUser) return;
 
+    // Input validation
+    if (!formData.name || formData.name.length < 3) {
+      toast.error("Name must be at least 3 characters long");
+      return;
+    }
+    if (!formData.mobileNumber || formData.mobileNumber.length !== 10) {
+      toast.error("Mobile number must be exactly 10 digits");
+      return;
+    }
+    if (formData.password && formData.password.length < 8) {
+      toast.error("Password must be at least 8 characters long");
+      return;
+    }
+
+    // Confirmation dialog before editing
+    const confirmed = window.confirm(
+      `Are you sure you want to update this user?\n\n` +
+        `Name: ${formData.name}`
+    );
+    if (!confirmed) return;
+
     try {
-      // Update user status
-      await userApi.updateUserStatus({
-        userId: selectedUser.userId,
-        isActive: formData.status === "ACTIVE",
-      });
-
-      // Update user role if changed
-      if (formData.role !== selectedUser.role) {
-        await userApi.assignRole({
-          userId: selectedUser.userId,
-          roleName: formData.role,
-        });
+      // Prepare only changed fields for update
+      const updatePayload: any = { userId: selectedUser.userId };
+      if (formData.name && formData.name !== (selectedUser.name || "")) {
+        updatePayload.name = formData.name;
       }
+      if (
+        formData.mobileNumber &&
+        formData.mobileNumber !== (selectedUser.mobileNumber || "")
+      ) {
+        updatePayload.mobileNumber = formData.mobileNumber;
+      }
+      if (formData.password) {
+        updatePayload.password = formData.password;
+      }
+      // Only send update if something actually changed
+      if (
+        !updatePayload.name &&
+        !updatePayload.mobileNumber &&
+        !updatePayload.password
+      ) {
+        toast("No changes detected.");
+        return;
+      }
+      // Update user name, mobile number, and/or password
+      const updateRes = await userApi.updateUser(updatePayload);
+      if (updateRes?.error) throw new Error(updateRes.error);
 
+      await fetchUsers(); // Ensure UI is updated before closing modal
       toast.success("User updated successfully");
       setShowEditModal(false);
       setSelectedUser(null);
-      fetchUsers();
+      setFormData({
+        username: "",
+        name: "",
+        password: "",
+        role: "ADMIN",
+        mobileNumber: "",
+        status: "ACTIVE",
+      });
     } catch (error: any) {
-      toast.error(error.response?.data?.error || "Failed to update user");
+      let errorMessage =
+        error?.response?.data?.error ||
+        error?.message ||
+        "Failed to update user";
+      toast.error(errorMessage);
+      // Do NOT close modal or reset form here, so user can try again
     }
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm("Are you sure you want to delete this user?")) return;
+    if (
+      !confirm(
+        "Are you sure you want to delete this user? This action cannot be undone and will permanently remove the user from the system."
+      )
+    )
+      return;
 
     try {
-      await userApi.deleteUser({ userId });
+      await userApi.deleteUser({ userId, hardDelete: true });
       toast.success("User deleted successfully");
       fetchUsers();
     } catch (error: any) {
@@ -168,6 +220,12 @@ const UserManagementPage: React.FC = () => {
     const userRole = user.role || user.userRoleMaps?.[0]?.role?.roleName || "";
     const matchesRole = !selectedRole || userRole === selectedRole;
     return matchesSearch && matchesRole;
+  });
+
+  // Sort filteredUsers so inactive users are at the bottom
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    if (a.isActive === b.isActive) return 0;
+    return a.isActive ? -1 : 1;
   });
 
   if (loading) {
@@ -244,7 +302,7 @@ const UserManagementPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredUsers.map((user) => {
+                {sortedUsers.map((user) => {
                   const userRole =
                     user.role ||
                     user.userRoleMaps?.[0]?.role?.roleName ||
@@ -314,6 +372,14 @@ const UserManagementPage: React.FC = () => {
                         <button
                           disabled={currentUser?.userId === user.userId}
                           onClick={async () => {
+                            if (
+                              !window.confirm(
+                                `Are you sure you want to ${
+                                  user.isActive ? "deactivate" : "activate"
+                                } this user?`
+                              )
+                            )
+                              return;
                             try {
                               await userApi.updateUserStatus({
                                 userId: user.userId,
@@ -519,10 +585,8 @@ const UserManagementPage: React.FC = () => {
                       </label>
                       <select
                         value={formData.role}
-                        onChange={(e) =>
-                          setFormData({ ...formData, role: e.target.value })
-                        }
-                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                        disabled
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-900"
                       >
                         <option value="ADMIN">Admin</option>
                         <option value="SUPERADMIN">Super Admin</option>
@@ -532,18 +596,43 @@ const UserManagementPage: React.FC = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">
-                        Status
+                        Mobile Number
                       </label>
-                      <select
-                        value={formData.status}
+                      <input
+                        type="text"
+                        placeholder="Enter mobile number"
+                        pattern="[0-9]{10}"
+                        maxLength={10}
+                        onKeyPress={(e) => {
+                          if (!/[0-9]/.test(e.key)) {
+                            e.preventDefault();
+                          }
+                        }}
+                        value={formData.mobileNumber}
                         onChange={(e) =>
-                          setFormData({ ...formData, status: e.target.value })
+                          setFormData({
+                            ...formData,
+                            mobileNumber: e.target.value
+                              .replace(/\D/g, "")
+                              .slice(0, 10),
+                          })
                         }
-                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
-                      >
-                        <option value="ACTIVE">Active</option>
-                        <option value="INACTIVE">Inactive</option>
-                      </select>
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Password (leave blank to keep unchanged)
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="Enter new password"
+                        value={formData.password}
+                        onChange={(e) =>
+                          setFormData({ ...formData, password: e.target.value })
+                        }
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      />
                     </div>
                     <div className="flex justify-end space-x-3">
                       <button

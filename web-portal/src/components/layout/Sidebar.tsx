@@ -354,7 +354,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       ],
     },
     {
-      name: "MIS Reports",
+      name: "LRMC Reports",
       href: "#",
       icon: (
         <svg
@@ -458,6 +458,26 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         {
           name: "User Assignment",
           href: "/userManagement/user-assignment",
+          roles: ["SUPERADMIN", "ADMIN"],
+          icon: (
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 17v-2a4 4 0 018 0v2m-4-4a4 4 0 100-8 4 4 0 000 8z"
+              />
+            </svg>
+          ),
+        },
+        {
+          name: "User Assignment Mangement",
+          href: "/userManagement/user-assignment-management",
           roles: ["SUPERADMIN", "ADMIN"],
           icon: (
             <svg

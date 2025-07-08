@@ -11,6 +11,7 @@ import {
   GetUserStatsDto,
   GetUserActivityDto,
   SearchUsersDto,
+  UpdateUserDto,
 } from '../dtos/userDto';
 
 const prisma = new PrismaClient();
@@ -25,6 +26,18 @@ async function validateUserRole(userId: string, expectedRole: string) {
     throw { status: 400, message: `Invalid ${expectedRole.toLowerCase()}` };
   }
   return mapping;
+}
+
+// Helper to log audit actions
+async function logAudit({ userId, action, old_value, new_value }: { userId: string, action: string, old_value?: any, new_value?: any }) {
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action,
+      old_value: old_value ? JSON.stringify(old_value) : undefined,
+      new_value: new_value ? JSON.stringify(new_value) : undefined,
+    },
+  });
 }
 
 // 1. Update User Profile
@@ -249,10 +262,13 @@ export async function updateUserStatus(dto: UpdateUserStatusDto, updatedById: st
       throw { status: 400, message: 'Cannot deactivate your own account' };
     }
 
+    const old_value = { isActive: user.isActive };
     const result = await prisma.usersMaster.update({
       where: { userId },
       data: { isActive },
     });
+    const new_value = { isActive };
+    await logAudit({ userId: updatedById, action: `User status ${isActive ? 'activated' : 'deactivated'}`, old_value, new_value });
 
     return {
       userId,
@@ -268,7 +284,7 @@ export async function updateUserStatus(dto: UpdateUserStatusDto, updatedById: st
 
 // 5. Delete User (Soft delete)
 export async function deleteUser(dto: DeleteUserDto, deletedById: string) {
-  const { userId, reason } = dto;
+  const { userId, reason, hardDelete } = dto;
 
   try {
     // Validate user exists
@@ -285,22 +301,39 @@ export async function deleteUser(dto: DeleteUserDto, deletedById: string) {
       throw { status: 400, message: 'Cannot delete your own account' };
     }
 
+    if (hardDelete) {
+      // Hard delete: remove user and all related data
+      const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        // Remove from role-specific tables
+        await tx.userRoleMapping.deleteMany({ where: { userId } });
+        await tx.surveyors.deleteMany({ where: { userId } });
+        await tx.supervisors.deleteMany({ where: { userId } });
+        await tx.admins.deleteMany({ where: { userId } });
+        // Remove user
+        await tx.usersMaster.delete({ where: { userId } });
+        return { userId, reason, status: 'User hard deleted successfully' };
+      });
+      await logAudit({ userId: deletedById, action: 'User hard deleted', old_value: user, new_value: null });
+      return result;
+    }
+
+    // Soft delete user (default)
+    const old_value = { isActive: user.isActive };
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Soft delete user
       await tx.usersMaster.update({
         where: { userId },
         data: { isActive: false },
       });
-
       // Deactivate role mapping
       await tx.userRoleMapping.updateMany({
         where: { userId },
         data: { isActive: false },
       });
-
       return { userId, reason, status: 'User deleted successfully' };
     });
-
+    const new_value = { isActive: false };
+    await logAudit({ userId: deletedById, action: 'User deleted', old_value, new_value });
     return result;
   } catch (err: any) {
     if (!err.status) console.error(err);
@@ -577,5 +610,73 @@ export async function getUserProfile(userId: string) {
   } catch (err: any) {
     if (!err.status) console.error(err);
     throw err.status ? err : { status: 500, message: 'Internal server error' };
+  }
+}
+
+// 9. Update User (for admin purposes)
+export async function updateUser(dto: UpdateUserDto, updatedById: string) {
+  const { userId, name, mobileNumber, password } = dto;
+
+  try {
+    // Validate user exists
+    const user = await prisma.usersMaster.findUnique({
+      where: { userId },
+      include: {
+        userRoleMaps: {
+          where: { isActive: true },
+          include: { role: true },
+        },
+      },
+    });
+
+    if (!user) {
+      throw { status: 404, message: 'User not found' };
+    }
+
+    const updateData: any = {};
+    if (mobileNumber) updateData.mobileNumber = mobileNumber;
+    if (name) updateData.name = name;
+    if (password) {
+      // Hash password before saving
+      const bcrypt = require('bcryptjs');
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Update UsersMaster
+      const updatedUser = await tx.usersMaster.update({
+        where: { userId },
+        data: updateData,
+      });
+
+      // Update role-specific table
+      const userRole = user.userRoleMaps[0]?.role.roleName;
+      if (userRole === 'SURVEYOR' && name) {
+        await tx.surveyors.update({
+          where: { userId },
+          data: { surveyorName: name },
+        });
+      } else if (userRole === 'SUPERVISOR' && name) {
+        await tx.supervisors.update({
+          where: { userId },
+          data: { supervisorName: name },
+        });
+      } else if ((userRole === 'ADMIN' || userRole === 'SUPERADMIN') && name) {
+        await tx.admins.update({
+          where: { userId },
+          data: { adminName: name },
+        });
+      }
+
+      return updatedUser;
+    });
+    const new_value = { name, mobileNumber, password: password ? '***' : undefined };
+    await logAudit({ userId: updatedById, action: 'User updated', old_value: { name: user.name, mobileNumber: user.mobileNumber }, new_value });
+
+    return { userId, status: 'User updated successfully' };
+  } catch (err: any) {
+    if (err.status && err.message) throw err;
+    console.error(err);
+    throw { status: 500, message: 'Internal server error' };
   }
 } 

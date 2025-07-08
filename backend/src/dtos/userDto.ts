@@ -38,6 +38,7 @@ export type UpdateUserStatusDto = z.infer<typeof UpdateUserStatusSchema>;
 export const DeleteUserSchema = z.object({
   userId: z.string().uuid(),
   reason: z.string().optional(),
+  hardDelete: z.boolean().optional(),
 });
 export type DeleteUserDto = z.infer<typeof DeleteUserSchema>;
 
@@ -127,4 +128,12 @@ export interface UserStatsResponse {
     role: string;
     count: number;
   }>;
-} 
+}
+
+export const UpdateUserSchema = z.object({
+  userId: z.string().uuid(),
+  name: z.string().min(2).max(100).optional(),
+  mobileNumber: z.string().regex(/^[0-9]{10}$/).optional(),
+  password: z.string().min(8).optional(),
+});
+export type UpdateUserDto = z.infer<typeof UpdateUserSchema>; 

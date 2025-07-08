@@ -8,30 +8,60 @@ const prisma = new PrismaClient();
  */
 export async function getPropertyListForQC({
   propertyTypeId,
+  surveyTypeId,
   wardId,
   mohallaId,
   zoneId,
+  ulbId,
   search,
   skip = 0,
   take = 20,
+  fromDate,
+  toDate,
 }: {
   propertyTypeId?: number;
+  surveyTypeId?: number;
   wardId?: string;
   mohallaId?: string;
   zoneId?: string;
+  ulbId?: string;
   search?: string;
   skip?: number;
   take?: number;
+  fromDate?: string;
+  toDate?: string;
 }) {
   // Build where clause for filtering
   const where: any = {};
   if (wardId) where.wardId = wardId;
   if (mohallaId) where.mohallaId = mohallaId;
   if (zoneId) where.zoneId = zoneId;
+  if (ulbId) where.ulbId = ulbId;
 
-  // Join property type via locationDetails
+  // Merge locationDetails filter
   if (propertyTypeId) {
-    where.locationDetails = { propertyTypeId };
+    where.locationDetails = { ...(where.locationDetails || {}), propertyTypeId };
+  }
+
+  // Filter by surveyTypeId
+  if (surveyTypeId) {
+    where.surveyTypeId = surveyTypeId;
+  }
+
+  // Date range filter
+  if (fromDate && toDate) {
+    where.entryDate = {
+      gte: new Date(fromDate),
+      lte: new Date(toDate),
+    };
+  } else if (fromDate) {
+    where.entryDate = {
+      gte: new Date(fromDate),
+    };
+  } else if (toDate) {
+    where.entryDate = {
+      lte: new Date(toDate),
+    };
   }
 
   // Search by owner/respondent name
@@ -41,6 +71,9 @@ export async function getPropertyListForQC({
       { propertyDetails: { respondentName: { contains: search, mode: 'insensitive' } } },
     ];
   }
+
+  // Debug: log the where clause
+  console.log('QC Property List WHERE:', JSON.stringify(where, null, 2));
 
   // Fetch surveys with joins and latest QC status
   const surveys = await prisma.surveyDetails.findMany({
@@ -52,7 +85,11 @@ export async function getPropertyListForQC({
       zone: true,
       ward: true,
       mohalla: true,
-      locationDetails: true,
+      locationDetails: {
+        include: {
+          propertyType: true,
+          roadType: true,        },
+      },
       propertyDetails: true,
       ownerDetails: true,
       otherDetails: true,

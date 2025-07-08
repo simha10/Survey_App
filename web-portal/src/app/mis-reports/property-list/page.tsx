@@ -5,9 +5,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import ULBSelector from "@/components/masters/ULBSelector";
 import ZoneSelector from "@/components/masters/ZoneSelector";
 import WardSelector from "@/components/masters/WardSelector";
-
 import MohallaSelector from "@/components/masters/MohallaSelector";
-import UserSelector from "@/components/masters/UserSelector";
 import SurveyTypeSelector from "@/components/masters/SurveyTypeSelector";
 
 export default function PropertyListFilterPage() {
@@ -60,7 +58,10 @@ export default function PropertyListFilterPage() {
       fromDate,
       toDate,
     });
-    router.push(`/mis-reports/property-list/results?${params.toString()}`);
+    window.open(
+      `/mis-reports/property-list/full-table?${params.toString()}`,
+      "_blank"
+    );
   };
 
   return (

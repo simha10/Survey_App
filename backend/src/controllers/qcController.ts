@@ -6,21 +6,29 @@ export const getPropertyList = async (req: Request, res: Response) => {
   try {
     const {
       propertyTypeId,
+      surveyTypeId,
       wardId,
       mohallaId,
       zoneId,
+      ulbId,
       search,
       skip,
       take,
+      fromDate,
+      toDate,
     } = req.query;
     const result = await qcService.getPropertyListForQC({
       propertyTypeId: propertyTypeId ? Number(propertyTypeId) : undefined,
+      surveyTypeId: surveyTypeId ? Number(surveyTypeId) : undefined,
       wardId: wardId as string,
       mohallaId: mohallaId as string,
       zoneId: zoneId as string,
+      ulbId: ulbId as string,
       search: search as string,
       skip: skip ? Number(skip) : 0,
       take: take ? Number(take) : 20,
+      fromDate: fromDate as string,
+      toDate: toDate as string,
     });
     res.json(result);
   } catch (error: any) {

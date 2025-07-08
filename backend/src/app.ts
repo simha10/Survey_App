@@ -31,7 +31,7 @@ const corsOptions = {
     'http://127.0.0.1:8081', // Expo development server
   ],
   credentials: true, // Allow cookies and authorization headers
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: [
     'Content-Type',
     'Authorization',
@@ -50,7 +50,7 @@ app.use(express.json());
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', req.headers.origin);
   res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   
   // Handle preflight requests
@@ -117,6 +117,7 @@ app.use((req, res) => {
 // Start server
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
+  console.log('DB URL:', process.env.DATABASE_URL);
   console.log(`Server is running on port ${PORT}`);
   console.log(`CORS enabled for origins: ${corsOptions.origin.join(', ')}`);
 });

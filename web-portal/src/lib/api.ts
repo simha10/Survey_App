@@ -132,6 +132,11 @@ export const userApi = {
     return response.data;
   },
 
+  updateUser: async (data: any): Promise<any> => {
+    const response = await apiClient.put('/api/user/update', data);
+    return response.data;
+  },
+
   deleteUser: async (data: any): Promise<any> => {
     const response = await apiClient.delete('/api/user', { data });
     return response.data;
@@ -404,6 +409,11 @@ export const reportsApi = {
     const response = await apiClient.get('/api/reports/system-health');
     return response.data;
   },
+
+  getRecentActivity: async (filter?: string): Promise<any> => {
+    const response = await apiClient.get('/api/reports/recent-activity', { params: filter ? { filter } : {} });
+    return response.data;
+  },
 };
 
 // Master Data API
@@ -599,6 +609,35 @@ export const surveyStatusApi = {
   },
   updateMohallaStatus: async (mohallaId: string, statusId: number) => {
     const response = await apiClient.put(`/api/mohallas/${mohallaId}/status`, { statusId });
+    return response.data;
+  },
+};
+
+// Assignment Management API
+export const assignmentApi = {
+  // Get all assignments for a user
+  getAssignmentsByUser: async (userId: string): Promise<any> => {
+    const response = await apiClient.get(`/api/assignments/user/${userId}`);
+    return response.data;
+  },
+  // Get all assignments for a ward
+  getAssignmentsByWard: async (wardId: string): Promise<any> => {
+    const response = await apiClient.get(`/api/assignments/ward/${wardId}`);
+    return response.data;
+  },
+  // Update isActive for an assignment
+  updateAssignmentStatus: async (assignmentId: string, isActive: boolean): Promise<any> => {
+    const response = await apiClient.patch(`/api/assignments/${assignmentId}/status`, { isActive });
+    return response.data;
+  },
+  // Delete an assignment
+  deleteAssignment: async (assignmentId: string): Promise<any> => {
+    const response = await apiClient.delete(`/api/assignments/${assignmentId}`);
+    return response.data;
+  },
+  // Get all assignments (admin view)
+  getAllAssignments: async (): Promise<any> => {
+    const response = await apiClient.get('/api/assignments/');
     return response.data;
   },
 };
