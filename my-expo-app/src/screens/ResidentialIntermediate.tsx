@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, FlatList } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { getUnsyncedSurveys, updateLocalSurvey } from '../utils/storage';
@@ -37,15 +37,8 @@ export default function ResidentialIntermediate() {
   const [loading, setLoading] = useState(true);
 
   const surveyId = (route.params as any)?.surveyId;
-  const surveyType = route.params?.surveyType;
 
-  useFocusEffect(
-    React.useCallback(() => {
-      loadSurveyData();
-    }, [])
-  );
-
-  const loadSurveyData = async () => {
+  const loadSurveyData = React.useCallback(async () => {
     try {
       if (!surveyId) {
         Alert.alert('Error', 'Survey ID not found');
@@ -62,7 +55,13 @@ export default function ResidentialIntermediate() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [surveyId, navigation]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadSurveyData();
+    }, [loadSurveyData])
+  );
 
   const handleAddNewFloor = () => {
     if (!surveyData) return;
@@ -118,6 +117,7 @@ export default function ResidentialIntermediate() {
               setSurveyData(updatedSurveyData);
               Alert.alert('Success', 'Floor detail deleted successfully');
             } catch (error) {
+              console.error(error);
               Alert.alert('Error', 'Failed to delete floor detail');
             }
           }
@@ -197,28 +197,22 @@ export default function ResidentialIntermediate() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Residential Floor Details</Text>
-        <Text style={styles.subtitle}>
-          Survey: {surveyData.id.substring(0, 8)}...
-        </Text>
+      <View style={styles.topHeader}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.topBackButton}>
+          <Text style={styles.topBackArrow}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.topHeaderTitle}>Residential Floor Details</Text>
       </View>
 
       <View style={styles.content}>
         <View style={styles.summarySection}>
-          <Text style={styles.summaryText}>
-            Total Floors: {floors.length}
-          </Text>
+          <Text style={styles.summaryText}>Total Floors: {floors.length}</Text>
         </View>
 
         {floors.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>
-              No residential floor details added yet
-            </Text>
-            <Text style={styles.emptyStateSubtext}>
-              Tap the button below to add your first floor detail
-            </Text>
+            <Text style={styles.emptyStateText}>No residential floor details added yet</Text>
+            <Text style={styles.emptyStateSubtext}>Tap the button below to add your first floor detail</Text>
           </View>
         ) : (
           <FlatList
@@ -231,10 +225,7 @@ export default function ResidentialIntermediate() {
         )}
 
         <View style={styles.addButtonContainer}>
-          <TouchableOpacity 
-            style={styles.addButton}
-            onPress={handleAddNewFloor}
-          >
+          <TouchableOpacity style={styles.addButton} onPress={handleAddNewFloor}>
             <Text style={styles.addButtonText}>Add New Floor Detail</Text>
           </TouchableOpacity>
         </View>
@@ -263,22 +254,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
     marginBottom: 20,
-  },
-  header: {
-    backgroundColor: 'white',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6B7280',
   },
   content: {
     flex: 1,
@@ -405,5 +380,40 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  topHeader: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    backgroundColor: 'white',
+    paddingTop: 8,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    zIndex: 10,
+    height: 48,
+  },
+  topBackButton: {
+    position: 'absolute',
+    left: 8,
+    height: '500%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 8,
+    zIndex: 11,
+  },
+  topBackArrow: {
+    fontSize: 24,
+    color: '#3B82F6',
+    fontWeight: 'bold',
+  },
+  topHeaderTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
   },
 }); 

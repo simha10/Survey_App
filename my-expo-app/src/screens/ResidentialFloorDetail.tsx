@@ -15,7 +15,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
 import { getUnsyncedSurveys, saveSurveyLocally, getSelectedAssignment, getMasterData } from '../utils/storage';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface FloorDetail {
   id: string;
@@ -30,9 +29,9 @@ interface FloorDetail {
 }
 
 interface MasterData {
-  floorNumbers: Array<{ floorNumberId: number; floorNumberName: string }>;
-  occupancyStatuses: Array<{ occupancyStatusId: number; occupancyStatusName: string }>;
-  constructionNatures: Array<{ constructionNatureId: number; constructionNatureName: string }>;
+  floorNumbers: { floorNumberId: number; floorNumberName: string }[];
+  occupancyStatuses: { occupancyStatusId: number; occupancyStatusName: string }[];
+  constructionNatures: { constructionNatureId: number; constructionNatureName: string }[];
 }
 
 type Navigation = {
@@ -91,9 +90,9 @@ export default function ResidentialFloorDetail() {
     try {
       const data = await getMasterData();
       setMasterData({
-        floorNumbers: data.floorNumbers || [],
-        occupancyStatuses: data.occupancyStatuses || [],
-        constructionNatures: data.constructionNatures || [],
+        floorNumbers: data?.floors || [],
+        occupancyStatuses: data?.occupancyStatuses || [],
+        constructionNatures: data?.constructionNatures || [],
       });
     } catch (error) {
       console.error('Error loading master data:', error);
@@ -172,7 +171,7 @@ export default function ResidentialFloorDetail() {
 
         if (editMode) {
           // Update existing floor
-          updatedFloors = existingFloors.map(floor =>
+          updatedFloors = existingFloors.map((floor: FloorDetail) =>
             floor.id === floorId ? processedFormData : floor
           );
         } else {
@@ -224,16 +223,16 @@ export default function ResidentialFloorDetail() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.topHeader}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.topBackButton}>
+          <Text style={styles.topBackArrow}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.topHeaderTitle}>{editMode ? 'Edit' : 'Add'} Residential Floor Detail</Text>
+      </View>
       <KeyboardAvoidingView 
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.header}>
-          <Text style={styles.title}>
-            {editMode ? 'Edit' : 'Add'} Residential Floor Detail
-          </Text>
-        </View>
-
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Floor Number */}
           <View style={styles.formGroup}>
@@ -399,13 +398,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
+  topHeader: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
     backgroundColor: 'white',
-    padding: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+    zIndex: 10,
   },
-  title: {
+  topBackButton: {
+    position: 'absolute',
+    left: 8,
+    height: '500%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 8,
+    zIndex: 11,
+  },
+  topBackArrow: {
+    fontSize: 24,
+    color: '#3B82F6',
+    fontWeight: 'bold',
+  },
+  topHeaderTitle: {
+    flex: 1,
+    textAlign: 'center',
     fontSize: 20,
     fontWeight: 'bold',
     color: '#111827',

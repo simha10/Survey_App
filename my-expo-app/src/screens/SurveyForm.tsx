@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ScrollView, View, Text, StyleSheet, Button, Alert, findNodeHandle } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Button, Alert, findNodeHandle, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FormInput from '../components/FormInput';
 import FormDropdown from '../components/FormDropdown';
@@ -276,7 +276,6 @@ export default function SurveyForm({ route }: any) {
       );
     }
 
-    // Remove propertyTypeId from requiredFields for Non-Residential
     if (surveyTypeKey === 'Non-Residential') {
       // Remove propertyTypeId if present
       const idx = requiredFields.findIndex(f => f.key === 'propertyTypeId');
@@ -285,7 +284,10 @@ export default function SurveyForm({ route }: any) {
 
     const firstMissingField = requiredFields.find(field => {
       const value = formData[field.key];
-      // Check for number fields (non-zero) or string fields (non-empty)
+      // For propertyTypeId, treat 0 as missing for Residential/Mixed
+      if (field.key === 'propertyTypeId' && (surveyTypeKey === 'Residential' || surveyTypeKey === 'Mixed')) {
+        return value === 0 || value === undefined || value === null;
+      }
       if (typeof value === 'number') {
         return value === 0;
       } else {
@@ -346,7 +348,9 @@ export default function SurveyForm({ route }: any) {
         propertyLatitude: toNumber(formData.propertyLatitude),
         propertyLongitude: toNumber(formData.propertyLongitude),
         assessmentYear: formData.assessmentYear,
-        propertyTypeId: formData.propertyTypeId,
+        ...(surveyTypeKey === 'Residential' || surveyTypeKey === 'Mixed'
+          ? { propertyTypeId: formData.propertyTypeId }
+          : {}),
         buildingName: formData.buildingName,
         roadTypeId: formData.roadTypeId,
         constructionYear: formData.constructionYear,
@@ -439,7 +443,9 @@ export default function SurveyForm({ route }: any) {
         Alert.alert('Saved', 'Survey saved locally.');
       }
       setSurveyIdState(idToUse); // always update state
-      (navigation as any).navigate('SurveyIntermediate', { surveyId: idToUse, surveyType: surveyTypeKey });
+      const selectedMohalla = assignment?.mohallas?.find((m: any) => m.mohallaId === formData.mohallaId);
+      const mohallaName = selectedMohalla ? selectedMohalla.mohallaName : '';
+      (navigation as any).navigate('SurveyIntermediate', { surveyId: idToUse, surveyType: surveyTypeKey, mohallaName });
     } catch (e) {
       Alert.alert('Error', 'Failed to save survey locally.');
     }
@@ -463,9 +469,13 @@ export default function SurveyForm({ route }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.topHeader}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.topBackButton}>
+          <Text style={styles.topBackArrow}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.topHeaderTitle}>{`New ${surveyType} Survey`}</Text>
+      </View>
       <ScrollView ref={scrollViewRef}>
-        <Text style={styles.title}>New {surveyType} Survey</Text>
-
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>1. Survey Details</Text>
           <FormInput label="ULB" value={assignment?.ulb?.ulbName || ''} editable={false} />
@@ -811,5 +821,40 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     padding: 16,
+  },
+  topHeader: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    backgroundColor: 'white',
+    paddingTop: 8,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    zIndex: 10,
+    height: 48,
+  },
+  topBackButton: {
+    position: 'absolute',
+    left: 8,
+    height: '500%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 8,
+    zIndex: 11,
+  },
+  topBackArrow: {
+    fontSize: 24,
+    color: '#3B82F6',
+    fontWeight: 'bold',
+  },
+  topHeaderTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
   },
 });
