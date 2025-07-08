@@ -51,6 +51,10 @@ export default function SideNav(props: DrawerContentComponentProps) {
   const handleLogout = async () => {
     await logout();
     Toast.show({ type: 'success', text1: 'Logged out successfully' });
+    props.navigation.reset({
+      index: 0,
+      routes: [{ name: 'LoginScreen' }],
+    });
   };
 
   return (

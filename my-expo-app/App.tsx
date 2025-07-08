@@ -5,11 +5,16 @@ import { View, Text } from 'react-native';
 import AppNavigator from './src/navigation/AppNavigator';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { AuthProvider } from './src/context/AuthContext';
+import { migrateUserObject } from './src/utils/storage';
 
 import './global.css';
 
 function AppWrapper() {
   const { theme } = useTheme();
+
+  React.useEffect(() => {
+    migrateUserObject();
+  }, []);
 
   return (
     <View key={theme} className={theme === 'dark' ? 'dark flex-1' : 'flex-1'}>

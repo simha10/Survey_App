@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createStackNavigator } from '@react-navigation/stack';
-import { View, Text, FlatList, TouchableOpacity } from 'react-native';
+import { View } from 'react-native';
 import SideNav from '../components/SideNav';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -18,6 +18,8 @@ import ResidentialIntermediate from '../screens/ResidentialIntermediate';
 import NonResidentialIntermediate from '../screens/NonResidentialIntermediate';
 import ResidentialFloorDetail from '../screens/ResidentialFloorDetail';
 import NonResidentialFloorDetail from '../screens/NonResidentialFloorDetail';
+import SurveyRecordsScreen from '../screens/SurveyRecordsScreen';
+import SurveyCountScreen from '../screens/SurveyCountScreen';
 import { useAuth } from '../context/AuthContext';
 import CustomHeader from '../components/CustomHeader';
 import { useTheme } from '../context/ThemeContext';
@@ -70,128 +72,97 @@ function AuthenticatedDrawer({ initialRouteName, userRole }: { initialRouteName:
 }
 
 export default function AppNavigator() {
-  const { userRole, isLoading } = useAuth();
+  const { userRole } = useAuth();
   const { theme } = useTheme();
-  const [showAssignmentSelection, setShowAssignmentSelection] = useState(false);
-  useEffect(() => {
-    const checkAssignments = async () => {
-      if (userRole === 'SURVEYOR') {
-        const json = await AsyncStorage.getItem('userAssignments');
-        const assignments = json ? JSON.parse(json) : [];
-        if (Array.isArray(assignments) && assignments.length > 1) {
-          setShowAssignmentSelection(true);
-        } else {
-          setShowAssignmentSelection(false);
-        }
-      } else {
-        setShowAssignmentSelection(false);
-      }
-    };
-    checkAssignments();
-  }, [userRole]);
-
-  if (isLoading) {
-    return <SplashScreen />;
-  }
 
   return (
     <View key={theme} className={theme === 'dark' ? 'dark flex-1' : 'flex-1'}>
       <NavigationContainer>
-        <Stack.Navigator>
-          {userRole ? (
-            <>
-              <Stack.Screen
-                name="AuthenticatedDrawer"
-                options={{ headerShown: false }}>
-                {(props) => (
-                  <AuthenticatedDrawer
-                    {...props}
-                    userRole={userRole}
-                    initialRouteName={
-                      userRole === 'SUPERADMIN'
-                        ? 'SuperAdminDashboard'
-                        : userRole === 'ADMIN'
-                        ? 'AdminDashboard'
-                        : userRole === 'SUPERVISOR'
-                        ? 'SupervisorDashboard'
-                        : userRole === 'SURVEYOR'
-                        ? 'SurveyorDashboard'
-                        : 'ProfileScreen'
-                    }
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen
-                name="SurveyForm"
-                component={SurveyForm}
-                options={{
-                  headerShown: true,
-                  header: () => <CustomHeader title="Add New Survey" />,
-                }}
-              />
-              <Stack.Screen
-                name="SurveyIntermediate"
-                component={SurveyIntermediate}
-                options={{
-                  headerShown: true,
-                  header: () => <CustomHeader title="Survey Summary" />,
-                }}
-              />
-              <Stack.Screen
-                name="ResidentialIntermediate"
-                component={ResidentialIntermediate}
-                options={{
-                  headerShown: true,
-                  header: () => <CustomHeader title="Residential Floor Details" />,
-                }}
-              />
-              <Stack.Screen
-                name="NonResidentialIntermediate"
-                component={NonResidentialIntermediate}
-                options={{
-                  headerShown: true,
-                  header: () => <CustomHeader title="Non-Residential Floor Details" />,
-                }}
-              />
-              <Stack.Screen
-                name="ResidentialFloorDetail"
-                component={ResidentialFloorDetail}
-                options={{
-                  headerShown: true,
-                  header: () => <CustomHeader title="Residential Floor Detail" />,
-                }}
-              />
-              <Stack.Screen
-                name="NonResidentialFloorDetail"
-                component={NonResidentialFloorDetail}
-                options={{
-                  headerShown: true,
-                  header: () => <CustomHeader title="Non-Residential Floor Detail" />,
-                }}
-              />
-              <Stack.Screen
-                name="RegisterScreen"
-                component={RegisterScreen}
-                options={{
-                  headerShown: true,
-                  header: () => <CustomHeader title="Create New User" />,
-                }}
-              />
-            </>
-          ) : (
-            <>
-              <Stack.Screen
-                name="LoginScreen"
-                component={LoginScreen}
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="RegisterScreen"
-                component={RegisterScreen}
-                options={{ headerShown: false }}
-              />
-            </>
-          )}
+        <Stack.Navigator initialRouteName="SplashScreen">
+          <Stack.Screen
+            name="SplashScreen"
+            component={SplashScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="LoginScreen"
+            component={LoginScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="AuthenticatedDrawer"
+            options={{ headerShown: false }}
+          >
+            {(props) => {
+              // Use param if present, else fallback to userRole
+              const initialDashboard =
+                (props.route.params as any)?.initialDashboard ||
+                (userRole === 'SUPERADMIN'
+                  ? 'SuperAdminDashboard'
+                  : userRole === 'ADMIN'
+                  ? 'AdminDashboard'
+                  : userRole === 'SUPERVISOR'
+                  ? 'SupervisorDashboard'
+                  : userRole === 'SURVEYOR'
+                  ? 'SurveyorDashboard'
+                  : 'ProfileScreen');
+              return (
+                <AuthenticatedDrawer
+                  {...props}
+                  userRole={userRole}
+                  initialRouteName={initialDashboard}
+                />
+              );
+            }}
+          </Stack.Screen>
+          <Stack.Screen
+            name="SurveyForm"
+            component={SurveyForm}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="SurveyIntermediate"
+            component={SurveyIntermediate}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="ResidentialIntermediate"
+            component={ResidentialIntermediate}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="NonResidentialIntermediate"
+            component={NonResidentialIntermediate}
+            options={{ headerShown: false}}
+          />
+          <Stack.Screen
+            name="ResidentialFloorDetail"
+            component={ResidentialFloorDetail}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="NonResidentialFloorDetail"
+            component={NonResidentialFloorDetail}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="SurveyRecordsScreen"
+            component={SurveyRecordsScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="RegisterScreen"
+            component={RegisterScreen}
+            options={{
+              headerShown: true,
+              header: () => <CustomHeader title="Create New User" />,
+            }}
+          />
+          <Stack.Screen
+            name="SurveyCountScreen"
+            component={SurveyCountScreen}
+            options={{ headerShown: false }}
+          />
         </Stack.Navigator>
       </NavigationContainer>
     </View>

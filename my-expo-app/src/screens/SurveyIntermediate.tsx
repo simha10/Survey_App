@@ -6,6 +6,7 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import { getUnsyncedSurveys, removeUnsyncedSurvey, getSelectedAssignment, saveSurveyLocally, getLocalSurvey } from '../utils/storage';
 import { submitSurvey } from '../services/surveyService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../context/AuthContext';
 
 interface SurveyData {
   id: string;
@@ -32,6 +33,7 @@ type Navigation = {
 export default function SurveyIntermediate() {
   const navigation = useNavigation<Navigation>();
   const route = useRoute();
+  const { userRole } = useAuth();
   const [surveyData, setSurveyData] = useState<SurveyData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -74,13 +76,40 @@ export default function SurveyIntermediate() {
     } catch (e) {
       assignment = null;
     }
-    navigation.navigate('SurveyForm', { 
-      surveyType: surveyData.surveyType,
-      editMode: true,
-      surveyData: surveyData.data,
-      surveyId: surveyData.id,
-      assignment // pass assignment for edit mode
-    });
+    Alert.alert(
+      'Edit Survey',
+      'Are you sure you want to edit this survey?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Edit',
+          onPress: () => {
+            navigation.navigate('SurveyForm', {
+              surveyType: surveyData.surveyType,
+              editMode: true,
+              surveyData: surveyData.data,
+              surveyId: surveyData.id,
+              assignment // pass assignment for edit mode
+            });
+          },
+        },
+      ]
+    );
+  };
+
+  const getDashboardScreen = () => {
+    switch (userRole) {
+      case 'SUPERADMIN':
+        return 'SuperAdminDashboard';
+      case 'ADMIN':
+        return 'AdminDashboard';
+      case 'SUPERVISOR':
+        return 'SupervisorDashboard';
+      case 'SURVEYOR':
+        return 'SurveyorDashboard';
+      default:
+        return 'SurveyorDashboard';
+    }
   };
 
   const handleDeleteSurvey = () => {
@@ -99,7 +128,10 @@ export default function SurveyIntermediate() {
               await removeUnsyncedSurvey(surveyData.id);
               Alert.alert('Success', 'Survey deleted successfully', [
                 { text: 'OK', onPress: () => {
-                  navigation.goBack();
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'AuthenticatedDrawer', params: { initialDashboard: getDashboardScreen() } } as any],
+                  });
                 }}
               ]);
             } catch (error) {
@@ -114,39 +146,36 @@ export default function SurveyIntermediate() {
 
   const handleSubmitSurvey = async () => {
     if (!surveyData) return;
-    try {
-      // Fetch the latest version of the survey from storage
-      const latest = await getLocalSurvey(surveyData.id);
-      if (!latest) throw new Error('Survey not found in storage');
-      await saveSurveyLocally({ ...latest, status: 'submitted' });
-      // Optionally reload survey data to update UI
-      await loadSurveyData();
-      Alert.alert(
-        'Survey Saved',
-        'Your survey has been saved locally. To sync it to the server, please use the Sync Data button on the dashboard.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              navigation.reset({
-                index: 0,
-                routes: [
-                  {
-                    name: 'AuthenticatedDrawer',
-                    // @ts-expect-error: nested state is valid for React Navigation, but not in type
-                    state: {
-                      routes: [{ name: 'SurveyorDashboard' }]
-                    }
-                  }
-                ],
-              });
+    Alert.alert(
+      'Submit Survey',
+      'Are you sure you want to submit this survey? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Submit',
+          onPress: async () => {
+            try {
+              // Fetch the latest version of the survey from storage
+              const latest = await getLocalSurvey(surveyData.id);
+              if (!latest) throw new Error('Survey not found in storage');
+              await saveSurveyLocally({ ...latest, status: 'submitted' });
+              // Optionally reload survey data to update UI
+              await loadSurveyData();
+              Alert.alert('Survey Saved', 'Your survey has been saved locally.', [
+                { text: 'OK', onPress: () => {
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'AuthenticatedDrawer', params: { initialDashboard: getDashboardScreen() } } as any],
+                  });
+                }}
+              ]);
+            } catch (e) {
+              Alert.alert('Error', 'Failed to mark survey as submitted.');
             }
-          }
-        ]
-      );
-    } catch (e) {
-      Alert.alert('Error', 'Failed to mark survey as submitted.');
-    }
+          },
+        },
+      ]
+    );
   };
 
   const handleAddResidentialFloor = () => {
@@ -191,28 +220,24 @@ export default function SurveyIntermediate() {
     );
   }
 
+  // Get mohallaName from params as fallback
+  const routeMohallaName = (route.params as any)?.mohallaName;
+
   const residentialFloorCount = surveyData.data && surveyData.data.residentialPropertyAssessments ? surveyData.data.residentialPropertyAssessments.length : 0;
   const nonResidentialFloorCount = surveyData.data && surveyData.data.nonResidentialPropertyAssessments ? surveyData.data.nonResidentialPropertyAssessments.length : 0;
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView>
-        <Text style={styles.title}>Survey Summary</Text>
-        
-        {/* Survey Information */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Survey Information</Text>
+          <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#111827', marginBottom: 8 }}>Survey Information</Text>
           <View style={styles.infoRow}>
-            <Text style={styles.label}>Survey Type:</Text>
-            <Text style={styles.value}>{surveyData.surveyType}</Text>
+            <Text style={styles.label}>Mohalla Name:</Text>
+            <Text style={styles.value}>{surveyData.data.locationDetails?.mohallaName || routeMohallaName || 'N/A'}</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.label}>GIS ID:</Text>
             <Text style={styles.value}>{surveyData.data.surveyDetails?.gisId || 'N/A'}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Respondent:</Text>
-            <Text style={styles.value}>{surveyData.data.propertyDetails?.respondentName || 'N/A'}</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.label}>Owner:</Text>
