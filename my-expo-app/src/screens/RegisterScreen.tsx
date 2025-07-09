@@ -8,6 +8,7 @@ import {
   ScrollView,
   Animated,
   TouchableOpacity,
+  BackHandler,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Feather } from '@expo/vector-icons';
@@ -48,6 +49,17 @@ export default function RegisterScreen() {
       duration: 300,
       useNativeDriver: true,
     }).start();
+
+    // Custom hardware back handler
+    const onBackPress = () => {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'AuthenticatedDrawer' }],
+      });
+      return true; // Prevent default behavior
+    };
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
   }, []);
 
   const handleChange = (field: string, value: string) => {
@@ -62,7 +74,8 @@ export default function RegisterScreen() {
     if (!form.password || form.password.length < 8) errs.password = 'Password min 8 chars';
     if (form.password !== form.confirmPassword) errs.confirmPassword = 'Passwords do not match';
     if (!form.role) errs.role = 'Role required';
-    if (!form.mobileNumber || form.mobileNumber.length !== 10) errs.mobileNumber = 'Mobile number must be 10 digits';
+    if (!form.mobileNumber || form.mobileNumber.length !== 10)
+      errs.mobileNumber = 'Mobile number must be 10 digits';
     return errs;
   };
 
@@ -81,7 +94,19 @@ export default function RegisterScreen() {
       };
       await register(payload);
       Toast.show({ type: 'success', text1: 'User registered successfully' });
-      setTimeout(() => navigation.goBack(), 1500);
+
+      // Get current user's role to navigate to appropriate dashboard
+      const userStr = await AsyncStorage.getItem('user');
+      const currentUser = userStr ? JSON.parse(userStr) : null;
+
+      setTimeout(() => {
+        // Reset navigation stack and navigate to AuthenticatedDrawer
+        // The AuthenticatedDrawer will automatically show the correct dashboard based on user role
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'AuthenticatedDrawer' }],
+        });
+      }, 1500);
     } catch (err: any) {
       Toast.show({ type: 'error', text1: err.message || 'Registration failed' });
     } finally {
@@ -105,7 +130,7 @@ export default function RegisterScreen() {
               },
             ],
           }}>
-          <Text className="mb-4 text-2xl font-bold text-gray-900 dark:text-gray-100">Register</Text>
+          <Text className="mb-4 text-2xl font-bold text-blue-900">Register</Text>
           <View className="flex-row items-center rounded-xl border border-gray-300 bg-white shadow-sm dark:border-gray-600 dark:bg-gray-800">
             <Feather
               name="user"
