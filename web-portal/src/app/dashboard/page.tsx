@@ -173,6 +173,7 @@ const Dashboard: React.FC = () => {
             <StatCard
               title="Active Wards"
               value={stats?.activeWards ?? "NA"}
+              // Note: activeWards now shows wards with "STARTED" status from the backend
               icon={
                 <svg
                   className="h-6 w-6 text-white"

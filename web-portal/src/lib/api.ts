@@ -646,6 +646,11 @@ export const assignmentApi = {
     const response = await apiClient.get('/api/assignments/');
     return response.data;
   },
+  // Bulk assignment
+  bulkAssign: async (data: any): Promise<any> => {
+    const response = await apiClient.post('/api/assignments/bulk', data);
+    return response.data;
+  },
 };
 
 export default apiClient; 

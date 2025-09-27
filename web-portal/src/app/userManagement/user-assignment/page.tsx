@@ -20,7 +20,6 @@ import axios from "axios";
 import { Loader2 } from "lucide-react"; // For loading spinner
 import { useAuth } from "@/features/auth/AuthContext";
 
-
 const USER_TYPES = [
   { label: "Surveyor", value: "SURVEYOR" },
   { label: "Supervisor", value: "SUPERVISOR" },
@@ -119,10 +118,8 @@ const UserAssignmentPage: React.FC = () => {
         const mohallas = await masterDataApi.getMohallasByWard(wardId);
         newWardMohallaMap[wardId] = mohallas.map((m: any) => m.mohallaId);
         // Fetch assignment status for this ward
-        const res = await axios.get(`/api/assignments/ward/${wardId}`, {
-          headers,
-        });
-        const assignments = res.data.assignments || [];
+        const res = await assignmentApi.getAssignmentsByWard(wardId);
+        const assignments = res.assignments || [];
         // Track ward-level assignments
         if (assignments.length > 0) {
           newWardAssignments[wardId] = assignments[0].user;
@@ -194,20 +191,11 @@ const UserAssignmentPage: React.FC = () => {
         assignmentType: userType,
         assignments,
       };
-      const token = localStorage.getItem("auth_token");
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-      const res = await axios.post("/api/assignments/bulk", payload, {
-        headers,
-      });
-      console.log("Assignment API response:", res.data);
-      if (
-        res.data.success &&
-        res.data.assigned &&
-        res.data.assigned.length > 0
-      ) {
+      const res = await assignmentApi.bulkAssign(payload);
+      console.log("Assignment API response:", res);
+      if (res.success && res.assigned && res.assigned.length > 0) {
         toast.success("Assignment successful!");
-        if (res.data.conflicts && res.data.conflicts.length > 0) {
+        if (res.conflicts && res.conflicts.length > 0) {
           toast("Some mohallas were already assigned and skipped.", {
             icon: "⚠️",
           });
@@ -215,10 +203,7 @@ const UserAssignmentPage: React.FC = () => {
         setSelectedWards([]);
         setSelectedMohallas([]);
         setSelectedUser("");
-      } else if (
-        res.data.success &&
-        (!res.data.assigned || res.data.assigned.length === 0)
-      ) {
+      } else if (res.success && (!res.assigned || res.assigned.length === 0)) {
         toast(
           "No new mohallas were assigned. All selected mohallas may already be assigned.",
           { icon: "⚠️" }
