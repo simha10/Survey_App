@@ -1,12 +1,8 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import MainLayout from "@/components/layout/MainLayout";
 import Loading from "@/components/ui/loading";
 import toast from "react-hot-toast";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface PropertyDetails {
   surveyUniqueCode: string;
@@ -160,7 +156,7 @@ const QC_STATUS_OPTIONS = [
   { value: "ERROR", label: "Error" },
 ];
 
-const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
 
 export default function PropertyQCEditPage() {
   const router = useRouter();
@@ -171,6 +167,7 @@ export default function PropertyQCEditPage() {
 
   const [loading, setLoading] = useState(true);
   const [property, setProperty] = useState<PropertyDetails | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string>("");
   const [form, setForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
   const [assessmentRows, setAssessmentRows] = useState<any[]>([]);
@@ -184,6 +181,13 @@ export default function PropertyQCEditPage() {
   const fetchProperty = async () => {
     setLoading(true);
     try {
+      console.log("Fetching property with:", {
+        baseUrl,
+        surveyUniqueCode,
+        fullUrl: `${baseUrl}/api/qc/property/${surveyUniqueCode}`,
+        token: localStorage.getItem("auth_token") ? "Present" : "Missing",
+      });
+
       const res = await fetch(
         `${baseUrl}/api/qc/property/${surveyUniqueCode}`,
         {
@@ -194,20 +198,57 @@ export default function PropertyQCEditPage() {
       );
       if (res.ok) {
         const data = await res.json();
+        console.log("Fetched property data:", data); // Debug log
         setProperty(data);
         setForm(data);
-        setAssessmentRows(data.residentialPropertyAssessments || []);
-        setAttachments(
-          data.propertyAttachments
-            ? Object.entries(data.propertyAttachments).filter(([k, v]) => v)
-            : []
-        );
+
+        // Initialize assessment rows based on survey type
+        if (
+          data.residentialPropertyAssessments &&
+          data.residentialPropertyAssessments.length > 0
+        ) {
+          setAssessmentRows(data.residentialPropertyAssessments);
+        } else {
+          // Add default empty row if no assessments exist
+          setAssessmentRows([
+            {
+              floorNumberId: "",
+              occupancyStatusId: "",
+              constructionNatureId: "",
+              coveredArea: "",
+              allRoomVerandaArea: "",
+              allBalconyKitchenArea: "",
+              allGarageArea: "",
+              carpetArea: "",
+            },
+          ]);
+        }
+
+        // Initialize attachments
+        if (data.propertyAttachments) {
+          const attachmentEntries = Object.entries(data.propertyAttachments)
+            .filter(([key, value]) => value && value !== "")
+            .map(([key, value]) => [key, value]);
+          setAttachments(attachmentEntries);
+        } else {
+          setAttachments([]);
+        }
+
+        setErrorMsg("");
       } else {
-        const err = await res.json();
-        toast.error(err.error || "Failed to fetch property details");
+        let errMsg = `Error ${res.status}: `;
+        if (res.status === 401) errMsg += "Unauthorized: Please login.";
+        else if (res.status === 403)
+          errMsg += "Forbidden: You do not have access.";
+        else if (res.status === 404) errMsg += "Property not found.";
+        else errMsg += "Failed to fetch property details.";
+        const err = await res.json().catch(() => ({}));
+        setErrorMsg(err.error ? `${errMsg} (${err.error})` : errMsg);
+        setProperty(null);
       }
     } catch (e) {
-      toast.error("Error fetching property details");
+      console.error("Error fetching property:", e);
+      setErrorMsg("Error fetching property details");
     } finally {
       setLoading(false);
     }
@@ -265,6 +306,15 @@ export default function PropertyQCEditPage() {
     e.preventDefault();
     setSaving(true);
     try {
+      // Sync assessmentRows into form before submit
+      let updateData = { ...form };
+      if (surveyTypeId === "1" || surveyTypeId === "3") {
+        updateData.residentialPropertyAssessments = assessmentRows;
+      }
+      if (surveyTypeId === "2" || surveyTypeId === "3") {
+        updateData.nonResidentialPropertyAssessments = assessmentRows;
+      }
+      // Attachments are UI-only for now (not sent)
       const res = await fetch(`${baseUrl}/api/qc/survey/${surveyUniqueCode}`, {
         method: "PUT",
         headers: {
@@ -272,7 +322,7 @@ export default function PropertyQCEditPage() {
           Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
         },
         body: JSON.stringify({
-          updateData: form,
+          updateData,
           qcStatus: "APPROVED",
           qcLevel: 1,
           remarks: form.qcRecords?.[0]?.remarks || "",
@@ -308,684 +358,927 @@ export default function PropertyQCEditPage() {
   }
 
   if (!property) {
-    return <div className="p-6 text-red-500">Property not found.</div>;
+    return (
+      <div className="p-6 text-red-500">
+        {errorMsg || "Property not found."}
+        <div className="mt-2 text-xs text-gray-400">
+          Check your login, user role, and property code.
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="bg-black min-h-screen w-full">
+      {/* Header Section */}
+      <div className="bg-gray-800 text-white py-4 px-6 border-b border-gray-700">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+              <span className="text-white font-bold text-sm">NP</span>
+            </div>
+            <div>
+              <h1 className="text-xl font-bold">PROPERTY INFORMATION SYSTEM</h1>
+              <p className="text-sm text-gray-300">Nagar Palika Parishad</p>
+            </div>
+          </div>
+        </div>
+      </div>
       <form
         onSubmit={handleSubmit}
-        className="bg-gray-900 text-white p-8 text-sm"
+        className="bg-gray-900 text-white p-8 text-xs max-w-6xl mx-auto"
       >
-        <h2 className="text-2xl font-bold mb-6 border-b border-gray-700 pb-2">
+        <h2 className="text-xl font-bold mb-6 border-b border-gray-700 pb-2">
           {heading}
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div>
-            <label>Property Code</label>
-            <input
-              className="input-dark"
-              value={form.surveyUniqueCode || ""}
-              disabled
-            />
+
+        {/* Assessment-Residential Property */}
+        <div className="mb-6 border rounded shadow bg-gray-800">
+          <div className="bg-gray-800 text-white text-lg font-bold px-6 py-3 rounded-t border-b border-gray-600">
+            Assessment-Residential Property
           </div>
-          <div>
-            <label>Old House Number</label>
-            <input
-              className="input-dark"
-              value={form.propertyDetails?.oldHouseNumber || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "propertyDetails",
-                  "oldHouseNumber",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>New Property</label>
-            <input
-              className="input-dark"
-              value={form.propertyDetails?.newProperty || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "propertyDetails",
-                  "newProperty",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>Electricity Consumer Number</label>
-            <input
-              className="input-dark"
-              value={form.propertyDetails?.electricityConsumerName || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "propertyDetails",
-                  "electricityConsumerName",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>Water Sewerage Connection Number</label>
-            <input
-              className="input-dark"
-              value={form.propertyDetails?.waterSewerageConnectionNumber || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "propertyDetails",
-                  "waterSewerageConnectionNumber",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>Respondent Name</label>
-            <input
-              className="input-dark"
-              value={form.propertyDetails?.respondentName || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "propertyDetails",
-                  "respondentName",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>Respondent Status</label>
-            <input
-              className="input-dark"
-              value={form.propertyDetails?.respondentStatus || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "propertyDetails",
-                  "respondentStatus",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>MAP ID</label>
-            <input
-              className="input-dark"
-              value={form.mapId || ""}
-              onChange={(e) => handleChange("mapId", e.target.value)}
-            />
-          </div>
-          <div>
-            <label>GIS ID</label>
-            <input
-              className="input-dark"
-              value={form.gisId || ""}
-              onChange={(e) => handleChange("gisId", e.target.value)}
-            />
-          </div>
-          <div>
-            <label>SUB GIS ID</label>
-            <input
-              className="input-dark"
-              value={form.subGisId || ""}
-              onChange={(e) => handleChange("subGisId", e.target.value)}
-            />
-          </div>
-        </div>
-        <h3 className="text-xl font-semibold mb-2 mt-8 border-b border-gray-700 pb-1">
-          Property Location Detail
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div>
-            <label>Assessment Year</label>
-            <input
-              className="input-dark"
-              value={form.locationDetails?.assessmentYear || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "locationDetails",
-                  "assessmentYear",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>Zone</label>
-            <input
-              className="input-dark bg-gray-700"
-              value={form.zone?.zoneName || ""}
-              disabled
-            />
-          </div>
-          <div>
-            <label>Ward</label>
-            <input
-              className="input-dark bg-gray-700"
-              value={form.ward?.wardName || ""}
-              disabled
-            />
-          </div>
-          <div>
-            <label>Mohalla</label>
-            <input
-              className="input-dark bg-gray-700"
-              value={form.mohalla?.mohallaName || ""}
-              disabled
-            />
-          </div>
-          <div>
-            <label>Property Type</label>
-            <input
-              className="input-dark"
-              value={form.locationDetails?.propertyType || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "locationDetails",
-                  "propertyType",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>Building Name</label>
-            <input
-              className="input-dark"
-              value={form.locationDetails?.buildingName || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "locationDetails",
-                  "buildingName",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>Road Type</label>
-            <input
-              className="input-dark"
-              value={form.locationDetails?.roadType || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "locationDetails",
-                  "roadType",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>Construction Year</label>
-            <input
-              className="input-dark"
-              value={form.locationDetails?.constructionYear || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "locationDetails",
-                  "constructionYear",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>Road Name</label>
-            <input
-              className="input-dark"
-              value={form.locationDetails?.addressRoadName || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "locationDetails",
-                  "addressRoadName",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>Pin Code</label>
-            <input
-              className="input-dark"
-              value={form.locationDetails?.pinCode || ""}
-              onChange={(e) =>
-                handleNestedChange("locationDetails", "pinCode", e.target.value)
-              }
-            />
-          </div>
-          <div>
-            <label>Locality</label>
-            <input
-              className="input-dark"
-              value={form.locationDetails?.locality || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "locationDetails",
-                  "locality",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>Landmark</label>
-            <input
-              className="input-dark"
-              value={form.locationDetails?.landmark || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "locationDetails",
-                  "landmark",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>Property Latitude</label>
-            <input
-              className="input-dark"
-              value={form.locationDetails?.propertyLatitude || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "locationDetails",
-                  "propertyLatitude",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>Property Longitude</label>
-            <input
-              className="input-dark"
-              value={form.locationDetails?.propertyLongitude || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "locationDetails",
-                  "propertyLongitude",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>Four Way- East</label>
-            <input
-              className="input-dark"
-              value={form.locationDetails?.fourWayEast || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "locationDetails",
-                  "fourWayEast",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>Four Way- West</label>
-            <input
-              className="input-dark"
-              value={form.locationDetails?.fourWayWest || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "locationDetails",
-                  "fourWayWest",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>Four Way- North</label>
-            <input
-              className="input-dark"
-              value={form.locationDetails?.fourWayNorth || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "locationDetails",
-                  "fourWayNorth",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>Four Way- South</label>
-            <input
-              className="input-dark"
-              value={form.locationDetails?.fourWaySouth || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "locationDetails",
-                  "fourWaySouth",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>New Ward</label>
-            <input
-              className="input-dark"
-              value={form.locationDetails?.newWardNumber || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "locationDetails",
-                  "newWardNumber",
-                  e.target.value
-                )
-              }
-            />
+          <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4 bg-gray-800 text-xs">
+            <div>
+              <label className="block text-gray-300 mb-1">Property Code</label>
+              <input
+                className="input-dark"
+                value={form.surveyUniqueCode || ""}
+                disabled
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">
+                Old House Number
+              </label>
+              <input
+                className="input-dark"
+                value={form.propertyDetails?.oldHouseNumber || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "propertyDetails",
+                    "oldHouseNumber",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">New Property</label>
+              <input
+                className="input-dark"
+                value={form.propertyDetails?.newProperty || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "propertyDetails",
+                    "newProperty",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">
+                Electricity Consumer Number
+              </label>
+              <input
+                className="input-dark"
+                value={form.propertyDetails?.electricityConsumerName || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "propertyDetails",
+                    "electricityConsumerName",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">
+                Water Sewerage Connection Number
+              </label>
+              <input
+                className="input-dark"
+                value={
+                  form.propertyDetails?.waterSewerageConnectionNumber || ""
+                }
+                onChange={(e) =>
+                  handleNestedChange(
+                    "propertyDetails",
+                    "waterSewerageConnectionNumber",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">
+                Respondent Name
+              </label>
+              <input
+                className="input-dark"
+                value={form.propertyDetails?.respondentName || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "propertyDetails",
+                    "respondentName",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">
+                Respondent Status
+              </label>
+              <select
+                className="input-dark"
+                value={form.propertyDetails?.respondentStatusId || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "propertyDetails",
+                    "respondentStatusId",
+                    e.target.value
+                  )
+                }
+              >
+                <option value="">Select</option>
+                <option value="1">Owner</option>
+                <option value="2">Tenant</option>
+                <option value="3">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">MAP ID</label>
+              <input className="input-dark" value={form.mapId || ""} disabled />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">GIS ID</label>
+              <input className="input-dark" value={form.gisId || ""} disabled />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">SUB GIS ID</label>
+              <input
+                className="input-dark"
+                value={form.subGisId || ""}
+                onChange={(e) => handleChange("subGisId", e.target.value)}
+              />
+            </div>
           </div>
         </div>
-        <h3 className="text-xl font-semibold mb-2 mt-8 border-b border-gray-700 pb-1">
-          Property Owner Detail
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div>
-            <label>Owner Name</label>
-            <input
-              className="input-dark"
-              value={form.ownerDetails?.ownerName || ""}
-              onChange={(e) =>
-                handleNestedChange("ownerDetails", "ownerName", e.target.value)
-              }
-            />
+
+        {/* Property Location Detail */}
+        <div className="mb-6 border rounded shadow bg-gray-800">
+          <div className="bg-gray-800 text-white text-lg font-bold px-6 py-3 rounded-t border-b border-gray-600">
+            Property Location Detail
           </div>
-          <div>
-            <label>Father/Husband Name</label>
-            <input
-              className="input-dark"
-              value={form.ownerDetails?.fatherHusbandName || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "ownerDetails",
-                  "fatherHusbandName",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>Mobile Number</label>
-            <input
-              className="input-dark"
-              value={form.ownerDetails?.mobileNumber || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "ownerDetails",
-                  "mobileNumber",
-                  e.target.value
-                )
-              }
-            />
-          </div>
-          <div>
-            <label>Aadhar Number</label>
-            <input
-              className="input-dark"
-              value={form.ownerDetails?.aadharNumber || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "ownerDetails",
-                  "aadharNumber",
-                  e.target.value
-                )
-              }
-            />
+          <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4 bg-gray-800 text-xs">
+            <div>
+              <label className="block text-gray-300 mb-1">
+                Assessment Year
+              </label>
+              <input
+                className="input-dark"
+                value={form.locationDetails?.assessmentYear || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "locationDetails",
+                    "assessmentYear",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">Zone</label>
+              <input
+                className="input-dark"
+                value={form.zone?.zoneName || ""}
+                disabled
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">Ward</label>
+              <input
+                className="input-dark"
+                value={form.ward?.wardName || ""}
+                disabled
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">Mohalla</label>
+              <input
+                className="input-dark"
+                value={form.mohalla?.mohallaName || ""}
+                disabled
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">Property Type</label>
+              <select
+                className="input-dark"
+                value={form.locationDetails?.propertyTypeId || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "locationDetails",
+                    "propertyTypeId",
+                    e.target.value
+                  )
+                }
+              >
+                <option value="">Select</option>
+                <option value="1">Residential</option>
+                <option value="2">Non-Residential</option>
+                <option value="3">Mix</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">Building Name</label>
+              <input
+                className="input-dark"
+                value={form.locationDetails?.buildingName || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "locationDetails",
+                    "buildingName",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">Road Type</label>
+              <select
+                className="input-dark"
+                value={form.locationDetails?.roadTypeId || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "locationDetails",
+                    "roadTypeId",
+                    e.target.value
+                  )
+                }
+              >
+                <option value="">Select</option>
+                <option value="1">Main Road</option>
+                <option value="2">Street</option>
+                <option value="3">Lane</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">
+                Construction Year
+              </label>
+              <input
+                className="input-dark"
+                value={form.locationDetails?.constructionYear || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "locationDetails",
+                    "constructionYear",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">Locality</label>
+              <input
+                className="input-dark"
+                value={form.locationDetails?.locality || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "locationDetails",
+                    "locality",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">Pin Code</label>
+              <input
+                className="input-dark"
+                value={form.locationDetails?.pinCode || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "locationDetails",
+                    "pinCode",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">Road Name</label>
+              <input
+                className="input-dark"
+                value={form.locationDetails?.addressRoadName || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "locationDetails",
+                    "addressRoadName",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">
+                Property Latitude
+              </label>
+              <input
+                className="input-dark"
+                value={form.locationDetails?.propertyLatitude || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "locationDetails",
+                    "propertyLatitude",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">Landmark</label>
+              <input
+                className="input-dark"
+                value={form.locationDetails?.landmark || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "locationDetails",
+                    "landmark",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">
+                Property Longitude
+              </label>
+              <input
+                className="input-dark"
+                value={form.locationDetails?.propertyLongitude || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "locationDetails",
+                    "propertyLongitude",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">Four Way- East</label>
+              <input
+                className="input-dark"
+                value={form.locationDetails?.fourWayEast || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "locationDetails",
+                    "fourWayEast",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">Four Way- West</label>
+              <input
+                className="input-dark"
+                value={form.locationDetails?.fourWayWest || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "locationDetails",
+                    "fourWayWest",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">
+                Four Way- North
+              </label>
+              <input
+                className="input-dark"
+                value={form.locationDetails?.fourWayNorth || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "locationDetails",
+                    "fourWayNorth",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">
+                Four Way- South
+              </label>
+              <input
+                className="input-dark"
+                value={form.locationDetails?.fourWaySouth || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "locationDetails",
+                    "fourWaySouth",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">New Ward</label>
+              <input
+                className="input-dark"
+                value={form.locationDetails?.newWardNumber || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "locationDetails",
+                    "newWardNumber",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
           </div>
         </div>
-        <h3 className="text-xl font-semibold mb-2 mt-8 border-b border-gray-700 pb-1">
-          Other Detail
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div>
-            <label>Source Of Water</label>
-            <input
-              className="input-dark"
-              value={form.otherDetails?.waterSourceId || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "otherDetails",
-                  "waterSourceId",
-                  e.target.value
-                )
-              }
-            />
+
+        {/* Property Owner Detail */}
+        <div className="mb-6 border rounded shadow bg-gray-800">
+          <div className="bg-gray-800 text-white text-lg font-bold px-6 py-3 rounded-t border-b border-gray-600">
+            Property Owner Detail
           </div>
-          <div>
-            <label>Rain Harvesting System (Is Available)</label>
-            <select
-              className="input-dark"
-              value={form.otherDetails?.rainWaterHarvestingSystem || ""}
-              onChange={(e) =>
-                handleNestedChange(
-                  "otherDetails",
-                  "rainWaterHarvestingSystem",
-                  e.target.value
-                )
-              }
-            >
-              <option value="">Select</option>
-              <option value="YES">Yes</option>
-              <option value="NO">No</option>
-            </select>
+          <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4 bg-gray-800 text-xs">
+            <div>
+              <label className="block text-gray-300 mb-1">Owner Name</label>
+              <input
+                className="input-dark"
+                value={form.ownerDetails?.ownerName || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "ownerDetails",
+                    "ownerName",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">
+                Father/Husband Name
+              </label>
+              <input
+                className="input-dark"
+                value={form.ownerDetails?.fatherHusbandName || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "ownerDetails",
+                    "fatherHusbandName",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">Mobile Number</label>
+              <input
+                className="input-dark"
+                value={form.ownerDetails?.mobileNumber || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "ownerDetails",
+                    "mobileNumber",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">Email Id</label>
+              <input
+                className="input-dark"
+                value={form.ownerDetails?.emailId || ""}
+                onChange={(e) =>
+                  handleNestedChange("ownerDetails", "emailId", e.target.value)
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">Aadhar Number</label>
+              <input
+                className="input-dark"
+                value={form.ownerDetails?.aadharNumber || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "ownerDetails",
+                    "aadharNumber",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">
+                Cancellation Date
+              </label>
+              <input
+                className="input-dark"
+                placeholder="When property divided between family"
+                value={form.ownerDetails?.cancellationDate || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "ownerDetails",
+                    "cancellationDate",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
           </div>
         </div>
-        <h3 className="text-xl font-semibold mb-2 mt-8 border-b border-gray-700 pb-1">
-          Property Assessment Detail
-        </h3>
-        <div className="overflow-x-auto mb-6">
-          <table className="min-w-full bg-gray-800 text-white rounded-lg">
-            <thead>
-              <tr>
-                <th className="px-2 py-1">Floor Number</th>
-                <th className="px-2 py-1">Occupancy Status</th>
-                <th className="px-2 py-1">Construction Nature</th>
-                <th className="px-2 py-1">Covered Area</th>
-                <th className="px-2 py-1">All Room/Veranda Area</th>
-                <th className="px-2 py-1">All Balcony/Kitchen Area</th>
-                <th className="px-2 py-1">All Garage Area</th>
-                <th className="px-2 py-1">Carpet Area</th>
-                <th className="px-2 py-1">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {assessmentRows.map((row, idx) => (
-                <tr key={idx}>
-                  <td>
-                    <input
-                      className="input-dark w-24"
-                      value={row.floorNumberId || ""}
-                      onChange={(e) =>
-                        handleAssessmentChange(
-                          idx,
-                          "floorNumberId",
-                          e.target.value
-                        )
-                      }
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="input-dark w-24"
-                      value={row.occupancyStatusId || ""}
-                      onChange={(e) =>
-                        handleAssessmentChange(
-                          idx,
-                          "occupancyStatusId",
-                          e.target.value
-                        )
-                      }
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="input-dark w-24"
-                      value={row.constructionNatureId || ""}
-                      onChange={(e) =>
-                        handleAssessmentChange(
-                          idx,
-                          "constructionNatureId",
-                          e.target.value
-                        )
-                      }
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="input-dark w-24"
-                      value={row.coveredArea || ""}
-                      onChange={(e) =>
-                        handleAssessmentChange(
-                          idx,
-                          "coveredArea",
-                          e.target.value
-                        )
-                      }
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="input-dark w-24"
-                      value={row.allRoomVerandaArea || ""}
-                      onChange={(e) =>
-                        handleAssessmentChange(
-                          idx,
-                          "allRoomVerandaArea",
-                          e.target.value
-                        )
-                      }
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="input-dark w-24"
-                      value={row.allBalconyKitchenArea || ""}
-                      onChange={(e) =>
-                        handleAssessmentChange(
-                          idx,
-                          "allBalconyKitchenArea",
-                          e.target.value
-                        )
-                      }
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="input-dark w-24"
-                      value={row.allGarageArea || ""}
-                      onChange={(e) =>
-                        handleAssessmentChange(
-                          idx,
-                          "allGarageArea",
-                          e.target.value
-                        )
-                      }
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="input-dark w-24"
-                      value={row.carpetArea || ""}
-                      onChange={(e) =>
-                        handleAssessmentChange(
-                          idx,
-                          "carpetArea",
-                          e.target.value
-                        )
-                      }
-                    />
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      className="text-red-400"
-                      onClick={() => handleDeleteAssessmentRow(idx)}
-                    >
-                      Delete
-                    </button>
-                  </td>
+
+        {/* Other Detail */}
+        <div className="mb-6 border rounded shadow bg-gray-800">
+          <div className="bg-gray-800 text-white text-lg font-bold px-6 py-3 rounded-t border-b border-gray-600">
+            Other Detail
+          </div>
+          <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4 bg-gray-800 text-xs">
+            <div>
+              <label className="block text-gray-300 mb-1">
+                Source Of Water
+              </label>
+              <select
+                className="input-dark"
+                value={form.otherDetails?.waterSourceId || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "otherDetails",
+                    "waterSourceId",
+                    e.target.value
+                  )
+                }
+              >
+                <option value="">Select</option>
+                <option value="1">Own</option>
+                <option value="2">Municipal</option>
+                <option value="3">Borewell</option>
+                <option value="4">Handpump</option>
+                <option value="5">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-1">
+                Rain Harvesting System (Is Available)
+              </label>
+              <select
+                className="input-dark"
+                value={form.otherDetails?.rainWaterHarvestingSystem || ""}
+                onChange={(e) =>
+                  handleNestedChange(
+                    "otherDetails",
+                    "rainWaterHarvestingSystem",
+                    e.target.value
+                  )
+                }
+              >
+                <option value="">Select</option>
+                <option value="YES">Yes</option>
+                <option value="NO">No</option>
+              </select>
+            </div>
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  className="mr-2"
+                  checked={
+                    form.otherDetails?.waterSupplyWithin200Meters === "YES"
+                  }
+                  onChange={(e) =>
+                    handleNestedChange(
+                      "otherDetails",
+                      "waterSupplyWithin200Meters",
+                      e.target.checked ? "YES" : "NO"
+                    )
+                  }
+                />
+                <span className="text-gray-300">
+                  Water Supply within 200 Meter
+                </span>
+              </label>
+            </div>
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  className="mr-2"
+                  checked={
+                    form.otherDetails?.sewerageLineWithin100Meters === "YES"
+                  }
+                  onChange={(e) =>
+                    handleNestedChange(
+                      "otherDetails",
+                      "sewerageLineWithin100Meters",
+                      e.target.checked ? "YES" : "NO"
+                    )
+                  }
+                />
+                <span className="text-gray-300">
+                  Sewarage Line within 100 Meter
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Property Assessment Detail */}
+        <div className="mb-6 border rounded shadow bg-gray-800">
+          <div className="bg-gray-800 text-white text-lg font-bold px-6 py-3 rounded-t border-b border-gray-600">
+            Property Assessment Detail
+          </div>
+          <div className="p-6 bg-gray-800">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-gray-300 mb-1">
+                  Total Plot Area
+                </label>
+                <input
+                  className="input-dark"
+                  value={form.otherDetails?.totalPlotArea || ""}
+                  onChange={(e) =>
+                    handleNestedChange(
+                      "otherDetails",
+                      "totalPlotArea",
+                      e.target.value
+                    )
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-gray-300 mb-1">
+                  Builtup Area Of Ground Floor
+                </label>
+                <input
+                  className="input-dark"
+                  value={form.otherDetails?.builtupAreaOfGroundFloor || ""}
+                  onChange={(e) =>
+                    handleNestedChange(
+                      "otherDetails",
+                      "builtupAreaOfGroundFloor",
+                      e.target.value
+                    )
+                  }
+                />
+              </div>
+            </div>
+
+            {/* Table for assessment rows */}
+            <table className="w-full text-xs border border-gray-600">
+              <thead>
+                <tr className="bg-gray-700">
+                  <th className="border border-gray-600 px-2 py-2">
+                    Floor Number
+                  </th>
+                  <th className="border border-gray-600 px-2 py-2">
+                    Occupancy Status
+                  </th>
+                  <th className="border border-gray-600 px-2 py-2">
+                    Construction Nature
+                  </th>
+                  <th className="border border-gray-600 px-2 py-2">
+                    Covered Area
+                  </th>
+                  <th className="border border-gray-600 px-2 py-2">
+                    All Room/Veranda Area
+                  </th>
+                  <th className="border border-gray-600 px-2 py-2">
+                    All Balcony/Kitchen Area
+                  </th>
+                  <th className="border border-gray-600 px-2 py-2">
+                    All Garage Area
+                  </th>
+                  <th className="border border-gray-600 px-2 py-2">
+                    Carpet Area
+                  </th>
+                  <th className="border border-gray-600 px-2 py-2"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <button
-            type="button"
-            className="mt-2 px-4 py-1 bg-blue-700 rounded"
-            onClick={handleAddAssessmentRow}
-          >
-            Add
-          </button>
-        </div>
-        <h3 className="text-xl font-semibold mb-2 mt-8 border-b border-gray-700 pb-1">
-          Upload Property Document/Photo
-        </h3>
-        <div className="bg-gray-800 p-4 rounded mb-6">
-          <table className="min-w-full text-white">
-            <thead>
-              <tr>
-                <th className="px-2 py-1">Attachment Name</th>
-                <th className="px-2 py-1">Upload Attachment</th>
-                <th className="px-2 py-1">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {attachments.map(([name, url], idx) => (
-                <tr key={idx}>
-                  <td>{name}</td>
-                  <td>
-                    {url ? (
-                      <img
-                        src={url}
-                        alt="attachment"
-                        className="w-12 h-12 object-cover"
+              </thead>
+              <tbody>
+                {assessmentRows.map((row, idx) => (
+                  <tr key={idx} className="bg-gray-800">
+                    <td className="border border-gray-600 px-2 py-1">
+                      <input
+                        className="input-dark w-full"
+                        value={row.floorNumberId || ""}
+                        onChange={(e) =>
+                          handleAssessmentChange(
+                            idx,
+                            "floorNumberId",
+                            e.target.value
+                          )
+                        }
                       />
-                    ) : (
-                      <span className="italic text-gray-400">No file</span>
-                    )}
-                  </td>
-                  <td>
+                    </td>
+                    <td className="border border-gray-600 px-2 py-1">
+                      <input
+                        className="input-dark w-full"
+                        value={row.occupancyStatusId || ""}
+                        onChange={(e) =>
+                          handleAssessmentChange(
+                            idx,
+                            "occupancyStatusId",
+                            e.target.value
+                          )
+                        }
+                      />
+                    </td>
+                    <td className="border border-gray-600 px-2 py-1">
+                      <input
+                        className="input-dark w-full"
+                        value={row.constructionNatureId || ""}
+                        onChange={(e) =>
+                          handleAssessmentChange(
+                            idx,
+                            "constructionNatureId",
+                            e.target.value
+                          )
+                        }
+                      />
+                    </td>
+                    <td className="border border-gray-600 px-2 py-1">
+                      <input
+                        className="input-dark w-full"
+                        value={row.coveredArea || ""}
+                        onChange={(e) =>
+                          handleAssessmentChange(
+                            idx,
+                            "coveredArea",
+                            e.target.value
+                          )
+                        }
+                      />
+                    </td>
+                    <td className="border border-gray-600 px-2 py-1">
+                      <input
+                        className="input-dark w-full"
+                        value={row.allRoomVerandaArea || ""}
+                        onChange={(e) =>
+                          handleAssessmentChange(
+                            idx,
+                            "allRoomVerandaArea",
+                            e.target.value
+                          )
+                        }
+                      />
+                    </td>
+                    <td className="border border-gray-600 px-2 py-1">
+                      <input
+                        className="input-dark w-full"
+                        value={row.allBalconyKitchenArea || ""}
+                        onChange={(e) =>
+                          handleAssessmentChange(
+                            idx,
+                            "allBalconyKitchenArea",
+                            e.target.value
+                          )
+                        }
+                      />
+                    </td>
+                    <td className="border border-gray-600 px-2 py-1">
+                      <input
+                        className="input-dark w-full"
+                        value={row.allGarageArea || ""}
+                        onChange={(e) =>
+                          handleAssessmentChange(
+                            idx,
+                            "allGarageArea",
+                            e.target.value
+                          )
+                        }
+                      />
+                    </td>
+                    <td className="border border-gray-600 px-2 py-1">
+                      <input
+                        className="input-dark w-full"
+                        value={row.carpetArea || ""}
+                        onChange={(e) =>
+                          handleAssessmentChange(
+                            idx,
+                            "carpetArea",
+                            e.target.value
+                          )
+                        }
+                      />
+                    </td>
+                    <td className="border border-gray-600 px-2 py-1">
+                      <button
+                        type="button"
+                        className="btn-danger text-xs"
+                        onClick={() => handleDeleteAssessmentRow(idx)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                <tr className="bg-gray-800">
+                  <td
+                    colSpan={8}
+                    className="border border-gray-600 px-2 py-1 text-right"
+                  >
                     <button
                       type="button"
-                      className="text-red-400"
-                      onClick={() => handleDeleteAttachment(idx)}
+                      className="btn-success text-xs"
+                      onClick={handleAddAssessmentRow}
                     >
-                      Delete
+                      Add
                     </button>
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="flex gap-2 mt-2">
-            <select className="input-dark w-32">
-              <option>photo</option>
-            </select>
-            <input type="file" className="input-dark w-48" disabled />
-            <button
-              type="button"
-              className="bg-blue-700 px-3 py-1 rounded"
-              onClick={handleAddAttachment}
-            >
-              Add
-            </button>
+              </tbody>
+            </table>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+
+        {/* Upload Property Document/Photo */}
+        <div className="mb-6 border rounded shadow bg-gray-800">
+          <div className="bg-gray-800 text-white text-lg font-bold px-6 py-3 rounded-t border-b border-gray-600">
+            Upload Property Document/Photo
+          </div>
+          <div className="p-6 bg-gray-800">
+            <table className="w-full text-xs border border-gray-600">
+              <thead>
+                <tr className="bg-gray-700">
+                  <th className="border border-gray-600 px-2 py-2">
+                    Attachment Name
+                  </th>
+                  <th className="border border-gray-600 px-2 py-2">
+                    Upload Attachment
+                  </th>
+                  <th className="border border-gray-600 px-2 py-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {attachments.map(([name, url], idx) => (
+                  <tr key={idx} className="bg-gray-800">
+                    <td className="border border-gray-600 px-2 py-1">{name}</td>
+                    <td className="border border-gray-600 px-2 py-1">
+                      {url ? (
+                        <img
+                          src={url}
+                          alt="attachment"
+                          className="w-12 h-12 object-cover"
+                        />
+                      ) : (
+                        <span className="text-gray-400">No file chosen</span>
+                      )}
+                    </td>
+                    <td className="border border-gray-600 px-2 py-1">
+                      <button
+                        type="button"
+                        className="btn-danger text-xs"
+                        onClick={() => handleDeleteAttachment(idx)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                <tr className="bg-gray-800">
+                  <td className="border border-gray-600 px-2 py-1">
+                    <select className="input-dark">
+                      <option value="photo">photo</option>
+                    </select>
+                  </td>
+                  <td className="border border-gray-600 px-2 py-1">
+                    <input type="file" className="input-dark" />
+                    <span className="text-gray-400 text-xs">
+                      No file chosen
+                    </span>
+                  </td>
+                  <td className="border border-gray-600 px-2 py-1">
+                    <button
+                      type="button"
+                      className="btn-success text-xs"
+                      onClick={handleAddAttachment}
+                    >
+                      Add
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Remarks and Transfer Property */}
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label>Remarks</label>
+            <label className="block text-gray-300 mb-1">Remarks</label>
             <textarea
-              className="input-dark"
+              className="input-dark w-full min-h-[60px]"
               value={form.qcRecords?.[0]?.remarks || ""}
               onChange={(e) => {
                 const updatedQcRecords = [...(form.qcRecords || [])];
@@ -999,50 +1292,34 @@ export default function PropertyQCEditPage() {
                 }
                 handleChange("qcRecords", updatedQcRecords);
               }}
-              rows={3}
             />
           </div>
           <div>
-            <label>Transfer Property</label>
+            <label className="block text-gray-300 mb-1">
+              Transfer Property
+            </label>
             <div className="flex gap-2">
-              <select className="input-dark w-32">
-                <option>Select-</option>
+              <select className="input-dark flex-1">
+                <option value="">-Select-</option>
               </select>
-              <button type="button" className="bg-blue-700 px-3 py-1 rounded">
+              <button type="button" className="btn-primary">
                 Transfer
               </button>
             </div>
           </div>
         </div>
-        <div className="flex justify-end mt-8">
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-8 py-2 bg-green-700 text-white rounded font-bold hover:bg-green-800 disabled:opacity-60"
-          >
+
+        <div className="flex justify-end mt-4">
+          <button type="submit" className="btn-primary" disabled={saving}>
             {saving ? "Saving..." : "Submit"}
           </button>
         </div>
       </form>
-      <style jsx global>{`
-        .input-dark {
-          background: #222;
-          color: #fff;
-          border: 1px solid #444;
-          border-radius: 4px;
-          padding: 6px 10px;
-          width: 100%;
-        }
-        .input-dark:disabled {
-          background: #444;
-          color: #bbb;
-        }
-        label {
-          font-weight: 500;
-          margin-bottom: 2px;
-          display: block;
-        }
-      `}</style>
+
+      {/* Footer */}
+      <div className="bg-gray-700 text-white py-2 px-6 text-center text-sm">
+        PTMS, Urban Development Department
+      </div>
     </div>
   );
 }

@@ -320,6 +320,12 @@ export const qcApi = {
     const response = await apiClient.get(`/api/qc/user/${userId}`);
     return response.data;
   },
+  
+  // Property list for QC (with filters/search)
+  getPropertyList: async (params?: any): Promise<any[]> => {
+    const response = await apiClient.get('/api/qc/property-list', { params });
+    return response.data;
+  },
 };
 
 // Survey API

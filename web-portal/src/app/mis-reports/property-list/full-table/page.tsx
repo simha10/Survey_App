@@ -12,7 +12,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Pencil, Trash2 } from "lucide-react";
-import { masterDataApi } from "@/lib/api";
+import { masterDataApi, qcApi } from "@/lib/api";
 
 const ERROR_TYPE_OPTIONS = [
   { value: "MISSING", label: "Missing" },
@@ -21,7 +21,9 @@ const ERROR_TYPE_OPTIONS = [
   { value: "NONE", label: "None" },
 ];
 
-const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+// Keep compatibility with previous code, but prefer using qcApi which
+// centralizes baseURL and JWT headers. Avoid building URLs with an
+// undefined baseUrl which was the cause of the 'undefined' segment.
 
 const PAGE_SIZE = 10;
 
@@ -96,27 +98,16 @@ export default function PropertyListResultsPage() {
       if (search) params.append("search", search);
       params.append("skip", ((page - 1) * PAGE_SIZE).toString());
       params.append("take", PAGE_SIZE.toString());
-      const res = await fetch(
-        `${baseUrl}/api/qc/property-list?${params.toString()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
-          },
-          credentials: "include",
-        }
+      // Use qcApi.getPropertyList with params object
+      const paramObj: any = {};
+      params.forEach((value, key) => {
+        paramObj[key] = value;
+      });
+      const data = await qcApi.getPropertyList(paramObj);
+      setProperties(data || []);
+      setTotal(
+        data.length < PAGE_SIZE ? (page - 1) * PAGE_SIZE + data.length : page * PAGE_SIZE + 1
       );
-      if (res.ok) {
-        const data = await res.json();
-        setProperties(data || []);
-        setTotal(
-          data.length < PAGE_SIZE
-            ? (page - 1) * PAGE_SIZE + data.length
-            : page * PAGE_SIZE + 1
-        ); // crude estimate
-      } else {
-        const err = await res.json();
-        setError(err.error || "Failed to fetch property list");
-      }
     } catch (e) {
       setError("Error fetching property list");
     } finally {
@@ -213,22 +204,10 @@ export default function PropertyListResultsPage() {
         RIRemark:
           riRemarks[surveyUniqueCode] ?? prop.qcRecords?.[0]?.RIRemark ?? "",
       };
-      const res = await fetch(`${baseUrl}/api/qc/${surveyUniqueCode}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
-        },
-        body: JSON.stringify(payload),
-        credentials: "include",
-      });
-      if (res.ok) {
-        toast.success("Remarks sent for next level QC");
-        fetchProperties();
-      } else {
-        const err = await res.json();
-        toast.error(err.error || "Failed to send for QC");
-      }
+      // Use qcApi.updateQC which sends auth headers automatically
+      await qcApi.updateQC(surveyUniqueCode, payload);
+      toast.success("Remarks sent for next level QC");
+      fetchProperties();
     } catch (e) {
       toast.error("Error sending for QC");
     } finally {
@@ -243,7 +222,6 @@ export default function PropertyListResultsPage() {
     params.set("page", newPage.toString());
     router.replace(`/mis-reports/property-list/results?${params.toString()}`);
     console.log(params.toString());
-    console.log(baseUrl);
   };
 
   if (loading) {

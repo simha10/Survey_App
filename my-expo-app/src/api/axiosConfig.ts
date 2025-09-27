@@ -1,7 +1,18 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.18.206:4000/api';
+// Get the current IP address dynamically or use environment variable
+const getApiUrl = () => {
+  if (process.env.EXPO_PUBLIC_API_BASE_URL) {
+    return process.env.EXPO_PUBLIC_API_BASE_URL;
+  }
+  
+  // For development, try to detect the current IP
+  // You can also manually set this to your current IP
+  return 'http://192.168.18.210:4000/api';
+};
+
+const API_URL = getApiUrl();
 
 // Create axios instance
 const api = axios.create({
