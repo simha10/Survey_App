@@ -386,7 +386,7 @@ export default function PropertyQCEditPage() {
       </div>
       <form
         onSubmit={handleSubmit}
-        className="bg-gray-900 text-white p-8 text-xs max-w-6xl mx-auto"
+        className="bg-gray-900 text-white p-8 text-xs w-full mx-auto"
       >
         <h2 className="text-xl font-bold mb-6 border-b border-gray-700 pb-2">
           {heading}
@@ -394,9 +394,6 @@ export default function PropertyQCEditPage() {
 
         {/* Assessment-Residential Property */}
         <div className="mb-6 border rounded shadow bg-gray-800">
-          <div className="bg-gray-800 text-white text-lg font-bold px-6 py-3 rounded-t border-b border-gray-600">
-            Assessment-Residential Property
-          </div>
           <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4 bg-gray-800 text-xs">
             <div>
               <label className="block text-gray-300 mb-1">Property Code</label>

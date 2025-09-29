@@ -232,9 +232,9 @@ export default function PropertyListResultsPage() {
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">{surveyTypeHeading}</h1>
       {error && <div className="text-red-500 mb-4">{error}</div>}
-      <div className="bg-black shadow-md rounded-lg overflow-x-auto">
-        <Table>
-          <TableHeader>
+      <div className="bg-gray-700 shadow-md rounded-lg overflow-x-auto W-full">
+        <Table className="w-full border-blue-700 border-2">
+          <TableHeader className="text-xs text-center justify-center">
             <TableRow>
               <TableHead>Map ID</TableHead>
               <TableHead>GIS ID</TableHead>
@@ -277,7 +277,7 @@ export default function PropertyListResultsPage() {
                       w.newWardNumber === prop.locationDetails?.newWardNumber
                   )?.wardName || "NA";
                 return (
-                  <TableRow key={prop.surveyUniqueCode}>
+                  <TableRow key={prop.surveyUniqueCode} className="border text-xs text-center justify-center">
                     <TableCell>{prop.mapId || "NA"}</TableCell>
                     <TableCell>{prop.gisId || "NA"}</TableCell>
                     <TableCell>{prop.surveyMatchStatus || "NA"}</TableCell>
@@ -451,7 +451,8 @@ export default function PropertyListResultsPage() {
                     </TableCell>
                     <TableCell>
                       <button
-                        className="px-3 py-1 border rounded bg-blue-600 text-white hover:bg-blue-700"
+                        className="px-6 py-2 border rounded bg-black text-white hover:bg-blue-700 text-xs w-20
+                        "
                         onClick={() => handleSendForQC(prop)}
                       >
                         Send for QC
@@ -463,26 +464,6 @@ export default function PropertyListResultsPage() {
             )}
           </TableBody>
         </Table>
-      </div>
-      {/* Pagination Controls */}
-      <div className="flex justify-end items-center gap-2 mt-4">
-        <button
-          className="px-3 py-1 border rounded disabled:opacity-50"
-          disabled={page <= 1}
-          onClick={() => handlePageChange(page - 1)}
-        >
-          Previous
-        </button>
-        <span>
-          Page {page} of {totalPages}
-        </span>
-        <button
-          className="px-3 py-1 border rounded disabled:opacity-50"
-          disabled={page >= totalPages}
-          onClick={() => handlePageChange(page + 1)}
-        >
-          Next
-        </button>
       </div>
     </div>
   );
