@@ -50,4 +50,5 @@ router.get('/history/:surveyUniqueCode', authenticateJWT, restrictToRoles(['SUPE
 // Full property details for QC edit page
 router.get('/property/:surveyUniqueCode', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN']), qcController.getFullPropertyDetails);
 
+
 export default router; 

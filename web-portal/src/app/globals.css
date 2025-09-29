@@ -24,3 +24,33 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Dark theme input styling */
+.input-dark {
+  @apply w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+}
+
+.input-dark:disabled {
+  @apply bg-gray-700 text-gray-400 cursor-not-allowed;
+}
+
+.input-dark option {
+  @apply bg-gray-800 text-white;
+}
+
+/* Dark theme button styling */
+.btn-dark {
+  @apply px-4 py-2 bg-gray-700 text-white border border-gray-600 rounded hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
+
+.btn-primary {
+  @apply px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
+
+.btn-danger {
+  @apply px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500;
+}
+
+.btn-success {
+  @apply px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500;
+}

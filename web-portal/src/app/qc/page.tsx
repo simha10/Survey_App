@@ -23,7 +23,7 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-} from "recharts";     
+} from "recharts";
 
 const STATUS_COLORS: Record<string, string> = {
   APPROVED: "#22c55e",
@@ -102,8 +102,8 @@ const QCManagementPage: React.FC = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        // Flatten to recent QC records
-        const records: QCRecord[] = (data.data || [])
+        // Backend returns an array of surveys directly. Flatten to recent QC records.
+        const records: QCRecord[] = (data || [])
           .map((s: any) =>
             s.qcRecords && s.qcRecords[0]
               ? {

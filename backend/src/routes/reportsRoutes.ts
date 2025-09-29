@@ -10,13 +10,31 @@ const prisma = new PrismaClient();
 router.get('/dashboard', authenticateJWT, async (req, res) => {
   try {
     const totalUsers = await prisma.usersMaster.count();
+    
+    // Original logic for backward compatibility
     const activeWards = await prisma.wardMaster.count({ where: { isActive: true } });
+    
+    // New logic: Count wards with "STARTED" status as active wards
+    const activeWardsByStatus = await prisma.wardMaster.count({
+      where: {
+        wardStatusMaps: {
+          some: {
+            isActive: true,
+            status: {
+              statusName: 'STARTED'
+            }
+          }
+        }
+      }
+    });
+    
     const surveyorsAssigned = await prisma.surveyorAssignment.count({ where: { isActive: true } });
     const qcCompleted = await prisma.qCRecord.count({ where: { qcStatus: 'APPROVED' } }); // Adjust as per your schema
 
     res.json({
       totalUsers,
-      activeWards,
+      activeWards: activeWardsByStatus, // Use new logic for active wards
+      activeWardsLegacy: activeWards, // Keep original for reference
       surveyorsAssigned,
       qcCompleted,
     });

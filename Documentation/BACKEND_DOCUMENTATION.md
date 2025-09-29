@@ -73,8 +73,8 @@ const corsOptions = {
     "http://localhost:8081", // Expo development server
     "http://127.0.0.1:8081", // Expo development server
   ],
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  credentials: true, // Allow cookies and authorization headers
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: [
     "Content-Type",
     "Authorization",
@@ -82,6 +82,7 @@ const corsOptions = {
     "Accept",
     "Origin",
   ],
+  optionsSuccessStatus: 200, // Some legacy browsers choke on 204
 };
 ```
 
@@ -782,6 +783,30 @@ DATABASE_URL=postgresql://user:password@localhost:5432/survey_app
 JWT_SECRET=your-secret-key
 PORT=4000
 NODE_ENV=development
+```
+
+### Network Configuration
+
+The backend supports flexible CORS configuration for development and production environments:
+
+- **Development**: Allows connections from localhost and local network IPs
+- **Production**: Restricted to specific allowed origins
+- **Mobile App**: Configured to work with Expo development server
+- **Web Portal**: Supports both localhost and production domains
+
+### API Base URL Configuration
+
+The mobile app uses dynamic IP detection for API connectivity:
+
+```typescript
+// Mobile app API configuration
+const getApiUrl = () => {
+  if (process.env.EXPO_PUBLIC_API_BASE_URL) {
+    return process.env.EXPO_PUBLIC_API_BASE_URL;
+  }
+  // For development, use current IP address
+  return "http://192.168.18.210:4000/api";
+};
 ```
 
 ### Production Considerations

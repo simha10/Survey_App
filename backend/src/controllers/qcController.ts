@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import * as qcService from '../services/qcService';
-import { QCStatusEnum } from '@prisma/client';
+import { QCStatusEnum, PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 export const getPropertyList = async (req: Request, res: Response) => {
   try {
@@ -30,6 +32,13 @@ export const getPropertyList = async (req: Request, res: Response) => {
       fromDate: fromDate as string,
       toDate: toDate as string,
     });
+    try {
+      const count = Array.isArray(result) ? result.length : (result ? 1 : 0);
+      res.setHeader('X-Total-Count', String(count));
+    } catch (e) {
+      // ignore header set errors
+    }
+    console.log('QC Property List RESULT COUNT:', Array.isArray(result) ? result.length : 0);
     res.json(result);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -102,9 +111,47 @@ export const getQCStats = async (req: Request, res: Response) => {
 export const getFullPropertyDetails = async (req: Request, res: Response) => {
   try {
     const { surveyUniqueCode } = req.params;
+    console.log('QC Controller: Received request for surveyUniqueCode:', surveyUniqueCode);
+    
+    // First, let's check if there are any survey records at all
+    const totalSurveys = await prisma.surveyDetails.count();
+    console.log('QC Controller: Total surveys in database:', totalSurveys);
+    
+    if (totalSurveys === 0) {
+      console.log('QC Controller: No surveys found in database');
+      return res.status(404).json({ error: "No survey records found in database" });
+    }
+    
+    // Check if the specific survey exists
+    const surveyExists = await prisma.surveyDetails.findUnique({
+      where: { surveyUniqueCode },
+      select: { surveyUniqueCode: true }
+    });
+    
+    if (!surveyExists) {
+      console.log('QC Controller: Survey not found for surveyUniqueCode:', surveyUniqueCode);
+      // Let's also show some sample survey codes for debugging
+      const sampleSurveys = await prisma.surveyDetails.findMany({
+        take: 5,
+        select: { surveyUniqueCode: true }
+      });
+      console.log('QC Controller: Sample survey codes:', sampleSurveys);
+      return res.status(404).json({ 
+        error: "Property not found",
+        availableSurveys: sampleSurveys.map(s => s.surveyUniqueCode)
+      });
+    }
+    
     const result = await qcService.getFullPropertyDetails(surveyUniqueCode);
+    if (!result) {
+      console.log('QC Controller: Property not found for surveyUniqueCode:', surveyUniqueCode);
+      return res.status(404).json({ error: "Property not found" });
+    }
+    
+    console.log('QC Controller: Returning property data for surveyUniqueCode:', surveyUniqueCode);
     res.json(result);
   } catch (error: any) {
+    console.error('QC Controller: Error fetching property:', error);
     res.status(500).json({ error: error.message });
   }
 }; 

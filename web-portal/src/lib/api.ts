@@ -320,6 +320,12 @@ export const qcApi = {
     const response = await apiClient.get(`/api/qc/user/${userId}`);
     return response.data;
   },
+  
+  // Property list for QC (with filters/search)
+  getPropertyList: async (params?: any): Promise<any[]> => {
+    const response = await apiClient.get('/api/qc/property-list', { params });
+    return response.data;
+  },
 };
 
 // Survey API
@@ -638,6 +644,11 @@ export const assignmentApi = {
   // Get all assignments (admin view)
   getAllAssignments: async (): Promise<any> => {
     const response = await apiClient.get('/api/assignments/');
+    return response.data;
+  },
+  // Bulk assignment
+  bulkAssign: async (data: any): Promise<any> => {
+    const response = await apiClient.post('/api/assignments/bulk', data);
     return response.data;
   },
 };

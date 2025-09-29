@@ -268,23 +268,33 @@ export async function getQCStats() {
 }
 
 export async function getFullPropertyDetails(surveyUniqueCode: string) {
-  return prisma.surveyDetails.findUnique({
-    where: { surveyUniqueCode },
-    include: {
-      ulb: true,
-      zone: true,
-      ward: true,
-      mohalla: true,
-      locationDetails: true,
-      propertyDetails: true,
-      ownerDetails: true,
-      otherDetails: true,
-      residentialPropertyAssessments: true,
-      nonResidentialPropertyAssessments: true,
-      propertyAttachments: true,
-      qcRecords: {
-        orderBy: [{ qcLevel: 'asc' }, { reviewedAt: 'desc' }],
+  console.log('QC Service: Fetching property details for surveyUniqueCode:', surveyUniqueCode);
+  
+  try {
+    const result = await prisma.surveyDetails.findUnique({
+      where: { surveyUniqueCode },
+      include: {
+        ulb: true,
+        zone: true,
+        ward: true,
+        mohalla: true,
+        locationDetails: true,
+        propertyDetails: true,
+        ownerDetails: true,
+        otherDetails: true,
+        residentialPropertyAssessments: true,
+        nonResidentialPropertyAssessments: true,
+        propertyAttachments: true,
+        qcRecords: {
+          orderBy: [{ qcLevel: 'asc' }, { reviewedAt: 'desc' }],
+        },
       },
-    },
-  });
+    });
+    
+    console.log('QC Service: Query result:', result ? 'Found' : 'Not found');
+    return result;
+  } catch (error) {
+    console.error('QC Service: Database error:', error);
+    throw error;
+  }
 } 
