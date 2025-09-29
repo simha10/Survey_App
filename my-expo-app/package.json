@@ -20,13 +20,8 @@
     "@react-navigation/stack": "^7.3.6",
     "axios": "^1.10.0",
     "dotenv": "^16.5.0",
-<<<<<<< HEAD
     "expo": "^53.0.22",
     "expo-secure-store": "^14.2.4",
-=======
-    "expo": "^53.0.19",
-    "expo-secure-store": "^14.2.3",
->>>>>>> 8f0e3e22209f89961b53e2646be204fe54ee4e77
     "expo-status-bar": "~2.2.3",
     "lz-string": "^1.5.0",
     "nativewind": "latest",
