@@ -46,8 +46,19 @@ export const getMasterData = async (): Promise<any> => {
   try {
     const compressed = await AsyncStorage.getItem(MASTER_DATA_KEY);
     if (!compressed) return null;
-    const json = LZString.decompressFromUTF16(compressed);
-    return json ? JSON.parse(json) : null;
+    let json = LZString.decompressFromUTF16(compressed);
+    if (json && typeof json === 'string' && json.trim() !== '') {
+      return JSON.parse(json);
+    }
+    // Fallback: handle legacy uncompressed JSON stored previously
+    try {
+      const legacy = JSON.parse(compressed);
+      // Normalize by re-saving in compressed format for future reads
+      await saveMasterData(legacy);
+      return legacy;
+    } catch (_) {
+      return null;
+    }
   } catch (e) {
     console.error('Failed to get master data', e);
     return null;
@@ -89,9 +100,12 @@ export const syncSurveysToBackend = async (apiBaseUrl: string, token: string): P
   const unsynced = (await getUnsyncedSurveys()).filter(s => s.status === 'submitted');
   let success = 0, failed = 0;
   // Read userId from 'user' (primary) or 'userInfo' (fallback)
+  // Ensure user object has both id and userId
+  await migrateUserObject();
   let userRaw = await AsyncStorage.getItem('user');
   if (!userRaw) userRaw = await AsyncStorage.getItem('userInfo');
-  let userId = userRaw ? JSON.parse(userRaw)?.id : null;
+  const parsedUser = userRaw ? JSON.parse(userRaw) : null;
+  let userId = parsedUser ? (parsedUser.id || parsedUser.userId) : null;
   // If userId is still null, try to fetch from backend and update AsyncStorage
   if (!userId && token) {
     try {
