@@ -1,8 +1,8 @@
 import React, { forwardRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
+import { getMasterData } from '../utils/storage';
 
 interface FormDropdownProps {
   label: string;
@@ -30,19 +30,13 @@ const FormDropdown = forwardRef<Picker, FormDropdownProps>(
       const loadOptionsFromMasterData = async () => {
         if (masterDataKey) {
           try {
-            const json = await AsyncStorage.getItem('masterData');
-            if (json) {
-              const masterData = JSON.parse(json);
-              const arr = masterData[masterDataKey] || [];
-              setOptions(
-                arr.map((item: any) => ({
-                  label: item[labelKey],
-                  value: item[valueKey],
-                }))
-              );
-            } else {
-              setOptions([]);
-            }
+            const masterData = await getMasterData();
+            const arr = (masterData && masterData[masterDataKey]) ? masterData[masterDataKey] : [];
+            setOptions(
+              Array.isArray(arr)
+                ? arr.map((item: any) => ({ label: item[labelKey], value: item[valueKey] }))
+                : []
+            );
           } catch (e) {
             setOptions([]);
           }
