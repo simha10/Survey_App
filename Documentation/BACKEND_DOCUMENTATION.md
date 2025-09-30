@@ -843,6 +843,9 @@ The backend is production-ready and provides a solid foundation for future enhan
 - `POST /api/qc/bulk-qc` — Bulk approve/reject/mark error for multiple properties.
 - `GET /api/qc/history/:surveyUniqueCode` — Fetch QC history for a property.
 - `GET /api/qc/stats` — Get QC statistics (counts by status/level).
+- `GET /api/qc/section-records/:surveyUniqueCode` — Fetch section-level QC records.
+- `POST /api/property-images` — Upload property images.
+- `GET /api/property-images/:surveyUniqueCode` — Get property images for a survey.
 
 ## Planned/Proposed Endpoints
 
@@ -856,18 +859,20 @@ The backend is production-ready and provides a solid foundation for future enhan
 
 - **SurveyDetails** — Main property data.
 - **QCRecord** — Tracks QC actions per property and level.
-- **QCLevelMaster** (planned) — Master table for QC levels.
-- **BulkActionLog** (planned) — Logs all bulk QC actions.
-- **QCErrorTypeMaster** (optional) — Master table for error types.
+- **QCSectionRecord** — Tracks section-level QC outcomes.
+- **PropertyImage** — Stores property image metadata and URLs.
+- **QCLevelMaster** — Master table for QC levels.
+- **BulkActionLog** — Logs all bulk QC actions.
+- **QCErrorTypeMaster** — Master table for error types.
 
 ## Bulk Actions
 
 - Supported via `/api/qc/bulk-qc` endpoint.
-- Each action is logged for auditability (future: via BulkActionLog).
+- Each action is logged for auditability via BulkActionLog.
 
 ## Audit Trail
 
-- All QC actions (single and bulk) are tracked in QCRecord.
+- All QC actions (single and bulk) are tracked in QCRecord and BulkActionLog.
 - Full history available via `/api/qc/history/:surveyUniqueCode`.
 
 ## See also: QCPLAN.md for architecture and future-proofing details.

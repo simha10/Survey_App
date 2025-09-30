@@ -273,6 +273,7 @@ EXPO_PUBLIC_API_BASE_URL="http://192.168.18.210:4000/api"
 - **Floor-wise Assessment** for multi-story properties
 - **Residential & Non-residential** property type support
 - **File Attachment Support** for property documentation
+- **Property Image Management** with upload and retrieval APIs
 - **Offline Data Collection** with synchronization capabilities
 
 ### 🗺️ Assignment Management

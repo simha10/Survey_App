@@ -80,13 +80,14 @@ Based on the project requirements and for consistency with the mobile applicatio
   - `GET /wards/statuses` — all Ward Statuses
   - `GET /mohallas` — all Mohallas
   - `GET /mohallas/ward/:wardId` — Mohallas by Ward
-- **Frontend Integration:** The admin panel's Ward Management and Assignment tabs need to update their API calls to use these new endpoints.
-- **Assignment & Conflict Logic:** Backend service logic for assignment and conflict resolution exists; endpoint and UI integration are the next steps.
+- **Frontend Integration:** The admin panel's Ward Management and Assignment tabs use these new endpoints.
+- **Assignment & Conflict Logic:** Backend service logic for assignment and conflict resolution exists; endpoint and UI integration are ongoing.
 - **User Management:** The create/edit user UI is implemented and styled; ready for end-to-end testing.
-- **QC Workflow:** The structure for multi-level QC review is present; further UI and backend integration is ongoing.
-- **Error Handling:** Improved error and loading state handling is being added.
+- **QC Workflow:** Multi-level QC review and approval endpoints implemented; frontend integration ongoing.
+- **Error Handling:** Improved error and loading state handling added.
+- **Property Image Support:** Backend and frontend support for property image attachments added.
 - **Dependencies:** Ensure all required packages (e.g., @radix-ui/react-slot, class-variance-authority, utils) are installed and available.
 - **Known Issues:** Document any current module resolution or build errors and their solutions (e.g., restarting dev server, checking file paths).
-- **Next Steps:** Complete assignment management, finalize QC workflow, and enhance reporting/dashboard features.
+- **Next Steps:** Finalize QC workflow frontend, complete assignment management UI, enhance reporting/dashboard features.
 
 This document will be updated continuously as the project evolves.
