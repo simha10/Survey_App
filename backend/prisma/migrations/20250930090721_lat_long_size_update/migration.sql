@@ -6,5 +6,5 @@
 
 */
 -- AlterTable
-ALTER TABLE "LocationDetails" ALTER COLUMN "propertyLatitude" SET DATA TYPE DECIMAL(9,8),
-ALTER COLUMN "propertyLongitude" SET DATA TYPE DECIMAL(9,8);
+ALTER TABLE "LocationDetails" ALTER COLUMN "propertyLatitude" SET DATA TYPE DECIMAL(12,8),
+ALTER COLUMN "propertyLongitude" SET DATA TYPE DECIMAL(12,8);
