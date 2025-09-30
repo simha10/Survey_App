@@ -58,7 +58,7 @@ export default function SideNav(props: DrawerContentComponentProps) {
   };
 
   return (
-    <SafeAreaView edges={['left', 'right', 'bottom']} className="flex-1 bg-white">
+    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-white">
       <Animated.View
         className="flex-1 space-y-3 p-4"
         style={{
@@ -72,12 +72,9 @@ export default function SideNav(props: DrawerContentComponentProps) {
             },
           ],
         }}>
-        <View className="mb-4 border-b border-gray-200 pb-4">
-          <Text className="text-xl font-bold text-gray-900">
-            {user?.username || 'Guest'}
-          </Text>
-          <Text className="text-sm font-medium text-gray-500">
-            {user?.role || 'No Role'}
+        <View className="mb-4 pb-2 pt-2">
+          <Text className="text-2xl font-bold text-gray-900">
+            {`Hello👋, ${((user as any)?.name || user?.username || 'User')}!`}
           </Text>
         </View>
         {menuConfig.map((item) => (

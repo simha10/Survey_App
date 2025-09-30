@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
-import { ScrollView, View, Text, StyleSheet, Button, Alert, findNodeHandle, TouchableOpacity } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Button, Alert, findNodeHandle, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FormInput from '../components/FormInput';
 import FormDropdown from '../components/FormDropdown';
 import { saveSurveyLocally, getLocalSurvey, getUnsyncedSurveys, getMasterData } from '../utils/storage';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
+import { Feather } from '@expo/vector-icons';
 
 interface FormData {
   ulbId: string;
@@ -69,6 +71,8 @@ export default function SurveyForm({ route }: any) {
   // State for master data
   const [masterData, setMasterData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [locLoading, setLocLoading] = useState(false);
+  const [hasLocationPermission, setHasLocationPermission] = useState<boolean | null>(null);
 
   // Use assignment data for ULB, Zone, Ward, and Mohalla options
   const [assignment, setAssignment] = useState<any>(null);
@@ -82,6 +86,41 @@ export default function SurveyForm({ route }: any) {
       if (json) setAssignment(JSON.parse(json));
     })();
   }, []);
+
+  const requestLocationPermissionIfNeeded = async (): Promise<boolean> => {
+    if (hasLocationPermission === true) return true;
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      const granted = status === 'granted';
+      setHasLocationPermission(granted);
+      if (!granted) {
+        Alert.alert('Permission Required', 'Location permission is needed to fetch GPS coordinates.');
+      }
+      return granted;
+    } catch (e) {
+      Alert.alert('Error', 'Unable to request location permission.');
+      return false;
+    }
+  };
+
+  const handleFetchLocation = async () => {
+    const permitted = await requestLocationPermissionIfNeeded();
+    if (!permitted) return;
+    setLocLoading(true);
+    try {
+      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
+      const { latitude, longitude } = position.coords;
+      const latStr = latitude.toFixed(6);
+      const lonStr = longitude.toFixed(6);
+      handleInputChange('propertyLatitude', latStr);
+      handleInputChange('propertyLongitude', lonStr);
+      Alert.alert('Success', '📍 Location fetched successfully!');
+    } catch (e) {
+      Alert.alert('Location Error', 'Unable to fetch GPS location. Please ensure GPS is enabled and try again.');
+    } finally {
+      setLocLoading(false);
+    }
+  };
 
   // Integer IDs for SurveyTypeMaster (replace with real IDs from your DB/seed)
   const SURVEY_TYPE_IDS = {
@@ -451,6 +490,17 @@ export default function SurveyForm({ route }: any) {
     }
   };
 
+  const handleBackConfirm = () => {
+    Alert.alert(
+      'Leave Survey?',
+      'Unsaved changes may be lost. Are you sure you want to go back?',
+      [
+        { text: 'Stay', style: 'cancel' },
+        { text: 'Leave', style: 'destructive', onPress: () => (navigation as any).goBack() },
+      ]
+    );
+  };
+
   // For yes/no dropdowns, use:
   const yesNoOptions = [
     { label: 'Yes', value: 'YES' },
@@ -470,7 +520,7 @@ export default function SurveyForm({ route }: any) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.topHeader}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.topBackButton}>
+        <TouchableOpacity onPress={handleBackConfirm} style={styles.topBackButton}>
           <Text style={styles.topBackArrow}>←</Text>
         </TouchableOpacity>
         <Text style={styles.topHeaderTitle}>{`New ${surveyType} Survey`}</Text>
@@ -582,7 +632,16 @@ export default function SurveyForm({ route }: any) {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>4. Location Details</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>4. Location Details</Text>
+            <TouchableOpacity onPress={handleFetchLocation} accessibilityLabel="Fetch current location" style={styles.iconButton}>
+              {locLoading ? (
+                <ActivityIndicator size="small" color="#3B82F6" />
+              ) : (
+                <Feather name="map-pin" size={20} color="#3B82F6" />
+              )}
+            </TouchableOpacity>
+          </View>
           <FormInput
             label="Latitude"
             onChangeText={(value: string) => handleInputChange('propertyLatitude', value)}
@@ -813,11 +872,21 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     padding: 16,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#374151',
-    marginBottom: 16,
+    marginBottom: 0,
+  },
+  iconButton: {
+    padding: 6,
+    marginLeft: 8,
   },
   buttonContainer: {
     padding: 16,
