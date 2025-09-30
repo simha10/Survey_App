@@ -154,4 +154,27 @@ export const getFullPropertyDetails = async (req: Request, res: Response) => {
     console.error('QC Controller: Error fetching property:', error);
     res.status(500).json({ error: error.message });
   }
+};
+
+export const getQCRemarksSummary = async (req: Request, res: Response) => {
+  try {
+    const { surveyUniqueCode } = req.params;
+    const result = await qcService.getQCRemarksSummary(surveyUniqueCode);
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const getQCByLevel = async (req: Request, res: Response) => {
+  try {
+    const { surveyUniqueCode, qcLevel } = req.params;
+    const result = await qcService.getQCByLevel(surveyUniqueCode, parseInt(qcLevel));
+    if (!result) {
+      return res.status(404).json({ error: "QC record not found for this level" });
+    }
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 }; 

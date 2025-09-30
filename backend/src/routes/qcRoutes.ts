@@ -39,10 +39,10 @@ router.get('/user/:userId', authenticateJWT, (req, res) => {
 router.get('/property-list', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN']), qcController.getPropertyList);
 
 // Single QC update (edit + approve/reject)
-router.put('/survey/:surveyUniqueCode', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN']), qcController.updateSurveyQC);
+router.put('/survey/:surveyUniqueCode', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN', 'SUPERVISOR']), qcController.updateSurveyQC);
 
 // Bulk QC approve/reject
-router.post('/bulk-qc', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN']), qcController.bulkQCAction);
+router.post('/bulk-qc', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN', 'SUPERVISOR']), qcController.bulkQCAction);
 
 // QC history for a survey
 router.get('/history/:surveyUniqueCode', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN']), qcController.getQCHistory);
@@ -50,5 +50,10 @@ router.get('/history/:surveyUniqueCode', authenticateJWT, restrictToRoles(['SUPE
 // Full property details for QC edit page
 router.get('/property/:surveyUniqueCode', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN']), qcController.getFullPropertyDetails);
 
+// QC remarks summary for a survey
+router.get('/remarks/:surveyUniqueCode', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN']), qcController.getQCRemarksSummary);
+
+// QC record for specific level
+router.get('/level/:surveyUniqueCode/:qcLevel', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN']), qcController.getQCByLevel);
 
 export default router; 

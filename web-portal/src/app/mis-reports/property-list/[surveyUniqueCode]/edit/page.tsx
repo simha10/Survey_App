@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Loading from "@/components/ui/loading";
 import toast from "react-hot-toast";
+import QCRemarksPanel from "@/components/qc/QCRemarksPanel";
 
 interface PropertyDetails {
   surveyUniqueCode: string;
@@ -1312,6 +1313,18 @@ export default function PropertyQCEditPage() {
           </button>
         </div>
       </form>
+
+      {/* QC Remarks Panel */}
+      <div className="bg-gray-900 text-white p-8">
+        <QCRemarksPanel
+          surveyUniqueCode={surveyUniqueCode}
+          currentQCLevel={1}
+          onRemarksUpdate={() => {
+            // Refresh property data when remarks are updated
+            fetchProperty();
+          }}
+        />
+      </div>
 
       {/* Footer */}
       <div className="bg-gray-700 text-white py-2 px-6 text-center text-sm">

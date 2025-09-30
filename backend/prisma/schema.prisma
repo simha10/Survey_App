@@ -1,3 +1,5 @@
+/// Added reverted statuses for better traceability
+/// REVERTED_TO_SUPERVISOR, REVERTED_TO_ADMIN
 generator client {
   provider = "prisma-client-js"
 }
@@ -191,6 +193,9 @@ model SurveyStatusMaster {
   surveyStatusId           Int                   @id @default(autoincrement())
   surveyStatusMapsReverted SurveyStatusMapping[] @relation("RevertedFrom")
   surveyStatusMaps         SurveyStatusMapping[]
+
+/// Seeded QC status stages for workflow
+/// OFFICE_QC_PENDING, OFFICE_QC_DONE, RI_QC_PENDING, RI_QC_DONE, FINAL_QC_PENDING, FINAL_QC_DONE, REVERTED_TO_OFFICE_QC
 }
 
 model WardStatusMaster {
@@ -213,6 +218,7 @@ model UsersMaster {
   admins                        Admins?
   auditLogs                     AuditLog[]
   qcRecords                     QCRecord[]
+  qcSectionRecords              QCSectionRecord[]
   sessions                      Session[]
   supervisors                   Supervisors?
   uploadedSurveys               SurveyDetails[]       @relation("UsersMasterToSurveyDetails")
@@ -408,6 +414,7 @@ model SurveyDetails {
   propertyAttachments               PropertyAttachmentDetails[]
   propertyDetails                   PropertyDetails?
   qcRecords                         QCRecord[]
+  qcSectionRecords                  QCSectionRecord[]
   residentialPropertyAssessments    ResidentialPropertyAssessment[]
   mohalla                           MohallaMaster                      @relation(fields: [mohallaId], references: [mohallaId])
   surveyType                        SurveyTypeMaster                   @relation(fields: [surveyTypeId], references: [surveyTypeId])
@@ -577,6 +584,26 @@ model QCRecord {
   @@index([reviewedById])
   @@index([qcStatus])
   @@index([qcLevel])
+}
+
+/// Records per-section QC outcomes to support partial progression across levels
+model QCSectionRecord {
+  qcSectionRecordId String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  surveyUniqueCode  String       @db.Uuid
+  qcLevel           Int
+  sectionKey        String       @db.VarChar(64)
+  qcStatus          QCStatusEnum
+  remarks           String?
+  reviewedById      String
+  reviewedAt        DateTime     @default(now())
+
+  reviewedBy UsersMaster   @relation(fields: [reviewedById], references: [userId])
+  survey     SurveyDetails @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode], onDelete: Cascade)
+
+  @@unique([surveyUniqueCode, qcLevel, sectionKey])
+  @@index([surveyUniqueCode])
+  @@index([qcLevel])
+  @@index([sectionKey])
 }
 
 model AuditLog {

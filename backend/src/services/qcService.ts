@@ -205,6 +205,10 @@ export async function bulkQCAction({
   surveyTeamRemark?: string;
   RIRemark?: string;
 }) {
+  // Disallow bulk QC at Office QC (level 1)
+  if (qcLevel === 1) {
+    throw new Error('Bulk QC is not allowed at Office QC level. Please review surveys individually.');
+  }
   const results = [];
   for (const surveyUniqueCode of surveyCodes) {
     const qcRecord = await updateSurveyAndQC({
@@ -226,13 +230,95 @@ export async function bulkQCAction({
 }
 
 /**
- * Get full QC history for a survey.
+ * Get full QC history for a survey with reviewer details.
  */
 export async function getQCHistory(surveyUniqueCode: string) {
   return prisma.qCRecord.findMany({
     where: { surveyUniqueCode },
+    include: {
+      reviewedBy: {
+        select: {
+          userId: true,
+          name: true,
+          username: true,
+        },
+      },
+    },
     orderBy: [{ qcLevel: 'asc' }, { reviewedAt: 'desc' }],
   });
+}
+
+/**
+ * Get QC records for a specific level with all remarks.
+ */
+export async function getQCByLevel(surveyUniqueCode: string, qcLevel: number) {
+  return prisma.qCRecord.findFirst({
+    where: { 
+      surveyUniqueCode,
+      qcLevel 
+    },
+    include: {
+      reviewedBy: {
+        select: {
+          userId: true,
+          name: true,
+          username: true,
+        },
+      },
+    },
+  });
+}
+
+/**
+ * Get all QC records for a survey with remarks summary.
+ */
+export async function getQCRemarksSummary(surveyUniqueCode: string) {
+  const qcRecords = await prisma.qCRecord.findMany({
+    where: { surveyUniqueCode },
+    include: {
+      reviewedBy: {
+        select: {
+          userId: true,
+          name: true,
+          username: true,
+        },
+      },
+    },
+    orderBy: [{ qcLevel: 'asc' }, { reviewedAt: 'desc' }],
+  });
+
+  // Group remarks by type and level
+  const remarksSummary = {
+    riRemarks: qcRecords.filter(r => r.RIRemark).map(r => ({
+      level: r.qcLevel,
+      remark: r.RIRemark,
+      reviewedBy: r.reviewedBy,
+      reviewedAt: r.reviewedAt,
+    })),
+    gisRemarks: qcRecords.filter(r => r.gisTeamRemark).map(r => ({
+      level: r.qcLevel,
+      remark: r.gisTeamRemark,
+      reviewedBy: r.reviewedBy,
+      reviewedAt: r.reviewedAt,
+    })),
+    surveyTeamRemarks: qcRecords.filter(r => r.surveyTeamRemark).map(r => ({
+      level: r.qcLevel,
+      remark: r.surveyTeamRemark,
+      reviewedBy: r.reviewedBy,
+      reviewedAt: r.reviewedAt,
+    })),
+    generalRemarks: qcRecords.filter(r => r.remarks).map(r => ({
+      level: r.qcLevel,
+      remark: r.remarks,
+      reviewedBy: r.reviewedBy,
+      reviewedAt: r.reviewedAt,
+    })),
+  };
+
+  return {
+    qcRecords,
+    remarksSummary,
+  };
 }
 
 /**

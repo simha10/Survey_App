@@ -326,6 +326,24 @@ export const qcApi = {
     const response = await apiClient.get('/api/qc/property-list', { params });
     return response.data;
   },
+
+  // QC remarks summary for a survey
+  getQCRemarksSummary: async (surveyUniqueCode: string): Promise<any> => {
+    const response = await apiClient.get(`/api/qc/remarks/${surveyUniqueCode}`);
+    return response.data;
+  },
+
+  // QC record for specific level
+  getQCByLevel: async (surveyUniqueCode: string, qcLevel: number): Promise<any> => {
+    const response = await apiClient.get(`/api/qc/level/${surveyUniqueCode}/${qcLevel}`);
+    return response.data;
+  },
+
+  // Update survey QC with remarks
+  updateSurveyQC: async (surveyUniqueCode: string, data: any): Promise<any> => {
+    const response = await apiClient.put(`/api/qc/survey/${surveyUniqueCode}`, data);
+    return response.data;
+  },
 };
 
 // Survey API
