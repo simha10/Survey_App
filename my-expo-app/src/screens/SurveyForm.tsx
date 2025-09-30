@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ScrollView, View, Text, StyleSheet, Button, Alert, findNodeHandle, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Button, Alert, findNodeHandle, TouchableOpacity, ActivityIndicator, Image as RNImage, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FormInput from '../components/FormInput';
 import FormDropdown from '../components/FormDropdown';
@@ -7,6 +7,8 @@ import { saveSurveyLocally, getLocalSurvey, getUnsyncedSurveys, getMasterData } 
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { Feather } from '@expo/vector-icons';
 
 interface FormData {
@@ -79,6 +81,17 @@ export default function SurveyForm({ route }: any) {
 
   // Add surveyId state to track current survey being edited or created
   const [surveyIdState, setSurveyIdState] = useState<string | undefined>(surveyId);
+  const [photos, setPhotos] = useState<{ [key: string]: string | null }>({
+    khasra: null,
+    front: null,
+    left: null,
+    right: null,
+  });
+  const [cameraVisible, setCameraVisible] = useState(false);
+  const [cameraKey, setCameraKey] = useState<keyof typeof photos | null>(null);
+  const cameraViewRef = useRef<CameraView | null>(null);
+  const [cameraLoading, setCameraLoading] = useState(false);
+  const [camPermission, requestCamPermission] = useCameraPermissions();
 
   useEffect(() => {
     (async () => {
@@ -110,8 +123,8 @@ export default function SurveyForm({ route }: any) {
     try {
       const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
       const { latitude, longitude } = position.coords;
-      const latStr = latitude.toFixed(6);
-      const lonStr = longitude.toFixed(6);
+      const latStr = latitude.toFixed(8);
+      const lonStr = longitude.toFixed(8);
       handleInputChange('propertyLatitude', latStr);
       handleInputChange('propertyLongitude', lonStr);
       Alert.alert('Success', '📍 Location fetched successfully!');
@@ -119,6 +132,83 @@ export default function SurveyForm({ route }: any) {
       Alert.alert('Location Error', 'Unable to fetch GPS location. Please ensure GPS is enabled and try again.');
     } finally {
       setLocLoading(false);
+    }
+  };
+
+  const ensureCameraPermission = async (): Promise<boolean> => {
+    const res = camPermission?.granted ? camPermission : await requestCamPermission();
+    if (!res?.granted) {
+      Alert.alert('Permission Required', 'Camera permission is required to capture photos.');
+      return false;
+    }
+    return true;
+  };
+
+  const openCameraFor = async (key: keyof typeof photos) => {
+    const permitted = await ensureCameraPermission();
+    if (!permitted) return;
+    const locPermitted = await requestLocationPermissionIfNeeded();
+    if (!locPermitted) return;
+    setCameraKey(key);
+    setCameraVisible(true);
+  };
+
+  const buildOverlaySvg = (width: number, height: number, lat: string, lon: string, ts: string) => {
+    const padding = 16;
+    const stripHeight = 64;
+    const fontSize = 24;
+    const text = `Lat: ${lat}  Lon: ${lon}  ${ts}`;
+    return (
+      `data:image/svg+xml;utf8,` +
+      encodeURIComponent(
+        `<?xml version="1.0" encoding="UTF-8"?>` +
+          `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
+          `<rect x="0" y="${height - stripHeight}" width="${width}" height="${stripHeight}" fill="black" fill-opacity="0.6"/>` +
+          `<text x="${padding}" y="${height - stripHeight / 2}" fill="white" font-size="${fontSize}" dominant-baseline="middle">${text}</text>` +
+          `</svg>`
+      )
+    );
+  };
+
+  const handleCapture = async () => {
+    if (!cameraViewRef.current || !cameraKey) return;
+    try {
+      setCameraLoading(true);
+      const photo = await cameraViewRef.current.takePictureAsync({ quality: 1, skipProcessing: false });
+      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
+      const latitude = position.coords.latitude.toFixed(8);
+      const longitude = position.coords.longitude.toFixed(8);
+      const ts = new Date().toISOString().replace('T', ' ').substring(0, 19);
+      await new Promise<void>((resolve, reject) => {
+        RNImage.getSize(
+          photo.uri,
+          async (w, h) => {
+            try {
+              const overlay = buildOverlaySvg(w, h, latitude, longitude, ts);
+              const result = await ImageManipulator.ImageManipulator.manipulate(
+                photo.uri,
+                [
+                  {
+                    overlay,
+                  } as any,
+                ],
+                { compress: 1, format: SaveFormat.JPEG }
+              );
+              setPhotos(prev => ({ ...prev, [cameraKey]: result.uri }));
+              setCameraVisible(false);
+              setCameraKey(null);
+              resolve();
+            } catch (err) {
+              reject(err);
+            }
+          },
+          (e) => reject(e)
+        );
+      });
+    } catch (e) {
+      Alert.alert('Capture Error', 'Failed to capture or process the image.');
+    } finally {
+      setCameraLoading(false);
     }
   };
 
@@ -834,12 +924,68 @@ export default function SurveyForm({ route }: any) {
             value={String(formData.remarks ?? '')}
             multiline
           />
+          <View style={styles.photosHeaderRow}>
+            <Text style={styles.sectionTitle}>Photos</Text>
+          </View>
+          <View style={styles.photosGrid}>
+            <TouchableOpacity style={styles.photoCard} onPress={() => openCameraFor('khasra')}>
+              {photos.khasra ? (
+                <RNImage source={{ uri: photos.khasra }} style={styles.photoPreview} />
+              ) : (
+                <Text style={styles.photoLabel}>Khasra No.</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.photoCard} onPress={() => openCameraFor('front')}>
+              {photos.front ? (
+                <RNImage source={{ uri: photos.front }} style={styles.photoPreview} />
+              ) : (
+                <Text style={styles.photoLabel}>Front</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.photoCard} onPress={() => openCameraFor('left')}>
+              {photos.left ? (
+                <RNImage source={{ uri: photos.left }} style={styles.photoPreview} />
+              ) : (
+                <Text style={styles.photoLabel}>Left</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.photoCard} onPress={() => openCameraFor('right')}>
+              {photos.right ? (
+                <RNImage source={{ uri: photos.right }} style={styles.photoPreview} />
+              ) : (
+                <Text style={styles.photoLabel}>Right</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.buttonContainer}>
           <Button title="Save Survey" onPress={handleSave} />
         </View>
       </ScrollView>
+
+      <Modal visible={cameraVisible} animationType="slide" onRequestClose={() => setCameraVisible(false)}>
+        <SafeAreaView style={styles.cameraContainer}>
+          <View style={styles.cameraHeader}>
+            <TouchableOpacity onPress={() => setCameraVisible(false)} style={styles.cameraBackBtn}>
+              <Text style={styles.topBackArrow}>←</Text>
+            </TouchableOpacity>
+            <Text style={styles.topHeaderTitle}>Capture Photo</Text>
+          </View>
+          <View style={styles.cameraViewWrapper}>
+            <CameraView style={styles.camera} ref={cameraViewRef} facing="back"/>
+          </View>
+          <View style={styles.cameraControls}>
+            <TouchableOpacity onPress={handleCapture} style={styles.captureButton} disabled={cameraLoading}>
+              {cameraLoading ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text style={styles.captureButtonText}>Capture</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -890,6 +1036,84 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     padding: 16,
+  },
+  photosHeaderRow: {
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  photosGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  photoCard: {
+    width: '48%',
+    aspectRatio: 1,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    overflow: 'hidden',
+    borderColor: '#E5E7EB',
+    borderWidth: 1,
+  },
+  photoLabel: {
+    color: '#374151',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  photoPreview: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  cameraContainer: {
+    flex: 1,
+    backgroundColor: 'white',
+  },
+  cameraHeader: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    backgroundColor: 'white',
+    paddingTop: 8,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  cameraBackBtn: {
+    position: 'absolute',
+    left: 8,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 8,
+    zIndex: 11,
+  },
+  cameraViewWrapper: {
+    flex: 1,
+    backgroundColor: 'black',
+  },
+  camera: {
+    flex: 1,
+  },
+  cameraControls: {
+    padding: 16,
+    backgroundColor: 'white',
+  },
+  captureButton: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 9999,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  captureButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '700',
   },
   topHeader: {
     width: '100%',
