@@ -1,5 +1,3 @@
-/// Added reverted statuses for better traceability
-/// REVERTED_TO_SUPERVISOR, REVERTED_TO_ADMIN
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,6 +7,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// Added reverted statuses for better traceability
+/// REVERTED_TO_SUPERVISOR, REVERTED_TO_ADMIN
 model UlbMaster {
   ulbId         String           @id @default(uuid())
   ulbName       String           @db.VarChar(100)
@@ -193,9 +193,6 @@ model SurveyStatusMaster {
   surveyStatusId           Int                   @id @default(autoincrement())
   surveyStatusMapsReverted SurveyStatusMapping[] @relation("RevertedFrom")
   surveyStatusMaps         SurveyStatusMapping[]
-
-/// Seeded QC status stages for workflow
-/// OFFICE_QC_PENDING, OFFICE_QC_DONE, RI_QC_PENDING, RI_QC_DONE, FINAL_QC_PENDING, FINAL_QC_DONE, REVERTED_TO_OFFICE_QC
 }
 
 model WardStatusMaster {
@@ -456,8 +453,8 @@ model OwnerDetails {
 
 model LocationDetails {
   surveyUniqueCode   String                 @id @db.Uuid
-  propertyLatitude   Decimal?               @db.Decimal(9, 6)
-  propertyLongitude  Decimal?               @db.Decimal(9, 6)
+  propertyLatitude   Decimal?               @db.Decimal(12, 8)
+  propertyLongitude  Decimal?               @db.Decimal(12, 8)
   assessmentYear     String                 @db.VarChar(20)
   propertyTypeId     Int?
   buildingName       String?
@@ -544,7 +541,6 @@ model NonResidentialPropertyAssessment {
 }
 
 model PropertyAttachmentDetails {
-  surveyImagesId   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   surveyUniqueCode String        @db.Uuid
   image1Url        String?       @db.VarChar(50)
   image2Url        String?       @db.VarChar(50)
@@ -556,6 +552,7 @@ model PropertyAttachmentDetails {
   image8Url        String?       @db.VarChar(50)
   image9Url        String?       @db.VarChar(50)
   image10Url       String?       @db.VarChar(50)
+  surveyImagesId   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   survey           SurveyDetails @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
 
   @@index([surveyImagesId])
@@ -588,17 +585,16 @@ model QCRecord {
 
 /// Records per-section QC outcomes to support partial progression across levels
 model QCSectionRecord {
-  qcSectionRecordId String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  surveyUniqueCode  String       @db.Uuid
+  qcSectionRecordId String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  surveyUniqueCode  String        @db.Uuid
   qcLevel           Int
-  sectionKey        String       @db.VarChar(64)
+  sectionKey        String        @db.VarChar(64)
   qcStatus          QCStatusEnum
   remarks           String?
   reviewedById      String
-  reviewedAt        DateTime     @default(now())
-
-  reviewedBy UsersMaster   @relation(fields: [reviewedById], references: [userId])
-  survey     SurveyDetails @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode], onDelete: Cascade)
+  reviewedAt        DateTime      @default(now())
+  reviewedBy        UsersMaster   @relation(fields: [reviewedById], references: [userId])
+  survey            SurveyDetails @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode], onDelete: Cascade)
 
   @@unique([surveyUniqueCode, qcLevel, sectionKey])
   @@index([surveyUniqueCode])
