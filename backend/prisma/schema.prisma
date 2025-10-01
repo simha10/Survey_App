@@ -214,6 +214,7 @@ model UsersMaster {
   name                          String?               @db.VarChar(100)
   admins                        Admins?
   auditLogs                     AuditLog[]
+  bulkActionLogs                BulkActionLog[]
   qcRecords                     QCRecord[]
   qcSectionRecords              QCSectionRecord[]
   sessions                      Session[]
@@ -559,22 +560,27 @@ model PropertyAttachmentDetails {
 }
 
 model QCRecord {
-  surveyUniqueCode String        @db.Uuid
-  qcLevel          Int
-  qcStatus         QCStatusEnum
-  reviewedById     String
-  remarks          String?
-  reviewedAt       DateTime      @default(now())
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  RIRemark         String?
-  errorType        QCErrorType?
-  gisTeamRemark    String?
-  isError          Boolean       @default(false)
-  surveyTeamRemark String?
-  qcRecordId       String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  reviewedBy       UsersMaster   @relation(fields: [reviewedById], references: [userId])
-  survey           SurveyDetails @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode], onDelete: Cascade)
+  surveyUniqueCode  String         @db.Uuid
+  qcLevel           Int
+  qcStatus          QCStatusEnum
+  reviewedById      String
+  remarks           String?
+  reviewedAt        DateTime       @default(now())
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  RIRemark          String?
+  errorType         QCErrorType?
+  gisTeamRemark     String?
+  isError           Boolean        @default(false)
+  surveyTeamRemark  String?
+  qcRecordId        String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  revertedFromLevel Int?
+  revertedReason    String?
+  lastViewedAt      DateTime?
+  bulkActionId      String?        @db.Uuid
+  bulkAction        BulkActionLog? @relation(fields: [bulkActionId], references: [bulkActionId])
+  reviewedBy        UsersMaster    @relation(fields: [reviewedById], references: [userId])
+  survey            SurveyDetails  @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode], onDelete: Cascade)
 
   @@unique([surveyUniqueCode, qcLevel])
   @@index([surveyUniqueCode])
@@ -610,6 +616,43 @@ model AuditLog {
   new_value String?
   createdAt DateTime    @default(now())
   user      UsersMaster @relation(fields: [userId], references: [userId])
+}
+
+/// QC Level Master for dynamic QC workflow configuration
+model QCLevelMaster {
+  qcLevelId   Int      @id @default(autoincrement())
+  levelName   String   @db.VarChar(100)
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// Bulk Action Log for tracking bulk QC operations
+model BulkActionLog {
+  bulkActionId        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actionType          String      @db.VarChar(50)
+  performedById       String
+  performedAt         DateTime    @default(now())
+  remarks             String?
+  affectedSurveyCodes String[]    @db.Uuid
+  qcLevel             Int
+  performedBy         UsersMaster @relation(fields: [performedById], references: [userId])
+  qcRecords           QCRecord[]
+
+  @@index([performedById])
+  @@index([performedAt])
+  @@index([qcLevel])
+}
+
+/// Optional: QC Error Type Master for standardized error classification
+model QCErrorTypeMaster {
+  errorTypeId Int      @id @default(autoincrement())
+  errorCode   String   @unique @db.VarChar(10)
+  description String   @db.VarChar(200)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 enum YesNo {
@@ -699,6 +742,18 @@ enum QCStatusEnum {
   REJECTED
   DUPLICATE
   NEEDS_REVISION
+  SURVEY_QC_PENDING
+  SURVEY_QC_DONE
+  IN_OFFICE_QC_PENDING
+  IN_OFFICE_QC_DONE
+  RI_QC_PENDING
+  RI_QC_DONE
+  FINAL_QC_PENDING
+  FINAL_QC_DONE
+  REVERTED_TO_SURVEY
+  REVERTED_TO_IN_OFFICE
+  REVERTED_TO_RI
+  REVERTED_TO_FINAL
 }
 
 enum QCErrorType {

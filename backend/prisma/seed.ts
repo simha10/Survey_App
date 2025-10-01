@@ -452,6 +452,13 @@ async function main() {
   }
 
   console.log('All master tables, roles and test users seeded successfully!');
+
+  // NOTE: QC Workflow tables will be seeded after Prisma client generation
+  // This is because the Prisma client needs to be regenerated after schema changes
+  // Run this after: npx prisma generate
+  console.log('⚠️  QC Workflow tables seeding requires Prisma client regeneration first');
+
+  console.log('All master tables, roles and test users seeded successfully!');
   console.log('\nTest User Credentials:');
   console.log('SuperAdmin - Username: superadmin, Password: superadmin123');
   console.log('Admin - Username: admin, Password: admin123');
