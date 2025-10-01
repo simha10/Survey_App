@@ -1,3 +1,6 @@
+# Ignore Expo local state directories
+/.expo
+**/.expo
 # Dependencies
 node_modules/
 npm-debug.log*
