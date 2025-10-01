@@ -10,6 +10,8 @@ import * as Location from 'expo-location';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Feather } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
+import { insertImagesForSurvey, cleanupSurveyImagesBySurveyId } from '../services/imageStorage';
 
 interface FormData {
   ulbId: string;
@@ -86,12 +88,16 @@ export default function SurveyForm({ route }: any) {
     front: null,
     left: null,
     right: null,
+    other1: null,
+    other2: null,
   });
   const [cameraVisible, setCameraVisible] = useState(false);
   const [cameraKey, setCameraKey] = useState<keyof typeof photos | null>(null);
   const cameraViewRef = useRef<CameraView | null>(null);
   const [cameraLoading, setCameraLoading] = useState(false);
   const [camPermission, requestCamPermission] = useCameraPermissions();
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -168,7 +174,26 @@ export default function SurveyForm({ route }: any) {
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
       );
       
-      setPhotos(prev => ({ ...prev, [cameraKey]: compressed.uri }));
+      const fileName = `survey_${surveyIdState || 'new'}_${cameraKey}_${Date.now()}.jpg`;
+      const destUri = `${FileSystem.documentDirectory}${fileName}`;
+      try {
+        await FileSystem.copyAsync({ from: compressed.uri, to: destUri });
+      } catch (copyErr) {
+        console.error('File copy failed, using temp URI', copyErr);
+      }
+      const info = await FileSystem.getInfoAsync(destUri);
+      const finalUri = info.exists ? destUri : compressed.uri;
+      setPhotos(prev => ({ ...prev, [cameraKey]: finalUri }));
+      try {
+        await insertSurveyImage({
+          surveyId: surveyIdState || null,
+          photoUri: finalUri,
+          label: String(cameraKey),
+          timestamp: new Date().toISOString(),
+        });
+      } catch (dbErr) {
+        console.error('SQLite insertSurveyImage failed', dbErr);
+      }
       setCameraVisible(false);
       setCameraKey(null);
     } catch (e) {
@@ -538,6 +563,12 @@ export default function SurveyForm({ route }: any) {
         await saveSurveyLocally(surveyToSave);
         Alert.alert('Saved', 'Survey saved locally.');
       }
+      // Persist images to SQLite only after a survey has been successfully saved
+      try {
+        await insertImagesForSurvey(idToUse as string, photos);
+      } catch (e) {
+        console.error('Failed inserting images for saved survey', e);
+      }
       setSurveyIdState(idToUse); // always update state
       const selectedMohalla = assignment?.mohallas?.find((m: any) => m.mohallaId === formData.mohallaId);
       const mohallaName = selectedMohalla ? selectedMohalla.mohallaName : '';
@@ -895,34 +926,131 @@ export default function SurveyForm({ route }: any) {
             <Text style={styles.sectionTitle}>Photos</Text>
           </View>
           <View style={styles.photosGrid}>
-            <TouchableOpacity style={styles.photoCard} onPress={() => openCameraFor('khasra')}>
-              {photos.khasra ? (
-                <RNImage source={{ uri: photos.khasra }} style={styles.photoPreview} />
-              ) : (
-                <Text style={styles.photoLabel}>Khasra No.</Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.photoCard} onPress={() => openCameraFor('front')}>
+            {/* Building (was Front) */}
+            <View style={styles.photoCard}>
               {photos.front ? (
-                <RNImage source={{ uri: photos.front }} style={styles.photoPreview} />
+                <>
+                  <RNImage source={{ uri: photos.front }} style={styles.photoPreview} />
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity style={styles.cardActionBtn} onPress={() => { setViewerUri(photos.front); setViewerVisible(true); }}>
+                      <Text style={styles.cardActionText}>View</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.cardActionBtn} onPress={() => openCameraFor('front')}>
+                      <Text style={styles.cardActionText}>Retake</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
               ) : (
-                <Text style={styles.photoLabel}>Front</Text>
+                <TouchableOpacity style={styles.photoCardTouch} onPress={() => openCameraFor('front')}>
+                  <Text style={styles.photoLabel}>Building</Text>
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.photoCard} onPress={() => openCameraFor('left')}>
+            </View>
+
+            {/* Khasra No. */}
+            <View style={styles.photoCard}>
+              {photos.khasra ? (
+                <>
+                  <RNImage source={{ uri: photos.khasra }} style={styles.photoPreview} />
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity style={styles.cardActionBtn} onPress={() => { setViewerUri(photos.khasra); setViewerVisible(true); }}>
+                      <Text style={styles.cardActionText}>View</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.cardActionBtn} onPress={() => openCameraFor('khasra')}>
+                      <Text style={styles.cardActionText}>Retake</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <TouchableOpacity style={styles.photoCardTouch} onPress={() => openCameraFor('khasra')}>
+                  <Text style={styles.photoLabel}>Khasra No.</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Left */}
+            <View style={styles.photoCard}>
               {photos.left ? (
-                <RNImage source={{ uri: photos.left }} style={styles.photoPreview} />
+                <>
+                  <RNImage source={{ uri: photos.left }} style={styles.photoPreview} />
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity style={styles.cardActionBtn} onPress={() => { setViewerUri(photos.left); setViewerVisible(true); }}>
+                      <Text style={styles.cardActionText}>View</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.cardActionBtn} onPress={() => openCameraFor('left')}>
+                      <Text style={styles.cardActionText}>Retake</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
               ) : (
-                <Text style={styles.photoLabel}>Left</Text>
+                <TouchableOpacity style={styles.photoCardTouch} onPress={() => openCameraFor('left')}>
+                  <Text style={styles.photoLabel}>Left</Text>
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.photoCard} onPress={() => openCameraFor('right')}>
+            </View>
+
+            {/* Right */}
+            <View style={styles.photoCard}>
               {photos.right ? (
-                <RNImage source={{ uri: photos.right }} style={styles.photoPreview} />
+                <>
+                  <RNImage source={{ uri: photos.right }} style={styles.photoPreview} />
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity style={styles.cardActionBtn} onPress={() => { setViewerUri(photos.right); setViewerVisible(true); }}>
+                      <Text style={styles.cardActionText}>View</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.cardActionBtn} onPress={() => openCameraFor('right')}>
+                      <Text style={styles.cardActionText}>Retake</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
               ) : (
-                <Text style={styles.photoLabel}>Right</Text>
+                <TouchableOpacity style={styles.photoCardTouch} onPress={() => openCameraFor('right')}>
+                  <Text style={styles.photoLabel}>Right</Text>
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
+            </View>
+
+            {/* Other 1 (optional) */}
+            <View style={styles.photoCard}>
+              {photos.other1 ? (
+                <>
+                  <RNImage source={{ uri: photos.other1 }} style={styles.photoPreview} />
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity style={styles.cardActionBtn} onPress={() => { setViewerUri(photos.other1); setViewerVisible(true); }}>
+                      <Text style={styles.cardActionText}>View</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.cardActionBtn} onPress={() => openCameraFor('other1')}>
+                      <Text style={styles.cardActionText}>Retake</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <TouchableOpacity style={styles.photoCardTouch} onPress={() => openCameraFor('other1')}>
+                  <Text style={styles.photoLabel}>Other</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Other 2 (optional) */}
+            <View style={styles.photoCard}>
+              {photos.other2 ? (
+                <>
+                  <RNImage source={{ uri: photos.other2 }} style={styles.photoPreview} />
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity style={styles.cardActionBtn} onPress={() => { setViewerUri(photos.other2); setViewerVisible(true); }}>
+                      <Text style={styles.cardActionText}>View</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.cardActionBtn} onPress={() => openCameraFor('other2')}>
+                      <Text style={styles.cardActionText}>Retake</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <TouchableOpacity style={styles.photoCardTouch} onPress={() => openCameraFor('other2')}>
+                  <Text style={styles.photoLabel}>Other</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </View>
 
@@ -952,6 +1080,17 @@ export default function SurveyForm({ route }: any) {
             </TouchableOpacity>
           </View>
         </SafeAreaView>
+      </Modal>
+      {/* Image viewer modal */}
+      <Modal visible={viewerVisible} transparent animationType="fade" onRequestClose={() => setViewerVisible(false)}>
+        <View style={styles.viewerBackdrop}>
+          <TouchableOpacity style={styles.viewerClose} onPress={() => setViewerVisible(false)}>
+            <Text style={styles.viewerCloseText}>✕</Text>
+          </TouchableOpacity>
+          {viewerUri ? (
+            <RNImage source={{ uri: viewerUri }} style={styles.viewerImage} />
+          ) : null}
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -1025,6 +1164,12 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     borderWidth: 1,
   },
+  photoCardTouch: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   photoLabel: {
     color: '#374151',
     fontSize: 16,
@@ -1034,6 +1179,50 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
+  },
+  cardActions: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    flexDirection: 'row',
+    gap: 6,
+  },
+  cardActionBtn: {
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  cardActionText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  viewerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  viewerImage: {
+    width: '90%',
+    height: '75%',
+    resizeMode: 'contain',
+  },
+  viewerClose: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  viewerCloseText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '700',
   },
   cameraContainer: {
     flex: 1,

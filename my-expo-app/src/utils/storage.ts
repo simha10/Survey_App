@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // @ts-ignore
 import LZString from 'lz-string';
 import api from '../api/axiosConfig';
+import { cleanupSurveyImagesBySurveyId } from '../services/imageStorage';
 
 const UNSYNCED_SURVEYS_KEY = 'unsyncedSurveys';
 const MASTER_DATA_KEY = 'masterData';
@@ -241,6 +242,8 @@ export const getUnsyncedSurveys = async (): Promise<any[]> => {
  */
 export const removeUnsyncedSurvey = async (id: string): Promise<void> => {
   try {
+    // Cleanup any persisted images for this survey (files + SQLite rows)
+    try { await cleanupSurveyImagesBySurveyId(id); } catch (e) { console.error('Image cleanup failed for', id, e); }
     const all = await getUnsyncedSurveys();
     const filtered = all.filter((s: any) => s.id !== id);
     const compressed = LZString.compressToUTF16(JSON.stringify(filtered));
