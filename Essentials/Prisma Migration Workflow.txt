@@ -1,0 +1,123 @@
+RISK-FREE PRISMA MIGRATION WORKFLOW (FOCUSED EDITION)
+====================================================
+
+This is a practical, repeatable step-by-step guide for safely making database changes with Prisma.
+Use this whenever you modify your schema and run migrations. No Git mixing, no fluff.
+
+----------------------------------------------------
+STEP 0: PREP CHECK
+----------------------------------------------------
+Before making any changes:
+    npx prisma migrate status
+
+- ✅ If "Database schema is up to date" → proceed.
+- ❌ If drift or pending migrations are reported → fix drift first (see Step 5).
+
+----------------------------------------------------
+STEP 1: MAKE SCHEMA CHANGES
+----------------------------------------------------
+Edit prisma/schema.prisma to reflect your intended DB changes.
+
+Examples:
+- Add a new model
+- Modify columns (e.g., rename, nullable, change defaults)
+- Add relations or enums
+
+👉 Keep your edits atomic — one logical change per migration.
+
+----------------------------------------------------
+STEP 2: GENERATE & APPLY MIGRATION
+----------------------------------------------------
+    npx prisma migrate dev --name <descriptive_name>
+
+Examples:
+    npx prisma migrate dev --name add_inventory_table
+    npx prisma migrate dev --name make_user_email_optional
+
+- Prisma generates an SQL file under /prisma/migrations
+- Applies migration to local DB
+- Regenerates Prisma Client
+
+🟢 If successful → go to Step 4.
+🔴 If failed → go to Step 3.
+
+----------------------------------------------------
+STEP 3: HANDLING MIGRATION FAILURES
+----------------------------------------------------
+
+A. Drift or Conflicting Schema
+-------------------------------
+    npx prisma migrate status
+If drift is detected:
+    npx prisma migrate diff
+    npx prisma db pull
+    npx prisma migrate dev
+
+B. SQL Error (Constraint / FK issues)
+-------------------------------------
+- Check the migration.sql file inside /prisma/migrations/<timestamp>.
+- Edit SQL manually if it's a minor issue.
+- Otherwise, delete the migration folder, fix the schema, and rerun migrate dev.
+
+C. Total Meltdown
+-----------------
+    npx prisma migrate reset
+
+⚠️ Drops the DB and reapplies all migrations. Use ONLY locally.
+
+----------------------------------------------------
+STEP 4: SANITY CHECK
+----------------------------------------------------
+After successful migration:
+    npx prisma studio
+    npx prisma migrate status
+
+- Verify new fields/tables/relations exist.
+- Try adding dummy data to confirm functionality.
+
+----------------------------------------------------
+STEP 5: FIXING DRIFT
+----------------------------------------------------
+If Prisma reports drift:
+    npx prisma migrate diff
+
+Then either:
+- Pull DB schema if DB is source of truth:
+    npx prisma db pull
+
+- Or mark migration as applied if done externally:
+    npx prisma migrate resolve --applied <migration_name>
+
+This clears inconsistencies WITHOUT resetting the DB.
+
+----------------------------------------------------
+STEP 6: DEPLOY MIGRATIONS
+----------------------------------------------------
+When applying to staging or production:
+    npx prisma migrate deploy
+
+👉 'deploy' applies pending migrations safely. 
+Never use 'migrate dev' in production.
+
+----------------------------------------------------
+QUICK REFERENCE TABLE
+----------------------------------------------------
+| Step | Action                  | Command                                   |
+|------|---------------------------|-------------------------------------------|
+| 0    | Check status             | npx prisma migrate status                 |
+| 1    | Edit schema              | –                                         |
+| 2    | Generate migration       | npx prisma migrate dev --name <name>      |
+| 3    | Handle failures          | db pull, edit SQL, or reset               |
+| 4    | Verify migration         | prisma studio + migrate status            |
+| 5    | Resolve drift            | migrate diff / db pull / resolve          |
+| 6    | Deploy to other envs     | npx prisma migrate deploy                 |
+
+----------------------------------------------------
+PRO TIPS
+----------------------------------------------------
+- Never edit an already applied migration. Create a new one.
+- Use descriptive migration names.
+- Run `npx prisma migrate diff` often — it's like git diff for DBs.
+- Keep migrations atomic and clear.
+
+END OF FILE

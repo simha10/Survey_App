@@ -153,60 +153,27 @@ export default function SurveyForm({ route }: any) {
     setCameraVisible(true);
   };
 
-  const buildOverlaySvg = (width: number, height: number, lat: string, lon: string, ts: string) => {
-    const padding = 16;
-    const stripHeight = 64;
-    const fontSize = 24;
-    const text = `Lat: ${lat}  Lon: ${lon}  ${ts}`;
-    return (
-      `data:image/svg+xml;utf8,` +
-      encodeURIComponent(
-        `<?xml version="1.0" encoding="UTF-8"?>` +
-          `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
-          `<rect x="0" y="${height - stripHeight}" width="${width}" height="${stripHeight}" fill="black" fill-opacity="0.6"/>` +
-          `<text x="${padding}" y="${height - stripHeight / 2}" fill="white" font-size="${fontSize}" dominant-baseline="middle">${text}</text>` +
-          `</svg>`
-      )
-    );
-  };
+  // Step 1: Skip overlay drawing here. Overlay is added via off-screen compositing in Step 2.
 
   const handleCapture = async () => {
     if (!cameraViewRef.current || !cameraKey) return;
     try {
       setCameraLoading(true);
-      const photo = await cameraViewRef.current.takePictureAsync({ quality: 1, skipProcessing: false });
-      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
-      const latitude = position.coords.latitude.toFixed(8);
-      const longitude = position.coords.longitude.toFixed(8);
-      const ts = new Date().toISOString().replace('T', ' ').substring(0, 19);
-      await new Promise<void>((resolve, reject) => {
-        RNImage.getSize(
-          photo.uri,
-          async (w, h) => {
-            try {
-              const overlay = buildOverlaySvg(w, h, latitude, longitude, ts);
-              const result = await ImageManipulator.ImageManipulator.manipulate(
-                photo.uri,
-                [
-                  {
-                    overlay,
-                  } as any,
-                ],
-                { compress: 1, format: SaveFormat.JPEG }
-              );
-              setPhotos(prev => ({ ...prev, [cameraKey]: result.uri }));
-              setCameraVisible(false);
-              setCameraKey(null);
-              resolve();
-            } catch (err) {
-              reject(err);
-            }
-          },
-          (e) => reject(e)
-        );
-      });
+      const photo = await cameraViewRef.current.takePictureAsync({ quality: 0.8, skipProcessing: false });
+      
+      // Simple compression only - no overlay, no complex processing
+      const compressed = await ImageManipulator.manipulateAsync(
+        photo.uri,
+        [{ resize: { width: 1200 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      
+      setPhotos(prev => ({ ...prev, [cameraKey]: compressed.uri }));
+      setCameraVisible(false);
+      setCameraKey(null);
     } catch (e) {
-      Alert.alert('Capture Error', 'Failed to capture or process the image.');
+      console.error('Capture Error', e);
+      Alert.alert('Capture Error', 'Failed to capture the image.');
     } finally {
       setCameraLoading(false);
     }
