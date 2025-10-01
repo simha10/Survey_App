@@ -54,6 +54,13 @@ export default function WardMasterPage() {
     return "Not Started";
   };
 
+  // Helper to get zone name for a ward
+  const getZoneName = (ward: any) => {
+    // Note: Zone information should be included in the ward data from the backend
+    // For now, we'll show a placeholder. This can be enhanced when zone mapping is added to the API
+    return "Zone Info"; // This should be enhanced with actual zone data
+  };
+
   // Filter wards based on search term
   const filteredWards =
     wards?.filter((ward: any) =>

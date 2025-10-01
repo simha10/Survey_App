@@ -15,6 +15,64 @@ async function logAudit({ userId, action, old_value, new_value }: { userId: stri
   });
 }
 
+// Helper to update ward status after assignment changes
+async function updateWardStatusAfterAssignment(wardId: string, actingUserId?: string) {
+  // Get total mohallas in ward
+  const totalMohallas = await prisma.wardMohallaMapping.count({
+    where: { wardId, isActive: true }
+  });
+
+  // Get assigned mohallas
+  const assignments = await prisma.surveyorAssignment.findMany({
+    where: { wardId, isActive: true },
+    select: { mohallaIds: true }
+  });
+  const assignedMohallas = new Set(assignments.flatMap(a => a.mohallaIds));
+
+  const unassignedCount = totalMohallas - assignedMohallas.size;
+
+  // If there are unassigned mohallas, ensure status is STARTED
+  if (unassignedCount > 0) {
+    // Check if STARTED status exists
+    const startedStatus = await prisma.wardStatusMaster.findFirst({
+      where: { statusName: 'STARTED', isActive: true }
+    });
+    if (startedStatus) {
+      // Upsert ward status to STARTED
+      await prisma.wardStatusMapping.upsert({
+        where: { wardId_wardStatusId: { wardId, wardStatusId: startedStatus.wardStatusId } },
+        update: { isActive: true, changedById: actingUserId || 'system' },
+        create: {
+          wardId,
+          wardStatusId: startedStatus.wardStatusId,
+          changedById: actingUserId || 'system',
+          isActive: true,
+        },
+      });
+    }
+  } else {
+    // If all assigned, set to COMPLETED if exists
+    const completedStatus = await prisma.wardStatusMaster.findFirst({
+      where: { statusName: 'COMPLETED', isActive: true }
+    });
+    if (completedStatus) {
+      // Deactivate other statuses and set to COMPLETED
+      await prisma.wardStatusMapping.updateMany({
+        where: { wardId },
+        data: { isActive: false }
+      });
+      await prisma.wardStatusMapping.create({
+        data: {
+          wardId,
+          wardStatusId: completedStatus.wardStatusId,
+          changedById: actingUserId || 'system',
+          isActive: true,
+        },
+      });
+    }
+  }
+}
+
 // Bulk assign users to wards/mohallas
 export const bulkAssign = async (data: any) => {
   const { userId, assignmentType, assignments, assignedById } = data;
@@ -70,6 +128,13 @@ export const bulkAssign = async (data: any) => {
       conflicts.push({ wardId, mohallaIds: conflictMohallas });
     }
   }
+
+  // Update ward status for affected wards
+  const affectedWardIds = Array.from(new Set(assigned.map((a: any) => a.wardId)));
+  for (const wardId of affectedWardIds) {
+    await updateWardStatusAfterAssignment(wardId, assignedById);
+  }
+
   return { success: true, assigned, conflicts };
 };
 
@@ -132,10 +197,17 @@ export const updateAssignmentStatus = async (assignmentId: string, isActive: boo
 // Delete an assignment (hard delete)
 export const deleteAssignment = async (assignmentId: string, actingUserId?: string) => {
   const oldAssignment = await prisma.surveyorAssignment.findUnique({ where: { assignmentId } });
+  const wardId = oldAssignment?.wardId;
   await prisma.surveyorAssignment.delete({
     where: { assignmentId },
   });
   await logAudit({ userId: actingUserId || (oldAssignment?.userId ?? ''), action: 'Assignment deleted', old_value: oldAssignment });
+
+  // Update ward status after deletion
+  if (wardId) {
+    await updateWardStatusAfterAssignment(wardId, actingUserId);
+  }
+
   return { success: true };
 };
 

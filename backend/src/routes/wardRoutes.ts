@@ -13,7 +13,8 @@ import {
   getWardStatuses,
   searchWards,
   getAllWardsWithStatus,
-  getWardsByZoneWithStatus
+  getWardsByZoneWithStatus,
+  debugWardStatus
 } from '../controllers/wardController';
 
 const router = Router();
@@ -60,6 +61,9 @@ router.get('/supervisors/:wardId', authenticateJWT, wardController.getSupervisor
 
 // Create ward (ADMIN/SUPERADMIN only)
 router.post('/', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN']), createWard);
+
+// Debug ward status (must come before /:wardId)
+router.get('/debug/:wardId', authenticateJWT, wardController.debugWardStatus);
 
 // Get ward by ID (must come after specific routes)
 router.get('/:wardId', authenticateJWT, getWardById);

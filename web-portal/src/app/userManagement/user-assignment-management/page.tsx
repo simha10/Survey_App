@@ -33,9 +33,25 @@ function UserAssignmentsTable({
       isActive: boolean;
     }) => assignmentApi.updateAssignmentStatus(assignmentId, isActive),
     onSuccess: () => {
+      // Invalidate multiple query keys to refresh all related data
       queryClient.invalidateQueries({
         queryKey: ["allAssignments", ulbId, zoneId, wardId],
       });
+      queryClient.invalidateQueries({ queryKey: ["wards"] });
+      queryClient.invalidateQueries({ queryKey: ["mohallas"] });
+      queryClient.invalidateQueries({ queryKey: ["available-wards"] });
+      queryClient.invalidateQueries({ queryKey: ["all-wards"] });
+
+      // Trigger global update notification
+      localStorage.setItem("assignment_updated", Date.now().toString());
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: "assignment_updated",
+          newValue: Date.now().toString(),
+        })
+      );
+
+      alert("Assignment status updated successfully.");
     },
     onError: (error: any) => {
       alert(
@@ -48,10 +64,37 @@ function UserAssignmentsTable({
   const mutationDelete = useMutation({
     mutationFn: (assignmentId: string) =>
       assignmentApi.deleteAssignment(assignmentId),
-    onSuccess: () =>
+    onSuccess: () => {
+      // Invalidate multiple query keys to refresh all related data
       queryClient.invalidateQueries({
         queryKey: ["allAssignments", ulbId, zoneId, wardId],
-      }),
+      });
+      queryClient.invalidateQueries({ queryKey: ["wards"] });
+      queryClient.invalidateQueries({ queryKey: ["mohallas"] });
+      queryClient.invalidateQueries({ queryKey: ["available-wards"] });
+      queryClient.invalidateQueries({ queryKey: ["all-wards"] });
+
+      // Trigger global update notification
+      localStorage.setItem("assignment_updated", Date.now().toString());
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: "assignment_updated",
+          newValue: Date.now().toString(),
+        })
+      );
+
+      // Show success message
+      alert(
+        "Assignment deleted successfully. Ward is now available for reassignment."
+      );
+    },
+    onError: (error: any) => {
+      alert(
+        error?.response?.data?.error ||
+          error?.message ||
+          "Failed to delete assignment."
+      );
+    },
   });
 
   if (isLoading) return <div className="mt-8">Loading assignments...</div>;

@@ -16,8 +16,10 @@ export default function StatusChangeModal({
   const [selectedWard, setSelectedWard] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<number | null>(null);
   const [currentStatus, setCurrentStatus] = useState<string>("");
+  const [wardZone, setWardZone] = useState<string>("");
   const [isWardDropdownOpen, setIsWardDropdownOpen] = useState(false);
   const [wardSearchTerm, setWardSearchTerm] = useState("");
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const wardDropdownRef = useRef<HTMLDivElement>(null);
 
   const queryClient = useQueryClient();
@@ -71,23 +73,40 @@ export default function StatusChangeModal({
     }
   }, [updateStatusMutation.isSuccess, queryClient]);
 
-  // Get current status for selected ward
+  // Get current status and zone for selected ward
   useEffect(() => {
-    if (selectedWard) {
-      const ward = wards.find((w: any) => w.wardId === selectedWard);
-      if (ward && ward.wardStatusMaps && ward.wardStatusMaps.length > 0) {
-        const activeStatus = ward.wardStatusMaps[0];
-        setCurrentStatus(activeStatus.status.statusName);
-        setSelectedStatus(activeStatus.status.wardStatusId);
+    const fetchWardDetails = async () => {
+      if (selectedWard) {
+        try {
+          const wardDetails = await masterDataApi.getWardWithZone(selectedWard);
+          setWardZone(wardDetails.zone?.zoneName || "N/A");
+
+          if (
+            wardDetails.wardStatusMaps &&
+            wardDetails.wardStatusMaps.length > 0
+          ) {
+            const activeStatus = wardDetails.wardStatusMaps[0];
+            setCurrentStatus(activeStatus.status.statusName);
+            setSelectedStatus(activeStatus.status.wardStatusId);
+          } else {
+            setCurrentStatus("Not Started");
+            setSelectedStatus(null);
+          }
+        } catch (error) {
+          console.error("Error fetching ward details:", error);
+          setWardZone("N/A");
+          setCurrentStatus("Unknown");
+          setSelectedStatus(null);
+        }
       } else {
-        setCurrentStatus("Not Started");
+        setWardZone("");
+        setCurrentStatus("");
         setSelectedStatus(null);
       }
-    } else {
-      setCurrentStatus("");
-      setSelectedStatus(null);
-    }
-  }, [selectedWard, wards, updateStatusMutation.isSuccess]);
+    };
+
+    fetchWardDetails();
+  }, [selectedWard, updateStatusMutation.isSuccess]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -110,8 +129,10 @@ export default function StatusChangeModal({
     setSelectedWard("");
     setSelectedStatus(null);
     setCurrentStatus("");
+    setWardZone("");
     setWardSearchTerm("");
     setIsWardDropdownOpen(false);
+    setShowConfirmation(false);
     onClose();
   };
 
@@ -126,11 +147,20 @@ export default function StatusChangeModal({
       toast.error("Please select both ward and status");
       return;
     }
+    setShowConfirmation(true);
+  };
+
+  const confirmSubmit = () => {
+    if (!selectedWard || selectedStatus === null) {
+      toast.error("Please select both ward and status");
+      return;
+    }
 
     updateStatusMutation.mutate({
       wardId: selectedWard,
       wardStatusId: selectedStatus,
     });
+    setShowConfirmation(false);
   };
 
   const getSelectedWardDisplayName = () => {
@@ -232,6 +262,14 @@ export default function StatusChangeModal({
             </div>
           )}
 
+          {/* Zone Display */}
+          {wardZone && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Zone</label>
+              <div className="p-2 bg-gray-100 rounded-md">{wardZone}</div>
+            </div>
+          )}
+
           {/* New Status Selection */}
           <div className="mb-6">
             <label className="block text-sm font-medium mb-2">New Status</label>
@@ -274,6 +312,55 @@ export default function StatusChangeModal({
           </div>
         </div>
       </div>
+
+      {/* Confirmation Dialog */}
+      {showConfirmation && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-60">
+          <div className="bg-white text-black rounded-lg p-6 w-96 shadow-lg">
+            <h3 className="text-lg font-bold mb-4">Confirm Status Change</h3>
+            <div className="mb-4">
+              <p>
+                <strong>Ward:</strong> {getSelectedWardDisplayName()}
+              </p>
+              <p>
+                <strong>Zone:</strong> {wardZone}
+              </p>
+              <p>
+                <strong>Current Status:</strong> {currentStatus}
+              </p>
+              <p>
+                <strong>New Status:</strong>{" "}
+                {
+                  statuses.find((s: any) => s.wardStatusId === selectedStatus)
+                    ?.statusName
+                }
+              </p>
+            </div>
+            <p className="mb-6 text-gray-600">
+              Are you sure you want to change the ward status? This action
+              cannot be undone.
+            </p>
+            <div className="flex justify-end gap-4">
+              <button
+                className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
+                onClick={() => setShowConfirmation(false)}
+                disabled={updateStatusMutation.isPending}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 disabled:bg-red-400"
+                onClick={confirmSubmit}
+                disabled={updateStatusMutation.isPending}
+              >
+                {updateStatusMutation.isPending
+                  ? "Updating..."
+                  : "Confirm Change"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

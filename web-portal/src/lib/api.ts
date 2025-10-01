@@ -226,12 +226,13 @@ export const wardApi = {
   },
 
   getAvailableWards: async (): Promise<any> => {
-    const response = await apiClient.get('/api/ward/available-wards');
+    const response = await apiClient.get('/api/wards/available-wards');
     return response.data;
   },
 
-  getAvailableMohallas: async (): Promise<any> => {
-    const response = await apiClient.get('/api/ward/available-mohallas');
+  getAvailableMohallas: async (wardId?: string): Promise<any> => {
+    const params = wardId ? { wardId } : {};
+    const response = await apiClient.get('/api/wards/available-mohallas', { params });
     return response.data;
   },
 
@@ -510,6 +511,18 @@ export const masterDataApi = {
     return response.data;
   },
 
+  // Add method to get ward with zone information
+  getWardWithZone: async (wardId: string): Promise<any> => {
+    const response = await apiClient.get(`/api/wards/${wardId}`);
+    return response.data;
+  },
+
+  // Debug endpoint for ward status
+  debugWardStatus: async (wardId: string): Promise<any> => {
+    const response = await apiClient.get(`/api/wards/debug/${wardId}`);
+    return response.data;
+  },
+
   searchWards: async (searchTerm: string): Promise<any> => {
     const response = await apiClient.get('/api/wards/search', { 
       params: { search: searchTerm } 
@@ -594,6 +607,19 @@ export const masterDataApi = {
   // Mapping APIs
   getWardMohallaMappings: async (): Promise<any> => {
     const response = await apiClient.get('/api/ward/ward-mohalla-mappings');
+    return response.data;
+  },
+
+  // New assignment-aware APIs
+  getAvailableWards: async (zoneId?: string): Promise<any> => {
+    const params = zoneId ? { zoneId } : {};
+    const response = await apiClient.get('/api/wards/available-wards', { params });
+    return response.data;
+  },
+
+  getAvailableMohallas: async (wardId?: string): Promise<any> => {
+    const params = wardId ? { wardId } : {};
+    const response = await apiClient.get('/api/wards/available-mohallas', { params });
     return response.data;
   },
 

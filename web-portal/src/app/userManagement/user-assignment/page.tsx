@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { masterDataApi, userApi, wardApi, assignmentApi } from "@/lib/api";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ const USER_TYPES = [
 
 const UserAssignmentPage: React.FC = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [userType, setUserType] = useState("");
   const [selectedUlb, setSelectedUlb] = useState("");
   const [selectedZone, setSelectedZone] = useState("");
@@ -45,7 +46,9 @@ const UserAssignmentPage: React.FC = () => {
   const [wardAssignments, setWardAssignments] = useState<{
     [wardId: string]: any;
   }>({});
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
+  // Initialize loading state
   useEffect(() => {
     // Simulate loading time for consistency
     const timer = setTimeout(() => {
@@ -53,6 +56,25 @@ const UserAssignmentPage: React.FC = () => {
     }, 500);
     return () => clearTimeout(timer);
   }, []);
+
+  // Global data synchronization - listen for changes
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "assignment_updated") {
+        console.log("Assignment update detected, refreshing data...");
+        queryClient.invalidateQueries({ queryKey: ["wards"] });
+        queryClient.invalidateQueries({ queryKey: ["mohallas"] });
+        queryClient.invalidateQueries({ queryKey: ["available-wards"] });
+        setLastRefreshed(new Date());
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, [queryClient]);
 
   // Fetch ULBs
   const { data: ulbs = [], isLoading: ulbsLoading } = useQuery({
@@ -67,23 +89,66 @@ const UserAssignmentPage: React.FC = () => {
     enabled: !!selectedUlb,
   });
 
-  // Fetch Wards by Zone (status 'STARTED')
-  const { data: wards = [], isLoading: wardsLoading } = useQuery({
-    queryKey: ["wards", selectedZone, "STARTED"],
-    queryFn: () =>
-      masterDataApi.getWardsByZoneWithStatus(selectedZone, "STARTED"),
+  // Fetch Wards by Zone (status 'STARTED') - Only wards with unassigned mohallas
+  const {
+    data: wardsResponse,
+    isLoading: wardsLoading,
+    error: wardsError,
+  } = useQuery({
+    queryKey: ["wards", selectedZone, "available-wards"],
+    queryFn: async () => {
+      console.log("=== DEBUG: Fetching available wards ===");
+      console.log("Selected zoneId:", selectedZone);
+      console.log("Zone type:", typeof selectedZone);
+      console.log("Zone truthy check:", !!selectedZone);
+      const result = await masterDataApi.getAvailableWards(selectedZone!);
+      console.log("API Response received:", result);
+      console.log("Response type:", typeof result);
+      console.log("Response keys:", result ? Object.keys(result) : "null/undefined");
+      if (result && result.wards) {
+        console.log("Wards array length:", result.wards.length);
+        if (result.wards.length > 0) {
+          console.log("First ward sample:", result.wards[0]);
+        }
+      }
+      console.log("=====================================");
+      return result;
+    },
     enabled: !!selectedZone,
+    refetchInterval: 30000, // Refetch every 30 seconds to get latest assignment status
+    refetchOnWindowFocus: true, // Refetch when user comes back to the page
+    staleTime: 0, // Consider data immediately stale
   });
 
-  // Fetch Mohallas by selected Wards (aggregate all mohallas from selected wards)
+  // Extract wards array from the response
+  const wards = (wardsResponse as any)?.wards || [];
+
+  // Debug logging
+  useEffect(() => {
+    console.log("=== Ward Assignment Debug Info ===");
+    console.log("Selected zone:", selectedZone);
+    console.log("Wards loading:", wardsLoading);
+    console.log("Wards error:", wardsError);
+    console.log("Wards response:", wardsResponse);
+    console.log("Wards array:", wards);
+    console.log("Wards array length:", wards.length);
+    if (wards.length > 0) {
+      console.log("First ward:", wards[0]);
+    }
+    console.log("===============================");
+  }, [selectedZone, wardsLoading, wardsError, wardsResponse, wards]);
+
+  // Fetch Mohallas by selected Wards (only unassigned mohallas)
   const { data: mohallas = [], isLoading: mohallasLoading } = useQuery({
     queryKey: ["mohallas", selectedWards],
     queryFn: async () => {
       if (!selectedWards.length) return [];
       const allMohallas = await Promise.all(
-        selectedWards.map((wardId) => masterDataApi.getMohallasByWard(wardId))
+        selectedWards.map((wardId) =>
+          masterDataApi.getAvailableMohallas(wardId)
+        )
       );
-      const flat = allMohallas.flat();
+      const flat = allMohallas.flatMap((response) => response.mohallas || []);
       const unique = Array.from(
         new Map(flat.map((m) => [m.mohallaId, m])).values()
       );
@@ -110,32 +175,35 @@ const UserAssignmentPage: React.FC = () => {
         [wardId: string]: { [mohallaId: string]: any };
       } = {};
       const newWardAssignments: { [wardId: string]: any } = {};
-      const token = localStorage.getItem("auth_token");
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       for (const wardId of selectedWards) {
-        // Fetch mohallas for this ward
-        const mohallas = await masterDataApi.getMohallasByWard(wardId);
-        newWardMohallaMap[wardId] = mohallas.map((m: any) => m.mohallaId);
-        // Fetch assignment status for this ward
+        // Fetch mohallas with assignment status for this ward
+        const response = await masterDataApi.getAvailableMohallas(wardId);
+        const mohallasData = response.mohallas || [];
+
+        newWardMohallaMap[wardId] = mohallasData.map((m: any) => m.mohallaId);
+
+        // Track ward-level assignments
         const res = await assignmentApi.getAssignmentsByWard(wardId);
         const assignments = res.assignments || [];
-        // Track ward-level assignments
         if (assignments.length > 0) {
           newWardAssignments[wardId] = assignments[0].user;
         }
+
         const mohallaMap: { [mohallaId: string]: any } = {};
-        assignments.forEach((a: any) => {
-          a.mohallaIds.forEach((mid: string) => {
-            mohallaMap[mid] = a.user;
-          });
+        mohallasData.forEach((mohalla: any) => {
+          if (mohalla.isAssigned && mohalla.assignedTo) {
+            mohallaMap[mohalla.mohallaId] = mohalla.assignedTo;
+          }
         });
         newMohallaAssignments[wardId] = mohallaMap;
       }
+
       setWardMohallaMap(newWardMohallaMap);
       setMohallaAssignments(newMohallaAssignments);
       setWardAssignments(newWardAssignments);
     };
+
     if (selectedWards.length > 0) {
       fetchMohallasAndAssignments();
     } else {
@@ -159,6 +227,25 @@ const UserAssignmentPage: React.FC = () => {
       setSelectedMohallas(newSelectedMohallas);
     }
   }, [wardMohallaMap, mohallaAssignments]);
+
+  // Manual refresh function
+  const handleRefresh = () => {
+    console.log("Manual refresh triggered");
+    // Invalidate all related queries aggressively
+    queryClient.invalidateQueries({ queryKey: ["wards"] });
+    queryClient.invalidateQueries({ queryKey: ["zones"] });
+    queryClient.invalidateQueries({ queryKey: ["mohallas"] });
+    queryClient.invalidateQueries({ queryKey: ["available-wards"] });
+    queryClient.invalidateQueries({ queryKey: ["allAssignments"] });
+
+    // Force refetch the current query
+    queryClient.refetchQueries({
+      queryKey: ["wards", selectedZone, "available-wards"],
+    });
+
+    setLastRefreshed(new Date());
+    toast.success("Data refreshed successfully!");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -200,6 +287,21 @@ const UserAssignmentPage: React.FC = () => {
             icon: "⚠️",
           });
         }
+        // Refresh available wards to update the list
+        queryClient.invalidateQueries({ queryKey: ["wards"] });
+        queryClient.invalidateQueries({ queryKey: ["mohallas"] });
+        queryClient.invalidateQueries({ queryKey: ["available-wards"] });
+        queryClient.invalidateQueries({ queryKey: ["allAssignments"] });
+
+        // Trigger global update notification
+        localStorage.setItem("assignment_updated", Date.now().toString());
+        window.dispatchEvent(
+          new StorageEvent("storage", {
+            key: "assignment_updated",
+            newValue: Date.now().toString(),
+          })
+        );
+
         setSelectedWards([]);
         setSelectedMohallas([]);
         setSelectedUser("");
@@ -356,14 +458,63 @@ const UserAssignmentPage: React.FC = () => {
             </div>
             {/* Wards Table */}
             <div className="md:col-span-2">
-              <Label className="text-lg font-semibold mb-4 block">
-                Wards <span className="text-red-500">*</span>
-              </Label>
+              <div className="flex justify-between items-center mb-4">
+                <Label className="text-lg font-semibold">
+                  Wards <span className="text-red-500">*</span>
+                </Label>
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-gray-500">
+                    Last updated: {lastRefreshed.toLocaleTimeString()}
+                  </span>
+                  <Button
+                    type="button"
+                    onClick={handleRefresh}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    disabled={wardsLoading}
+                  >
+                    {wardsLoading ? "Loading..." : "Refresh Wards"}
+                  </Button>
+                  {/* Debug Button - Remove in production */}
+                  <Button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        // Use first ward's wardId for debugging if available
+                        const wardId = wards.length > 0 ? wards[0].wardId : null;
+                        if (!wardId) {
+                          alert("No wards available to debug");
+                          return;
+                        }
+                        console.log("Debugging ward:", wardId);
+                        const debugInfo = await masterDataApi.debugWardStatus(
+                          wardId
+                        );
+                        console.log("Debug info:", debugInfo);
+                        alert(
+                          `Debug info logged to console for ward: ${wardId}`
+                        );
+                      } catch (error) {
+                        console.error("Debug error:", error);
+                        alert("Debug failed - check console");
+                      }
+                    }}
+                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                  >
+                    Debug Ward
+                  </Button>
+                </div>
+              </div>
               {wardsLoading ? (
                 <div className="text-center py-4">Loading wards...</div>
+              ) : wardsError ? (
+                <div className="text-center py-4 text-red-500">
+                  Error loading wards: {wardsError.message}
+                </div>
               ) : wards.length === 0 ? (
                 <div className="text-center py-4 text-gray-500">
-                  No wards found
+                  {selectedZone
+                    ? "No wards found with unassigned mohallas"
+                    : "Select a zone to view wards"}
                 </div>
               ) : (
                 <div className="bg-white shadow-md rounded-lg overflow-hidden">
@@ -377,17 +528,16 @@ const UserAssignmentPage: React.FC = () => {
                           Ward Name
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
+                          Mohallas (Unassigned/Total)
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Assigned To
+                          Status
                         </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {wards.map((ward: any) => {
-                        const assignedUser = wardAssignments[ward.wardId];
-                        const isAssigned = Boolean(assignedUser);
+                        const isFullyAssigned = ward.unassignedMohallas === 0;
                         return (
                           <tr key={ward.wardId} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -409,22 +559,34 @@ const UserAssignmentPage: React.FC = () => {
                               <div className="text-sm font-medium text-gray-900">
                                 {ward.wardName}
                               </div>
+                              <div className="text-sm text-gray-500">
+                                Ward #{ward.newWardNumber}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
+                                {ward.unassignedMohallas}/{ward.totalMohallas}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {ward.assignedMohallas} assigned
+                              </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span
                                 className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                  isAssigned
-                                    ? "bg-orange-100 text-orange-800"
-                                    : "bg-green-100 text-green-800"
+                                  isFullyAssigned
+                                    ? "bg-green-100 text-green-800"
+                                    : ward.assignedMohallas > 0
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : "bg-blue-100 text-blue-800"
                                 }`}
                               >
-                                {isAssigned ? "Assigned" : "Available"}
+                                {isFullyAssigned
+                                  ? "Fully Assigned"
+                                  : ward.assignedMohallas > 0
+                                  ? "Partially Assigned"
+                                  : "Available"}
                               </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {assignedUser
-                                ? assignedUser.name || assignedUser.username
-                                : "-"}
                             </td>
                           </tr>
                         );
@@ -479,7 +641,12 @@ const UserAssignmentPage: React.FC = () => {
                             );
 
                             return (
-                              <tr key={mohallaId} className="hover:bg-gray-50">
+                              <tr
+                                key={mohallaId}
+                                className={`hover:bg-gray-50 ${
+                                  isAssigned ? "bg-red-50" : ""
+                                }`}
+                              >
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <input
                                     type="checkbox"
@@ -496,19 +663,23 @@ const UserAssignmentPage: React.FC = () => {
                                             )
                                       );
                                     }}
-                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                    disabled={isAssigned}
+                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
                                   />
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div className="text-sm font-medium text-gray-900">
                                     {mohalla ? mohalla.mohallaName : mohallaId}
                                   </div>
+                                  <div className="text-sm text-gray-500">
+                                    Ward: {wardName}
+                                  </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <span
                                     className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                                       isAssigned
-                                        ? "bg-orange-100 text-orange-800"
+                                        ? "bg-red-100 text-red-800"
                                         : "bg-green-100 text-green-800"
                                     }`}
                                   >

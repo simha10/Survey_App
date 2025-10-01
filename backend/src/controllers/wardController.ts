@@ -177,41 +177,314 @@ export const removeSupervisorFromWard = async (req: Request, res: Response) => {
   }
 };
 
-// 10. Get Available Wards (for dropdowns)
-export const getAvailableWards = async (req: Request, res: Response) => {
+// 10. Get Available Wards (for dropdowns) - Only wards with unassigned mohallas
+// Debug endpoint to check specific ward status
+export const debugWardStatus = async (req: Request, res: Response) => {
   try {
-    const wards = await prisma.wardMaster.findMany({
-      where: { isActive: true },
-      select: {
-        wardId: true,
-        newWardNumber: true,
-        wardName: true,
-        description: true,
-      },
-      orderBy: { newWardNumber: 'asc' },
+    const { wardId } = req.params;
+    
+    // Get ward details
+    const ward = await prisma.wardMaster.findUnique({
+      where: { wardId },
+      include: {
+        wardStatusMaps: {
+          where: { isActive: true },
+          include: {
+            status: true
+          }
+        }
+      }
     });
 
-    return res.status(200).json({ wards });
+    if (!ward) {
+      return res.status(404).json({ error: 'Ward not found' });
+    }
+
+    // Get zone mapping
+    const zoneMapping = await prisma.zoneWardMapping.findFirst({
+      where: { wardId, isActive: true },
+      include: {
+        zone: true
+      }
+    });
+
+    // Get mohallas
+    const mohallas = await prisma.wardMohallaMapping.findMany({
+      where: { wardId, isActive: true },
+      include: {
+        mohalla: true
+      }
+    });
+
+    // Get assignments
+    const assignments = await prisma.surveyorAssignment.findMany({
+      where: { wardId, isActive: true },
+      include: {
+        user: true
+      }
+    });
+
+    const assignedMohallaIds = new Set(
+      assignments.flatMap((a) => a.mohallaIds)
+    );
+
+    const debugInfo = {
+      ward: {
+        wardId: ward.wardId,
+        wardName: ward.wardName,
+        newWardNumber: ward.newWardNumber,
+        isActive: ward.isActive
+      },
+      zone: zoneMapping?.zone || null,
+      status: ward.wardStatusMaps.map(sm => sm.status.statusName),
+      hasStartedStatus: ward.wardStatusMaps.some(sm => sm.status.statusName === 'STARTED'),
+      mohallas: {
+        total: mohallas.length,
+        list: mohallas.map(m => ({
+          mohallaId: m.mohalla.mohallaId,
+          mohallaName: m.mohalla.mohallaName,
+          isAssigned: assignedMohallaIds.has(m.mohalla.mohallaId)
+        }))
+      },
+      assignments: assignments.map(a => ({
+        userId: a.userId,
+        userName: a.user.name || a.user.username,
+        mohallaIds: a.mohallaIds,
+        isActive: a.isActive
+      })),
+      assignedMohallas: assignments.flatMap(a => a.mohallaIds).length,
+      unassignedMohallas: mohallas.length - assignments.flatMap(a => a.mohallaIds).length,
+      shouldBeAvailable: ward.wardStatusMaps.some(sm => sm.status.statusName === 'STARTED') && 
+                        (mohallas.length - assignments.flatMap(a => a.mohallaIds).length) > 0
+    };
+
+    return res.status(200).json(debugInfo);
   } catch (error: any) {
-    console.error(error);
+    console.error('Error in debugWardStatus:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
 
-// 11. Get Available Mohallas (for dropdowns)
-export const getAvailableMohallas = async (req: Request, res: Response) => {
+export const getAvailableWards = async (req: Request, res: Response) => {
   try {
-    const mohallas = await prisma.mohallaMaster.findMany({
-      where: { isActive: true },
-      select: {
-        mohallaId: true,
-        mohallaName: true,
-        description: true,
-      },
-      orderBy: { mohallaName: 'asc' },
+    const { zoneId } = req.query;
+
+    console.log('=== DEBUG: getAvailableWards ===');
+    console.log('Received zoneId:', zoneId);
+    console.log('zoneId type:', typeof zoneId);
+    console.log('zoneId truthy:', !!zoneId);
+
+    // If zoneId is provided, get wards from zone mappings that exist in WardMaster
+    let wards: any[] = [];
+    if (zoneId && typeof zoneId === 'string') {
+      // Get zone-ward mappings with ward details
+      const zoneWardMappings = await prisma.zoneWardMapping.findMany({
+        where: { zoneId, isActive: true },
+        include: {
+          ward: {
+            select: {
+              wardId: true,
+              newWardNumber: true,
+              wardName: true,
+              description: true,
+              wardStatusMaps: {
+                where: { isActive: true },
+                include: {
+                  status: {
+                    select: {
+                      wardStatusId: true,
+                      statusName: true,
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        orderBy: { ward: { newWardNumber: 'asc' } },
+      });
+
+      console.log('Zone-ward mappings found:', zoneWardMappings.length);
+      console.log('Zone-ward mappings with wards:', zoneWardMappings.map(m => ({
+        wardId: m.wardId,
+        ward: m.ward ? { wardId: m.ward.wardId, wardName: m.ward.wardName } : null
+      })));
+
+      // Filter out mappings where ward doesn't exist
+      wards = zoneWardMappings
+        .filter(mapping => mapping.ward !== null)
+        .map(mapping => mapping.ward);
+
+      console.log('Wards after filtering existing ones:', wards.length);
+    } else {
+      console.log('No zoneId provided, fetching all active wards');
+      // If no zone specified, get all active wards
+      wards = await prisma.wardMaster.findMany({
+        where: { isActive: true },
+        select: {
+          wardId: true,
+          newWardNumber: true,
+          wardName: true,
+          description: true,
+          wardStatusMaps: {
+            where: { isActive: true },
+            include: {
+              status: {
+                select: {
+                  wardStatusId: true,
+                  statusName: true,
+                }
+              }
+            }
+          }
+        },
+        orderBy: { newWardNumber: 'asc' },
+      });
+    }
+
+    console.log('Wards fetched from DB:', wards.length);
+    console.log('Wards sample:', wards.slice(0, 3).map((w: any) => ({
+      wardId: w.wardId,
+      wardName: w.wardName,
+      statusCount: w.wardStatusMaps.length,
+      statuses: w.wardStatusMaps.map((sm: any) => sm.status.statusName)
+    })));
+
+    // For each ward, calculate unassigned mohallas
+    const wardsWithStatus = await Promise.all(
+      wards.map(async (ward) => {
+        console.log(`Processing ward: ${ward.wardName} (${ward.wardId})`);
+
+        // Check if ward has STARTED status
+        const hasStartedStatus = ward.wardStatusMaps.some(
+          (statusMap: any) => statusMap.status.statusName === 'STARTED'
+        );
+
+        console.log(`  Ward ${ward.wardName} has STARTED status: ${hasStartedStatus}`);
+
+        // If ward doesn't have STARTED status, skip it
+        if (!hasStartedStatus) {
+          console.log(`  Skipping ward ${ward.wardName} - no STARTED status`);
+          return null;
+        }
+
+        // Get all mohallas in this ward
+        const allMohallas = await prisma.wardMohallaMapping.findMany({
+          where: { wardId: ward.wardId, isActive: true },
+          select: { mohallaId: true },
+        });
+
+        console.log(`  Ward ${ward.wardName} has ${allMohallas.length} total mohallas`);
+
+        // Get assigned mohallas for this ward
+        const assignments = await prisma.surveyorAssignment.findMany({
+          where: { wardId: ward.wardId, isActive: true },
+          select: { mohallaIds: true },
+        });
+
+        console.log(`  Ward ${ward.wardName} has ${assignments.length} assignments`);
+
+        const assignedMohallaIds = new Set(
+          assignments.flatMap((a) => a.mohallaIds)
+        );
+
+        console.log(`  Ward ${ward.wardName} has ${assignedMohallaIds.size} assigned mohalla IDs`);
+
+        const totalMohallas = allMohallas.length;
+        const assignedMohallas = allMohallas.filter((m) =>
+          assignedMohallaIds.has(m.mohallaId)
+        ).length;
+        const unassignedMohallas = totalMohallas - assignedMohallas;
+
+        console.log(`  Ward ${ward.wardName} - Total: ${totalMohallas}, Assigned: ${assignedMohallas}, Unassigned: ${unassignedMohallas}`);
+
+        return {
+          ...ward,
+          totalMohallas,
+          assignedMohallas,
+          unassignedMohallas,
+        };
+      })
+    );
+
+    // Filter out null values and only include wards with at least one unassigned mohalla
+    const availableWards = wardsWithStatus.filter(
+      (ward) => ward !== null && ward.unassignedMohallas > 0
+    );
+
+    console.log(`Found ${availableWards.length} available wards for zone ${zoneId}`);
+    availableWards.forEach(ward => {
+      if (ward) {
+        console.log(`Ward: ${ward.wardName}, Unassigned: ${ward.unassignedMohallas}/${ward.totalMohallas}`);
+      }
     });
 
-    return res.status(200).json({ mohallas });
+    return res.status(200).json({ wards: availableWards });
+  } catch (error: any) {
+    console.error('Error in getAvailableWards:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// 11. Get Available Mohallas (for dropdowns) - Only unassigned mohallas for a specific ward
+export const getAvailableMohallas = async (req: Request, res: Response) => {
+  try {
+    const { wardId } = req.query;
+
+    if (wardId && typeof wardId === 'string') {
+      // Get unassigned mohallas for specific ward
+      const wardMohallas = await prisma.wardMohallaMapping.findMany({
+        where: { wardId, isActive: true },
+        include: {
+          mohalla: {
+            select: {
+              mohallaId: true,
+              mohallaName: true,
+              description: true,
+            },
+          },
+        },
+      });
+
+      // Get assigned mohallas for this ward
+      const assignments = await prisma.surveyorAssignment.findMany({
+        where: { wardId, isActive: true },
+        select: { mohallaIds: true, user: { select: { name: true, username: true } } },
+      });
+
+      const assignedMohallaIds = new Set(
+        assignments.flatMap((a) => a.mohallaIds)
+      );
+
+      // Create assignment map for UI display
+      const assignmentMap = new Map();
+      assignments.forEach((assignment) => {
+        assignment.mohallaIds.forEach((mohallaId) => {
+          assignmentMap.set(mohallaId, assignment.user);
+        });
+      });
+
+      const mohallasWithStatus = wardMohallas.map((wm) => ({
+        ...wm.mohalla,
+        isAssigned: assignedMohallaIds.has(wm.mohalla.mohallaId),
+        assignedTo: assignmentMap.get(wm.mohalla.mohallaId) || null,
+      }));
+
+      return res.status(200).json({ mohallas: mohallasWithStatus });
+    } else {
+      // Get all mohallas if no ward specified
+      const mohallas = await prisma.mohallaMaster.findMany({
+        where: { isActive: true },
+        select: {
+          mohallaId: true,
+          mohallaName: true,
+          description: true,
+        },
+        orderBy: { mohallaName: 'asc' },
+      });
+
+      return res.status(200).json({ mohallas });
+    }
   } catch (error: any) {
     console.error(error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -349,14 +622,46 @@ export const getWardById = async (req: Request, res: Response) => {
         wardName: true,
         isActive: true,
         description: true,
+        wardStatusMaps: {
+          where: { isActive: true },
+          include: {
+            status: {
+              select: {
+                wardStatusId: true,
+                statusName: true,
+                description: true
+              }
+            }
+          }
+        }
       },
     });
     
     if (!ward) {
       return res.status(404).json({ message: 'Ward not found' });
     }
+
+    // Get zone information for this ward
+    const zoneMapping = await prisma.zoneWardMapping.findFirst({
+      where: { wardId, isActive: true },
+      include: {
+        zone: {
+          select: {
+            zoneId: true,
+            zoneName: true,
+            zoneNumber: true,
+            description: true
+          }
+        }
+      }
+    });
+
+    const wardWithZone = {
+      ...ward,
+      zone: zoneMapping?.zone || null
+    };
     
-    res.json(ward);
+    res.json(wardWithZone);
   } catch (error) {
     console.error('Error fetching ward:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -500,14 +805,14 @@ export const getAllWardStatuses = async (req: Request, res: Response) => {
 
 // Update status for a ward (mohallas inherit status from ward)
 export const updateWardStatus = async (req: Request, res: Response) => {
-  let wardId: string = '';
-  let wardStatusId: number = 0;
-  let userId: string = '';
-  
   try {
-    wardId = req.params.wardId;
-    wardStatusId = req.body.wardStatusId;
-    userId = (req as any).user?.userId;
+    const parsed = UpdateWardStatusSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid input data' });
+    }
+
+    const { wardId, wardStatusId } = parsed.data;
+    const userId = (req as any).user?.userId;
 
     if (!wardId || !wardStatusId || !userId) {
       return res.status(400).json({ error: 'wardId, wardStatusId, and userId are required' });
@@ -573,9 +878,6 @@ export const updateWardStatus = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Error updating ward status:', error);
     console.error('Error details:', {
-      wardId: wardId,
-      wardStatusId: wardStatusId,
-      userId: userId,
       errorMessage: error?.message,
       errorCode: error?.code,
       errorMeta: error?.meta
