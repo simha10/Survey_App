@@ -10,7 +10,7 @@ import * as Location from 'expo-location';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Feather } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import { insertImagesForSurvey, cleanupSurveyImagesBySurveyId } from '../services/imageStorage';
 
 interface FormData {
