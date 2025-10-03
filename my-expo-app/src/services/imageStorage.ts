@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import { deleteImagesBySurveyId, getImagesBySurveyId, insertSurveyImage } from './sqlite';
 
 export const cleanupSurveyImagesBySurveyId = async (surveyId: string): Promise<void> => {
@@ -26,6 +26,10 @@ export const insertImagesForSurvey = async (surveyId: string, photos: { [key: st
     const uri = photos[label as string];
     if (uri) {
       try {
+        // Ensure database is initialized before inserting
+        const { initializeDatabase } = await import('./sqlite');
+        await initializeDatabase();
+        
         await insertSurveyImage({
           surveyId,
           photoUri: uri,
