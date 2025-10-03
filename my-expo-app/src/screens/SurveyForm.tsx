@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Image as RNImage,
   Modal,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FormInput from '../components/FormInput';
@@ -29,6 +30,52 @@ import { Feather } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { insertImagesForSurvey } from '../services/imageStorage';
 import { insertSurveyImage } from '../services/sqlite';
+import { storeImageForSurvey } from '../services/imageStorage';
+import React from 'react';
+
+// Local Error Boundary for Camera Modal
+class CameraErrorBoundary extends React.Component<
+  { children: React.ReactNode; onError: () => void },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode; onError: () => void }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    console.error('Camera Error Boundary caught error:', error);
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error('Camera Error Boundary details:', error, errorInfo);
+    this.props.onError();
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
+          <Text style={{ fontSize: 18, color: '#666', textAlign: 'center', margin: 20 }}>
+            Camera encountered an error. Please try again.
+          </Text>
+          <TouchableOpacity
+            style={{ backgroundColor: '#3B82F6', padding: 12, borderRadius: 8 }}
+            onPress={() => {
+              this.setState({ hasError: false });
+              this.props.onError();
+            }}
+          >
+            <Text style={{ color: 'white', fontWeight: 'bold' }}>Close Camera</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 interface FormData {
   ulbId: string;
@@ -81,6 +128,10 @@ interface FormData {
 }
 
 export default function SurveyForm({ route }: any) {
+  // Add mount logging to track component lifecycle
+  const componentId = useRef(`SurveyForm_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  console.log(`📱 SurveyForm mounting [${componentId.current}] with params:`, route?.params);
+  
   let {
     surveyType,
     surveyData: initialSurveyData,
@@ -96,6 +147,8 @@ export default function SurveyForm({ route }: any) {
   type SurveyTypeKey = 'Residential' | 'Non-Residential' | 'Mixed';
   const surveyTypeKey = surveyType as SurveyTypeKey;
   const navigation = useNavigation();
+  console.log(`📱 Navigation stack info [${componentId.current}]:`, navigation?.getState?.());
+  
   const scrollViewRef = useRef<ScrollView>(null);
   const fieldRefs = useRef<{ [key: string]: View | null }>({});
 
@@ -125,14 +178,255 @@ export default function SurveyForm({ route }: any) {
   const [camPermission, requestCamPermission] = useCameraPermissions();
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerUri, setViewerUri] = useState<string | null>(null);
+  // Add state to track camera initialization status
+  const [cameraInitializing, setCameraInitializing] = useState(false);
+  const [lastClickTime, setLastClickTime] = useState(0);
+  const CLICK_DEBOUNCE_MS = 1000; // Prevent clicks within 1 second
   const [cameraReady, setCameraReady] = useState(false);
 
+  // Ultra-simple navigation state
+  const navigationBlocked = useRef(true);
+  const componentMounted = useRef(true);
+  const activeOperations = useRef(new Set<string>());
+
+  // Safe state setter that only works if component is mounted
+  const safeSetState = (setter: () => void, operationName: string = 'unknown') => {
+    if (componentMounted.current) {
+      try {
+        setter();
+      } catch (error) {
+        console.error(`Safe state update failed for ${operationName}:`, error);
+      }
+    } else {
+      console.log(`Blocked state update for ${operationName} - component unmounted`);
+    }
+  };
+
+  // Track async operations to cancel them during navigation
+  const trackOperation = (operationId: string) => {
+    activeOperations.current.add(operationId);
+    return () => activeOperations.current.delete(operationId);
+  };
+
+  // Direct exit without state complexity
+  const handleExit = () => {
+    console.log('User confirmed exit - preparing safe navigation');
+    
+    // Mark component as unmounting to prevent state updates
+    componentMounted.current = false;
+    navigationBlocked.current = false;
+    
+    // Cancel all active operations
+    console.log('Cancelling', activeOperations.current.size, 'active operations');
+    activeOperations.current.clear();
+    
+    // Force immediate navigation
+    navigation.goBack();
+  };
+
+  // Simple confirmation dialog
+  const showExitConfirmation = () => {
+    Alert.alert(
+      'Leave Survey?',
+      'Unsaved changes may be lost. Are you sure?',
+      [
+        { text: 'Stay', style: 'cancel' },
+        { text: 'Leave', style: 'destructive', onPress: handleExit }
+      ],
+      { cancelable: false } // Prevent dismissing by tapping outside
+    );
+  };
+
+  // Add navigation focus/blur listeners to track navigation events
   useEffect(() => {
-    (async () => {
-      const json = await AsyncStorage.getItem('primaryAssignment');
-      if (json) setAssignment(JSON.parse(json));
-    })();
+    const unsubscribeFocus = navigation.addListener('focus', () => {
+      console.log(`🔍 SurveyForm focused [${componentId.current}]`);
+    });
+    
+    const unsubscribeBlur = navigation.addListener('blur', () => {
+      console.log(`🔍 SurveyForm blurred [${componentId.current}]`);
+    });
+    
+    // Ultra-simple navigation protection using ref
+    const unsubscribeBeforeRemove = navigation.addListener('beforeRemove', (e) => {
+      console.log(`🔍 SurveyForm beforeRemove [${componentId.current}]:`, e.data.action, 'Blocked:', navigationBlocked.current);
+      
+      // Check ref value directly - no state delays
+      if (!navigationBlocked.current) {
+        console.log('Navigation allowed, proceeding');
+        return;
+      }
+      
+      // Block and show confirmation
+      if (e.data.action.type === 'GO_BACK' || e.data.action.type === 'POP') {
+        e.preventDefault();
+        showExitConfirmation();
+      }
+    });
+
+    // Simple Android back button
+    const handleBackPress = () => {
+      if (navigationBlocked.current) {
+        showExitConfirmation();
+        return true;
+      }
+      return false;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+
+    return () => {
+      unsubscribeFocus();
+      unsubscribeBlur();
+      unsubscribeBeforeRemove();
+      backHandler.remove();
+    };
+  }, [navigation]); // Minimal dependencies
+
+  // Track when component is fully mounted and stable
+  useEffect(() => {
+    console.log(`✅ SurveyForm fully mounted and stable [${componentId.current}]`);
+    console.log(`✅ Survey Type: ${surveyTypeKey}, Edit Mode: ${editMode}, Survey ID: ${surveyId}`);
   }, []);
+
+  useEffect(() => {
+    const loadAssignment = async () => {
+      const operationId = `load_assignment_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+      const cleanupOperation = trackOperation(operationId);
+      
+      try {
+        if (!componentMounted.current || !activeOperations.current.has(operationId)) {
+          console.log('Assignment loading cancelled - component unmounted');
+          return;
+        }
+        
+        const json = await AsyncStorage.getItem('primaryAssignment');
+        
+        // Check if still active after async operation
+        if (!componentMounted.current || !activeOperations.current.has(operationId)) {
+          console.log('Assignment loading cancelled after storage read');
+          return;
+        }
+        
+        if (json) {
+          const parsedAssignment = JSON.parse(json);
+          safeSetState(() => setAssignment(parsedAssignment), 'setAssignment');
+        }
+      } catch (error) {
+        console.error('Failed to load assignment from storage:', error);
+      } finally {
+        cleanupOperation();
+      }
+    };
+    
+    loadAssignment();
+  }, []);
+
+  // Simple component cleanup
+  useEffect(() => {
+    return () => {
+      try {
+        console.log(`🚪 SurveyForm unmounting [${componentId.current}]`);
+        
+        // Mark component as unmounted FIRST to prevent state updates
+        componentMounted.current = false;
+        
+        // Cancel all active operations
+        console.log('Cancelling', activeOperations.current.size, 'active operations on unmount');
+        activeOperations.current.clear();
+        
+        // Reset navigation blocking
+        navigationBlocked.current = false;
+        
+        // Simple cleanup - only if component was still mounted
+        try {
+          setCameraVisible(false);
+          setCameraReady(false);
+          setCameraLoading(false);
+          setCameraKey(null);
+          setCameraInitializing(false);
+          setViewerVisible(false);
+          setViewerUri(null);
+          setLocLoading(false);
+          setLoading(false);
+        } catch (stateError: any) {
+          console.log('State cleanup failed (expected during unmount):', stateError?.message || stateError);
+        }
+        
+        if (cameraViewRef.current) {
+          cameraViewRef.current = null;
+        }
+        
+      } catch (cleanupError) {
+        console.error(`Cleanup error [${componentId.current}]:`, cleanupError);
+      }
+    };
+  }, []);
+
+  // Diagnostic function for camera issues
+  const diagnoseCameraState = () => {
+    console.log('=== Camera State Diagnosis ===');
+    console.log('cameraVisible:', cameraVisible);
+    console.log('cameraReady:', cameraReady);
+    console.log('cameraLoading:', cameraLoading);
+    console.log('cameraKey:', cameraKey);
+    console.log('cameraViewRef.current:', !!cameraViewRef.current);
+    console.log('camPermission granted:', camPermission?.granted);
+    console.log('==============================');
+  };
+
+  // Function to reset camera state when issues occur
+  const resetCameraState = (reason?: string) => {
+    if (reason) {
+      console.log(`Resetting camera state due to: ${reason}`);
+    }
+    
+    setCameraVisible(false);
+    setCameraReady(false);
+    setCameraLoading(false);
+    setCameraKey(null);
+    
+    // Clear the camera ref to force reinitialization
+    if (cameraViewRef.current) {
+      cameraViewRef.current = null;
+    }
+  };
+
+  // Handle camera permission changes with reset
+  useEffect(() => {
+    if (cameraVisible && !camPermission?.granted) {
+      resetCameraState('Camera permission revoked');
+      Alert.alert(
+        'Camera Permission', 
+        'Camera permission was revoked. Please grant permission to continue.',
+        [
+          {
+            text: 'Grant Permission',
+            onPress: async () => {
+              await requestCamPermission();
+            }
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel'
+          }
+        ]
+      );
+    }
+  }, [camPermission?.granted, cameraVisible]);
+
+  // Simple memory cleanup (removed interval to prevent navigation conflicts)
+  const performMemoryCleanup = () => {
+    try {
+      // Only perform cleanup if component is still mounted
+      if (__DEV__ && global.gc && componentMounted.current) {
+        global.gc();
+        console.log('Memory cleanup performed (development mode)');
+      }
+    } catch (error) {
+      console.warn('Memory cleanup failed:', error);
+    }
+  };
 
   const requestLocationPermissionIfNeeded = async (): Promise<boolean> => {
     if (hasLocationPermission === true) return true;
@@ -154,26 +448,57 @@ export default function SurveyForm({ route }: any) {
   };
 
   const handleFetchLocation = async () => {
-    const permitted = await requestLocationPermissionIfNeeded();
-    if (!permitted) return;
-    setLocLoading(true);
+    const operationId = `location_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    const cleanupOperation = trackOperation(operationId);
+    
     try {
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Highest,
-      });
-      const { latitude, longitude } = position.coords;
-      const latStr = latitude.toFixed(8);
-      const lonStr = longitude.toFixed(8);
-      handleInputChange('propertyLatitude', latStr);
-      handleInputChange('propertyLongitude', lonStr);
-      Alert.alert('Success', '📍 Location fetched successfully!');
-    } catch {
-      Alert.alert(
-        'Location Error',
-        'Unable to fetch GPS location. Please ensure GPS is enabled and try again.'
-      );
+      const permitted = await requestLocationPermissionIfNeeded();
+      
+      if (!permitted || !componentMounted.current || !activeOperations.current.has(operationId)) {
+        cleanupOperation();
+        return;
+      }
+      
+      safeSetState(() => setLocLoading(true), 'setLocLoading');
+      
+      try {
+        const position = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Highest,
+        });
+        
+        // Check if still active after async operation
+        if (!componentMounted.current || !activeOperations.current.has(operationId)) {
+          console.log('Location fetch cancelled after getting position');
+          return;
+        }
+        
+        const { latitude, longitude } = position.coords;
+        const latStr = latitude.toFixed(8);
+        const lonStr = longitude.toFixed(8);
+        
+        safeSetState(() => {
+          handleInputChange('propertyLatitude', latStr);
+          handleInputChange('propertyLongitude', lonStr);
+        }, 'location coordinates');
+        
+        if (componentMounted.current) {
+          Alert.alert('Success', '📍 Location fetched successfully!');
+        }
+      } catch (locationError) {
+        if (componentMounted.current) {
+          Alert.alert(
+            'Location Error',
+            'Unable to fetch GPS location. Please ensure GPS is enabled and try again.'
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Location fetch error:', error);
     } finally {
-      setLocLoading(false);
+      if (componentMounted.current) {
+        safeSetState(() => setLocLoading(false), 'setLocLoading');
+      }
+      cleanupOperation();
     }
   };
 
@@ -193,120 +518,278 @@ export default function SurveyForm({ route }: any) {
   };
 
   const openCameraFor = async (key: keyof typeof photos) => {
-    const permitted = await ensureCameraPermission();
-    if (!permitted) return;
-    const locPermitted = await requestLocationPermissionIfNeeded();
-    if (!locPermitted) return;
-    setCameraKey(key);
-    setCameraVisible(true);
+    try {
+      const currentTime = Date.now();
+      
+      // Implement click debouncing to prevent rapid clicks
+      if (currentTime - lastClickTime < CLICK_DEBOUNCE_MS) {
+        console.log(`Rapid click detected for ${key}, ignoring (${currentTime - lastClickTime}ms since last click)`);
+        return;
+      }
+      
+      setLastClickTime(currentTime);
+      console.log(`Camera open requested for: ${key}`);
+      
+      // Prevent multiple operations with comprehensive checking
+      if (cameraLoading || cameraVisible || cameraInitializing) {
+        console.log(`Camera state busy - loading: ${cameraLoading}, visible: ${cameraVisible}, initializing: ${cameraInitializing}`);
+        return;
+      }
+      
+      // Set initialization state immediately
+      setCameraInitializing(true);
+      setCameraLoading(true);
+      
+      // Set camera key immediately and persistently
+      setCameraKey(key);
+      console.log(`Camera key set to: ${key}`);
+      
+      try {
+        // Check camera permission
+        if (!camPermission?.granted) {
+          console.log('Requesting camera permission...');
+          const result = await requestCamPermission();
+          if (!result?.granted) {
+            throw new Error('Camera permission denied');
+          }
+        }
+        
+        // Check location permission
+        const locPermitted = await requestLocationPermissionIfNeeded();
+        if (!locPermitted) {
+          throw new Error('Location permission denied');
+        }
+        
+        // Reset camera ready state
+        setCameraReady(false);
+        
+        // Ensure camera key persists through async operations
+        setCameraKey(key);
+        
+        // Small delay to ensure all state updates are processed
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Final validation before opening camera
+        if (!cameraKey) {
+          console.warn('Camera key was lost during setup, restoring...');
+          setCameraKey(key);
+        }
+        
+        // Open camera modal
+        setCameraVisible(true);
+        console.log(`Camera opened successfully for: ${key}`);
+        
+      } catch (setupError) {
+        console.error('Camera setup failed:', setupError);
+        
+        // Reset states on setup failure
+        setCameraVisible(false);
+        setCameraReady(false);
+        setCameraKey(null);
+        
+        Alert.alert(
+          'Camera Setup Error', 
+          (setupError instanceof Error ? setupError.message : String(setupError)) || 'Failed to set up camera. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
+      
+    } catch (error) {
+      console.error('Error in openCameraFor:', error);
+      
+      // Reset all camera state on any error
+      setCameraVisible(false);
+      setCameraReady(false);
+      setCameraKey(null);
+      
+      Alert.alert('Camera Error', 'Failed to open camera. Please try again.');
+    } finally {
+      // Always reset loading and initializing states
+      setCameraLoading(false);
+      setCameraInitializing(false);
+    }
   };
 
   // Step 1: Skip overlay drawing here. Overlay is added via off-screen compositing in Step 2.
 
   const handleCapture = async () => {
-    if (!cameraViewRef.current || !cameraKey) {
-      console.error('Camera ref or key not available');
+    // Store current camera key at the start to prevent race conditions
+    const captureKey = cameraKey;
+    const captureTime = Date.now();
+    
+    console.log(`Starting capture process for: ${captureKey} at ${captureTime}`);
+    
+    // Enhanced validation with recovery mechanisms
+    if (!cameraViewRef.current) {
+      console.error('Camera reference is null');
+      Alert.alert('Camera Error', 'Camera is not ready. Please close and reopen the camera.');
+      return;
+    }
+    
+    if (!captureKey) {
+      console.error('Camera key not available - rapid click detected');
+      Alert.alert('Please Wait', 'Camera is still initializing. Please wait a moment and try again.');
       return;
     }
 
     if (!cameraReady) {
       console.error('Camera not ready yet');
-      Alert.alert('Camera Not Ready', 'Please wait for the camera to initialize.');
+      Alert.alert('Camera Not Ready', 'Please wait for the camera to initialize completely.');
+      return;
+    }
+
+    // Prevent double capture with more specific checking
+    if (cameraLoading) {
+      console.log('Capture already in progress, ignoring');
       return;
     }
 
     try {
       setCameraLoading(true);
-      console.log('Starting image capture...');
+      console.log(`Starting image capture for: ${captureKey}`);
 
-      // Step 1: Take picture with error handling and fallback options
+      // Validate camera reference again
+      if (!cameraViewRef.current) {
+        throw new Error('Camera reference lost during capture');
+      }
+
+      // Step 1: Take picture with error handling and timeout
       let photo;
       try {
-        // Try with default options first
-        photo = await cameraViewRef.current.takePictureAsync({
-          quality: 0.8,
-          skipProcessing: false,
-        });
-        console.log('Picture taken successfully:', photo.uri);
-      } catch (photoError) {
-        console.error('takePictureAsync failed with default options:', photoError);
+        console.log('Taking picture with camera...');
         
-        // Try with minimal options as fallback
-        try {
-          photo = await cameraViewRef.current.takePictureAsync({
-            quality: 0.5,
-            skipProcessing: true,
-          });
-          console.log('Picture taken successfully with fallback options:', photo.uri);
-        } catch (fallbackError) {
-          console.error('takePictureAsync failed with fallback options:', fallbackError);
-          Alert.alert('Camera Error', 'Failed to take picture. Please check camera permissions and try again.');
-          return;
+        // Add a timeout to prevent hanging
+        const capturePromise = cameraViewRef.current.takePictureAsync({
+          quality: 0.7,
+          skipProcessing: true,
+        });
+        
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Camera capture timeout')), 10000); // 10 second timeout
+        });
+        
+        photo = await Promise.race([capturePromise, timeoutPromise]) as any;
+        console.log('Picture taken successfully:', (photo as any).uri);
+        
+      } catch (photoError: any) {
+        console.error('Camera capture failed:', photoError);
+        if (photoError?.message?.includes('timeout')) {
+          throw new Error('Camera capture timed out. Please try again.');
         }
+        throw new Error('Failed to capture image. Please close and reopen the camera.');
       }
 
-      // Step 2: Image manipulation with error handling
-      let compressed;
-      try {
-        compressed = await ImageManipulator.manipulateAsync(
-          photo.uri,
-          [{ resize: { width: 1200 } }],
-          { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
-        );
-        console.log('Image compressed successfully:', compressed.uri);
-      } catch (manipulatorError) {
-        console.error('ImageManipulator failed:', manipulatorError);
-        // Use original photo if manipulation fails
-        compressed = photo;
-      }
-
-      // Step 3: File operations with error handling
-      const fileName = `survey_${surveyIdState || 'new'}_${cameraKey}_${Date.now()}.jpg`;
+      // Step 2: File operations with enhanced error handling
+      const fileName = `survey_${surveyIdState || 'new'}_${captureKey}_${captureTime}.jpg`;
       const destUri = `${FileSystem.documentDirectory}${fileName}`;
-      let finalUri = compressed.uri;
+      let finalUri = (photo as any).uri;
 
       try {
-        // Copy the compressed image to document directory
+        console.log('Copying image file...');
         await FileSystem.copyAsync({
-          from: compressed.uri,
+          from: (photo as any).uri,
           to: destUri,
         });
         finalUri = destUri;
         console.log('File copied successfully to:', destUri);
+        
+        // Clean up original temp file
+        try {
+          await FileSystem.deleteAsync((photo as any).uri, { idempotent: true });
+        } catch (cleanupErr) {
+          console.warn('Temp file cleanup failed:', cleanupErr);
+        }
+        
       } catch (copyErr) {
         console.error('File copy failed, using temp URI', copyErr);
-        // Keep using the compressed URI if copy fails
-        finalUri = compressed.uri;
+        finalUri = (photo as any).uri;
       }
 
-      // Step 4: Update UI
-      setPhotos((prev) => ({ ...prev, [cameraKey]: finalUri }));
+      // Step 3: Update UI immediately using the stored camera key
+      console.log(`Updating UI with captured image for: ${captureKey}`);
+      setPhotos((prev) => ({ ...prev, [captureKey]: finalUri }));
 
-      // Step 5: Database operations with error handling
-      try {
-        await insertSurveyImage({
-          surveyId: surveyIdState || null,
-          photoUri: finalUri,
-          label: String(cameraKey),
-          timestamp: new Date().toISOString(),
-        });
-        console.log('Image saved to database successfully');
-      } catch (dbErr) {
-        console.error('SQLite insertSurveyImage failed', dbErr);
-        // Don't show error to user as image is still captured
-      }
-
-      // Step 6: Close camera
+      // Step 4: Close camera immediately to prevent state issues
+      console.log('Closing camera after successful capture...');
       setCameraVisible(false);
       setCameraKey(null);
       setCameraReady(false);
-      console.log('Image capture completed successfully');
+
+      // Step 5: Background storage (non-blocking with safety)
+      const operationId = `capture_${captureTime}_${Math.random().toString(36).substr(2, 5)}`;
+      const cleanupOperation = trackOperation(operationId);
+      
+      setTimeout(async () => {
+        try {
+          // Check if component is still mounted before proceeding
+          if (!componentMounted.current) {
+            console.log('Component unmounted, skipping background storage');
+            cleanupOperation();
+            return;
+          }
+          
+          if (!activeOperations.current.has(operationId)) {
+            console.log('Operation cancelled, skipping background storage');
+            return;
+          }
+          
+          if (!surveyIdState) {
+            const tempSurveyId = `temp_survey_${captureTime}_${Math.random().toString(36).substr(2, 9)}`;
+            safeSetState(() => setSurveyIdState(tempSurveyId), 'setSurveyIdState');
+            console.log('Generated temporary survey ID:', tempSurveyId);
+          }
+          
+          const finalSurveyId = surveyIdState || `temp_survey_${captureTime}_${Math.random().toString(36).substr(2, 9)}`;
+          
+          // Only proceed if still active
+          if (!activeOperations.current.has(operationId)) {
+            console.log('Operation cancelled during storage');
+            return;
+          }
+          
+          // Try to store in database (background, non-blocking)
+          const storedUri = await storeImageForSurvey(
+            finalSurveyId,
+            finalUri,
+            String(captureKey)
+          );
+          
+          // Update UI with stored URI if successful and component still mounted
+          if (componentMounted.current && activeOperations.current.has(operationId)) {
+            safeSetState(() => setPhotos((prev) => ({ ...prev, [captureKey]: storedUri })), 'setPhotos');
+            console.log('Background storage completed:', storedUri);
+          }
+          
+        } catch (bgStorageError) {
+          console.error('Background storage failed (non-critical):', bgStorageError);
+          // Image is already in UI, so this failure is not critical
+        } finally {
+          cleanupOperation();
+        }
+      }, 200); // Slightly longer delay to ensure UI updates
+
+      console.log(`Image capture completed successfully for: ${captureKey}`);
 
     } catch (e) {
-      console.error('Unexpected capture error:', e);
-      Alert.alert('Capture Error', 'An unexpected error occurred while capturing the image.');
+      console.error('Image capture error:', e);
+      
+      // Ensure camera is closed even on error
+      setCameraVisible(false);
+      setCameraKey(null);
+      setCameraReady(false);
+      
+      const errorMessage = e instanceof Error ? e.message : 'Failed to capture image. Please try again.';
+      Alert.alert('Capture Error', errorMessage);
     } finally {
       setCameraLoading(false);
+      
+      // Safety cleanup with shorter timeout
+      setTimeout(() => {
+        if (cameraLoading) {
+          console.warn('Force clearing camera loading state');
+          setCameraLoading(false);
+        }
+      }, 1000); // Reduced timeout
     }
   };
 
@@ -373,14 +856,46 @@ export default function SurveyForm({ route }: any) {
 
   useEffect(() => {
     const loadData = async () => {
-      setLoading(true);
+      const operationId = `load_data_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+      const cleanupOperation = trackOperation(operationId);
+      
       try {
+        safeSetState(() => setLoading(true), 'setLoading');
+        
+        // Check if component is still mounted
+        if (!componentMounted.current || !activeOperations.current.has(operationId)) {
+          console.log('Data loading cancelled - component unmounted');
+          return;
+        }
+        
         const data = await getMasterData();
-        setMasterData(data);
+        
+        // Check again after async operation
+        if (!componentMounted.current || !activeOperations.current.has(operationId)) {
+          console.log('Data loading cancelled after getMasterData');
+          return;
+        }
+        
+        safeSetState(() => setMasterData(data), 'setMasterData');
+        
         let surveyToLoad = null;
         let loadedSurveyId = surveyId;
+        
         if (editMode && surveyId) {
+          // Check if still active before proceeding
+          if (!componentMounted.current || !activeOperations.current.has(operationId)) {
+            console.log('Survey loading cancelled before getLocalSurvey');
+            return;
+          }
+          
           const localSurvey = await getLocalSurvey(surveyId);
+          
+          // Check again after async operation
+          if (!componentMounted.current || !activeOperations.current.has(operationId)) {
+            console.log('Survey loading cancelled after getLocalSurvey');
+            return;
+          }
+          
           if (localSurvey && !Array.isArray(localSurvey)) {
             surveyToLoad = localSurvey.data;
             loadedSurveyId = localSurvey.id;
@@ -388,7 +903,8 @@ export default function SurveyForm({ route }: any) {
         } else if (editMode && initialSurveyData) {
           surveyToLoad = initialSurveyData;
         }
-        if (surveyToLoad) {
+        
+        if (surveyToLoad && componentMounted.current && activeOperations.current.has(operationId)) {
           const flatData = {
             ...surveyToLoad.surveyDetails,
             ...surveyToLoad.propertyDetails,
@@ -396,25 +912,33 @@ export default function SurveyForm({ route }: any) {
             ...surveyToLoad.locationDetails,
             ...surveyToLoad.otherDetails,
           };
-          setFormData((prev) => ({ ...prev, ...flatData }));
+          safeSetState(() => setFormData((prev) => ({ ...prev, ...flatData })), 'setFormData');
         }
-        // Always set surveyId state for use in save
-        if (loadedSurveyId) {
-          setSurveyIdState(loadedSurveyId);
+        
+        // Always set surveyId state for use in save if component is still mounted
+        if (loadedSurveyId && componentMounted.current && activeOperations.current.has(operationId)) {
+          safeSetState(() => setSurveyIdState(loadedSurveyId), 'setSurveyIdState');
         }
+        
       } catch (error) {
         console.error('Failed to load data:', error);
-        Alert.alert('Error', 'Could not load survey data. Please try again later.');
+        if (componentMounted.current && activeOperations.current.has(operationId)) {
+          Alert.alert('Error', 'Could not load survey data. Please try again later.');
+        }
       } finally {
-        setLoading(false);
+        if (componentMounted.current && activeOperations.current.has(operationId)) {
+          safeSetState(() => setLoading(false), 'setLoading');
+        }
+        cleanupOperation();
       }
     };
+    
     loadData();
   }, [editMode, surveyId, initialSurveyData]);
 
   useEffect(() => {
-    if (assignment) {
-      setFormData((prev) => ({
+    if (assignment && componentMounted.current) {
+      safeSetState(() => setFormData((prev) => ({
         ...prev,
         ulbId: assignment.ulb ? assignment.ulb.ulbId : '',
         zoneId: assignment.zone ? assignment.zone.zoneId : '',
@@ -423,7 +947,7 @@ export default function SurveyForm({ route }: any) {
           assignment.mohallas && assignment.mohallas.length > 0
             ? assignment.mohallas[0].mohallaId
             : '',
-      }));
+      })), 'setFormData from assignment');
     }
   }, [assignment]);
 
@@ -551,11 +1075,22 @@ export default function SurveyForm({ route }: any) {
   };
 
   const handleSave = async () => {
+    // Track this save operation
+    const operationId = `save_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    const cleanupOperation = trackOperation(operationId);
+    
     try {
+      if (!componentMounted.current) {
+        console.log('Save cancelled - component unmounted');
+        return;
+      }
+      
       if (!validateForm()) return;
+      
       const toNumber = (v: any) =>
         v === '' || v === null || v === undefined ? undefined : Number(v);
       const surveyTypeId = SURVEY_TYPE_IDS[surveyTypeKey];
+      
       const surveyDetails = {
         ulbId: formData.ulbId,
         zoneId: formData.zoneId,
@@ -568,6 +1103,7 @@ export default function SurveyForm({ route }: any) {
         subGisId: formData.subGisId,
         entryDate: new Date().toISOString(),
       };
+      
       const propertyDetails = {
         responseTypeId: formData.responseTypeId,
         oldHouseNumber: formData.oldHouseNumber,
@@ -576,6 +1112,7 @@ export default function SurveyForm({ route }: any) {
         respondentName: formData.respondentName,
         respondentStatusId: formData.respondentStatusId,
       };
+      
       const ownerDetails = {
         ownerName: formData.ownerName,
         fatherHusbandName: formData.fatherHusbandName,
@@ -585,6 +1122,7 @@ export default function SurveyForm({ route }: any) {
             ? formData.aadharNumber
             : undefined,
       };
+      
       const locationDetails = {
         propertyLatitude: toNumber(formData.propertyLatitude),
         propertyLongitude: toNumber(formData.propertyLongitude),
@@ -606,6 +1144,7 @@ export default function SurveyForm({ route }: any) {
         fourWaySouth: formData.fourWaySouth,
         newWardNumber: formData.newWardNumber,
       };
+      
       const otherDetails = {
         waterSourceId: formData.waterSourceId,
         rainWaterHarvestingSystem: formData.rainWaterHarvestingSystem,
@@ -620,48 +1159,90 @@ export default function SurveyForm({ route }: any) {
         builtupAreaOfGroundFloor: toNumber(formData.builtupAreaOfGroundFloor),
         remarks: formData.remarks,
       };
+      
       let idToUse = surveyIdState || surveyId || (editMode && route.params?.surveyId) || undefined;
       let surveyToSave;
+      
+      // Check if operation was cancelled before proceeding with storage
+      if (!activeOperations.current.has(operationId) || !componentMounted.current) {
+        console.log('Save operation cancelled');
+        return;
+      }
+      
       if (editMode && idToUse) {
-        // Update existing survey
-        const allSurveys = await getUnsyncedSurveys();
-        const idx = allSurveys.findIndex((s: any) => s.id === idToUse);
-        if (idx > -1) {
-          surveyToSave = {
-            ...allSurveys[idx],
-            data: {
-              surveyDetails,
-              propertyDetails,
-              ownerDetails,
-              locationDetails,
-              otherDetails,
-              // preserve any floor details or extra data
-              ...allSurveys[idx].data,
-            },
-            synced: false,
-            status: 'incomplete',
-          };
-          await saveSurveyLocally(surveyToSave);
-          Alert.alert('Updated', 'Survey updated locally.');
-        } else {
-          // fallback: treat as new
-          idToUse = `survey_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-          surveyToSave = {
-            id: idToUse,
-            data: {
-              surveyDetails,
-              propertyDetails,
-              ownerDetails,
-              locationDetails,
-              otherDetails,
-            },
-            synced: false,
-            createdAt: new Date().toISOString(),
-            surveyType: surveyTypeKey,
-            status: 'incomplete',
-          };
-          await saveSurveyLocally(surveyToSave);
-          Alert.alert('Saved', 'Survey saved locally.');
+        // Update existing survey with safe async operations
+        try {
+          const allSurveys = await getUnsyncedSurveys();
+          
+          // Check again after async operation
+          if (!activeOperations.current.has(operationId) || !componentMounted.current) {
+            console.log('Save cancelled during storage lookup');
+            return;
+          }
+          
+          const idx = allSurveys.findIndex((s: any) => s.id === idToUse);
+          if (idx > -1) {
+            surveyToSave = {
+              ...allSurveys[idx],
+              data: {
+                surveyDetails,
+                propertyDetails,
+                ownerDetails,
+                locationDetails,
+                otherDetails,
+                // preserve any floor details or extra data
+                ...allSurveys[idx].data,
+              },
+              synced: false,
+              status: 'incomplete',
+            };
+            
+            // Final check before save
+            if (!activeOperations.current.has(operationId) || !componentMounted.current) {
+              console.log('Save cancelled before final storage');
+              return;
+            }
+            
+            await saveSurveyLocally(surveyToSave);
+            
+            if (componentMounted.current) {
+              Alert.alert('Updated', 'Survey updated locally.');
+            }
+          } else {
+            // fallback: treat as new
+            idToUse = `survey_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+            surveyToSave = {
+              id: idToUse,
+              data: {
+                surveyDetails,
+                propertyDetails,
+                ownerDetails,
+                locationDetails,
+                otherDetails,
+              },
+              synced: false,
+              createdAt: new Date().toISOString(),
+              surveyType: surveyTypeKey,
+              status: 'incomplete',
+            };
+            
+            if (!activeOperations.current.has(operationId) || !componentMounted.current) {
+              console.log('Save cancelled before fallback storage');
+              return;
+            }
+            
+            await saveSurveyLocally(surveyToSave);
+            
+            if (componentMounted.current) {
+              Alert.alert('Saved', 'Survey saved locally.');
+            }
+          }
+        } catch (storageError) {
+          console.error('Storage error during save:', storageError);
+          if (componentMounted.current) {
+            Alert.alert('Error', 'Failed to save survey. Please try again.');
+          }
+          return;
         }
       } else {
         // Create new survey
@@ -680,35 +1261,72 @@ export default function SurveyForm({ route }: any) {
           surveyType: surveyTypeKey,
           status: 'incomplete',
         };
-        await saveSurveyLocally(surveyToSave);
-        Alert.alert('Saved', 'Survey saved locally.');
+        
+        if (!activeOperations.current.has(operationId) || !componentMounted.current) {
+          console.log('Save cancelled before new survey storage');
+          return;
+        }
+        
+        try {
+          await saveSurveyLocally(surveyToSave);
+          
+          if (componentMounted.current) {
+            Alert.alert('Saved', 'Survey saved locally.');
+          }
+        } catch (storageError) {
+          console.error('Storage error during new survey save:', storageError);
+          if (componentMounted.current) {
+            Alert.alert('Error', 'Failed to save survey. Please try again.');
+          }
+          return;
+        }
       }
-      // Persist images to SQLite only after a survey has been successfully saved
-      try {
-        await insertImagesForSurvey(idToUse as string, photos);
-      } catch (e) {
-        console.error('Failed inserting images for saved survey', e);
+      
+      // Store images for the final survey ID (images are already in permanent storage)
+      // No additional action needed as images were stored during capture
+      console.log('Images already stored in permanent storage for survey:', idToUse);
+      
+      if (componentMounted.current) {
+        safeSetState(() => setSurveyIdState(idToUse), 'setSurveyIdState');
       }
-      setSurveyIdState(idToUse); // always update state
+      
       const selectedMohalla = assignment?.mohallas?.find(
         (m: any) => m.mohallaId === formData.mohallaId
       );
       const mohallaName = selectedMohalla ? selectedMohalla.mohallaName : '';
-      (navigation as any).navigate('SurveyIntermediate', {
-        surveyId: idToUse,
-        surveyType: surveyTypeKey,
-        mohallaName,
-      });
-    } catch {
-      Alert.alert('Error', 'Failed to save survey locally.');
+      
+      // Final check before navigation
+      if (!activeOperations.current.has(operationId) || !componentMounted.current) {
+        console.log('Save cancelled before navigation');
+        return;
+      }
+      
+      // Safe navigation with error handling
+      try {
+        navigationBlocked.current = false; // Allow navigation after successful save
+        (navigation as any).navigate('SurveyIntermediate', {
+          surveyId: idToUse,
+          surveyType: surveyTypeKey,
+          mohallaName,
+        });
+      } catch (navError) {
+        console.error('Navigation error:', navError);
+        if (componentMounted.current) {
+          Alert.alert('Navigation Error', 'Unable to navigate to next screen. Survey has been saved.');
+        }
+      }
+    } catch (error) {
+      console.error('Save operation error:', error);
+      if (componentMounted.current) {
+        Alert.alert('Error', 'Failed to save survey locally.');
+      }
+    } finally {
+      cleanupOperation();
     }
   };
 
   const handleBackConfirm = () => {
-    Alert.alert('Leave Survey?', 'Unsaved changes may be lost. Are you sure you want to go back?', [
-      { text: 'Stay', style: 'cancel' },
-      { text: 'Leave', style: 'destructive', onPress: () => (navigation as any).goBack() },
-    ]);
+    showExitConfirmation();
   };
 
   // For yes/no dropdowns, use:
@@ -726,6 +1344,9 @@ export default function SurveyForm({ route }: any) {
       </SafeAreaView>
     );
   }
+
+  // Wrap main render in try-catch for crash prevention
+  try {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
@@ -1275,12 +1896,19 @@ export default function SurveyForm({ route }: any) {
       <Modal
         visible={cameraVisible}
         animationType="slide"
-        onRequestClose={() => setCameraVisible(false)}>
+        onRequestClose={() => {
+          console.log('Camera modal close requested');
+          setCameraVisible(false);
+          setCameraReady(false);
+          setCameraKey(null);
+        }}>
         <SafeAreaView style={styles.cameraContainer} edges={['top', 'left', 'right', 'bottom']}>
           <View style={styles.cameraHeader}>
             <TouchableOpacity onPress={() => {
+              console.log('Camera back button pressed');
               setCameraVisible(false);
               setCameraReady(false);
+              setCameraKey(null);
             }} style={styles.cameraBackBtn}>
               <Text style={styles.topBackArrow}>←</Text>
             </TouchableOpacity>
@@ -1294,12 +1922,26 @@ export default function SurveyForm({ route }: any) {
                 facing="back"
                 onCameraReady={() => {
                   console.log('Camera is ready');
-                  setCameraReady(true);
+                  setTimeout(() => {
+                    setCameraReady(true);
+                  }, 300); // Shorter delay for better UX
                 }}
                 onMountError={(error) => {
                   console.error('Camera mount error:', error);
-                  Alert.alert('Camera Error', 'Failed to initialize camera. Please try again.');
-                  setCameraVisible(false);
+                  Alert.alert(
+                    'Camera Error', 
+                    'Failed to initialize camera. Please try again.',
+                    [
+                      {
+                        text: 'OK',
+                        onPress: () => {
+                          setCameraVisible(false);
+                          setCameraReady(false);
+                          setCameraKey(null);
+                        }
+                      }
+                    ]
+                  );
                 }}
               />
             ) : (
@@ -1308,11 +1950,16 @@ export default function SurveyForm({ route }: any) {
                 <TouchableOpacity 
                   style={styles.retryButton}
                   onPress={async () => {
-                    const permitted = await ensureCameraPermission();
-                    if (permitted) {
-                      // Force re-render by updating state
-                      setCameraVisible(false);
-                      setTimeout(() => setCameraVisible(true), 100);
+                    try {
+                      const result = await requestCamPermission();
+                      if (result?.granted) {
+                        // Refresh camera view
+                        setCameraVisible(false);
+                        setTimeout(() => setCameraVisible(true), 100);
+                      }
+                    } catch (error) {
+                      console.error('Permission retry error:', error);
+                      Alert.alert('Permission Error', 'Failed to request camera permission.');
                     }
                   }}
                 >
@@ -1323,11 +1970,19 @@ export default function SurveyForm({ route }: any) {
           </View>
           <View style={styles.cameraControls}>
             <TouchableOpacity
-              onPress={handleCapture}
+              onPress={() => {
+                try {
+                  handleCapture();
+                } catch (error) {
+                  console.error('Capture button error:', error);
+                  Alert.alert('Camera Error', 'Failed to capture image. Please try again.');
+                  setCameraLoading(false);
+                }
+              }}
               style={styles.captureButton}
-              disabled={cameraLoading}>
+              disabled={cameraLoading || !cameraReady}>
               {cameraLoading ? (
-                <ActivityIndicator color="#ffffff" />
+                <ActivityIndicator color="#ffffff" size="small" />
               ) : (
                 <Text style={styles.captureButtonText}>Capture</Text>
               )}
@@ -1350,6 +2005,28 @@ export default function SurveyForm({ route }: any) {
       </Modal>
     </SafeAreaView>
   );
+  } catch (renderError) {
+    console.error('SurveyForm render error:', renderError);
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3F4F6' }}>
+        <Text style={{ fontSize: 18, color: '#666', textAlign: 'center', margin: 20 }}>
+          An error occurred while loading the survey form.
+        </Text>
+        <TouchableOpacity
+          style={{ backgroundColor: '#3B82F6', padding: 12, borderRadius: 8 }}
+          onPress={() => {
+            try {
+              (navigation as any).goBack();
+            } catch (navErr) {
+              console.error('Navigation error in fallback:', navErr);
+            }
+          }}
+        >
+          <Text style={{ color: 'white', fontWeight: 'bold' }}>Go Back</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 }
 
 const styles = StyleSheet.create({
