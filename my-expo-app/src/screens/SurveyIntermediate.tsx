@@ -1,9 +1,14 @@
-import * as React from 'react';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
-import { getUnsyncedSurveys, removeUnsyncedSurvey, getSelectedAssignment, saveSurveyLocally, getLocalSurvey } from '../utils/storage';
+import {
+  getUnsyncedSurveys,
+  removeUnsyncedSurvey,
+  getSelectedAssignment,
+  saveSurveyLocally,
+  getLocalSurvey,
+} from '../utils/storage';
 import { submitSurvey } from '../services/surveyService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
@@ -42,7 +47,7 @@ export default function SurveyIntermediate() {
   }, []);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       loadSurveyData();
     }, [])
   );
@@ -76,25 +81,21 @@ export default function SurveyIntermediate() {
     } catch (e) {
       assignment = null;
     }
-    Alert.alert(
-      'Edit Survey',
-      'Are you sure you want to edit this survey?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Edit',
-          onPress: () => {
-            navigation.navigate('SurveyForm', {
-              surveyType: surveyData.surveyType,
-              editMode: true,
-              surveyData: surveyData.data,
-              surveyId: surveyData.id,
-              assignment // pass assignment for edit mode
-            });
-          },
+    Alert.alert('Edit Survey', 'Are you sure you want to edit this survey?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Edit',
+        onPress: () => {
+          navigation.navigate('SurveyForm', {
+            surveyType: surveyData.surveyType,
+            editMode: true,
+            surveyData: surveyData.data,
+            surveyId: surveyData.id,
+            assignment, // pass assignment for edit mode
+          });
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const getDashboardScreen = () => {
@@ -114,7 +115,7 @@ export default function SurveyIntermediate() {
 
   const handleDeleteSurvey = () => {
     if (!surveyData) return;
-    
+
     Alert.alert(
       'Delete Survey',
       'Are you sure you want to delete this survey? This action cannot be undone.',
@@ -127,19 +128,27 @@ export default function SurveyIntermediate() {
             try {
               await removeUnsyncedSurvey(surveyData.id);
               Alert.alert('Success', 'Survey deleted successfully', [
-                { text: 'OK', onPress: () => {
-                  navigation.reset({
-                    index: 0,
-                    routes: [{ name: 'AuthenticatedDrawer', params: { initialDashboard: getDashboardScreen() } } as any],
-                  });
-                }}
+                {
+                  text: 'OK',
+                  onPress: () => {
+                    navigation.reset({
+                      index: 0,
+                      routes: [
+                        {
+                          name: 'AuthenticatedDrawer',
+                          params: { initialDashboard: getDashboardScreen() },
+                        } as any,
+                      ],
+                    });
+                  },
+                },
               ]);
             } catch (error) {
               Alert.alert('Error', 'Failed to delete survey');
               console.error(error);
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -162,12 +171,20 @@ export default function SurveyIntermediate() {
               // Optionally reload survey data to update UI
               await loadSurveyData();
               Alert.alert('Survey Saved', 'Your survey has been saved locally.', [
-                { text: 'OK', onPress: () => {
-                  navigation.reset({
-                    index: 0,
-                    routes: [{ name: 'AuthenticatedDrawer', params: { initialDashboard: getDashboardScreen() } } as any],
-                  });
-                }}
+                {
+                  text: 'OK',
+                  onPress: () => {
+                    navigation.reset({
+                      index: 0,
+                      routes: [
+                        {
+                          name: 'AuthenticatedDrawer',
+                          params: { initialDashboard: getDashboardScreen() },
+                        } as any,
+                      ],
+                    });
+                  },
+                },
               ]);
             } catch (e) {
               Alert.alert('Error', 'Failed to mark survey as submitted.');
@@ -180,23 +197,23 @@ export default function SurveyIntermediate() {
 
   const handleAddResidentialFloor = () => {
     if (!surveyData) return;
-    navigation.navigate('ResidentialIntermediate', { 
+    navigation.navigate('ResidentialIntermediate', {
       surveyId: surveyData.id,
-      surveyType: surveyData.surveyType 
+      surveyType: surveyData.surveyType,
     });
   };
 
   const handleAddNonResidentialFloor = () => {
     if (!surveyData) return;
-    navigation.navigate('NonResidentialIntermediate', { 
+    navigation.navigate('NonResidentialIntermediate', {
       surveyId: surveyData.id,
-      surveyType: surveyData.surveyType 
+      surveyType: surveyData.surveyType,
     });
   };
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
         <View style={styles.loadingContainer}>
           <Text>Loading survey data...</Text>
         </View>
@@ -206,13 +223,10 @@ export default function SurveyIntermediate() {
 
   if (!surveyData) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>No survey data found</Text>
-          <TouchableOpacity 
-            style={styles.button}
-            onPress={() => navigation.goBack()}
-          >
+          <TouchableOpacity style={styles.button} onPress={() => navigation.goBack()}>
             <Text style={styles.buttonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -223,17 +237,27 @@ export default function SurveyIntermediate() {
   // Get mohallaName from params as fallback
   const routeMohallaName = (route.params as any)?.mohallaName;
 
-  const residentialFloorCount = surveyData.data && surveyData.data.residentialPropertyAssessments ? surveyData.data.residentialPropertyAssessments.length : 0;
-  const nonResidentialFloorCount = surveyData.data && surveyData.data.nonResidentialPropertyAssessments ? surveyData.data.nonResidentialPropertyAssessments.length : 0;
+  const residentialFloorCount =
+    surveyData.data && surveyData.data.residentialPropertyAssessments
+      ? surveyData.data.residentialPropertyAssessments.length
+      : 0;
+  const nonResidentialFloorCount =
+    surveyData.data && surveyData.data.nonResidentialPropertyAssessments
+      ? surveyData.data.nonResidentialPropertyAssessments.length
+      : 0;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       <ScrollView>
         <View style={styles.section}>
-          <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#111827', marginBottom: 8 }}>Survey Information</Text>
+          <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#111827', marginBottom: 8 }}>
+            Survey Information
+          </Text>
           <View style={styles.infoRow}>
             <Text style={styles.label}>Mohalla Name:</Text>
-            <Text style={styles.value}>{surveyData.data.locationDetails?.mohallaName || routeMohallaName || 'N/A'}</Text>
+            <Text style={styles.value}>
+              {surveyData.data.locationDetails?.mohallaName || routeMohallaName || 'N/A'}
+            </Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.label}>GIS ID:</Text>
@@ -245,9 +269,7 @@ export default function SurveyIntermediate() {
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.label}>Created:</Text>
-            <Text style={styles.value}>
-              {new Date(surveyData.createdAt).toLocaleDateString()}
-            </Text>
+            <Text style={styles.value}>{new Date(surveyData.createdAt).toLocaleDateString()}</Text>
           </View>
         </View>
 
@@ -271,17 +293,14 @@ export default function SurveyIntermediate() {
         {/* Action Buttons */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Actions</Text>
-          
+
           <TouchableOpacity style={styles.actionButton} onPress={handleEditSurvey}>
             <Text style={styles.actionButtonText}>Edit Survey</Text>
           </TouchableOpacity>
 
           {/* Floor Details Buttons */}
           {(surveyData.surveyType === 'Residential' || surveyData.surveyType === 'Mixed') && (
-            <TouchableOpacity 
-              style={styles.actionButton} 
-              onPress={handleAddResidentialFloor}
-            >
+            <TouchableOpacity style={styles.actionButton} onPress={handleAddResidentialFloor}>
               <Text style={styles.actionButtonText}>
                 Add Residential Floor Details ({residentialFloorCount})
               </Text>
@@ -289,35 +308,26 @@ export default function SurveyIntermediate() {
           )}
 
           {(surveyData.surveyType === 'Non-Residential' || surveyData.surveyType === 'Mixed') && (
-            <TouchableOpacity 
-              style={styles.actionButton} 
-              onPress={handleAddNonResidentialFloor}
-            >
+            <TouchableOpacity style={styles.actionButton} onPress={handleAddNonResidentialFloor}>
               <Text style={styles.actionButtonText}>
                 Add Non-Residential Floor Details ({nonResidentialFloorCount})
               </Text>
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.deleteButton]} 
-            onPress={handleDeleteSurvey}
-          >
-            <Text style={[styles.actionButtonText, styles.deleteButtonText]}>
-              Delete Survey
-            </Text>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.deleteButton]}
+            onPress={handleDeleteSurvey}>
+            <Text style={[styles.actionButtonText, styles.deleteButtonText]}>Delete Survey</Text>
           </TouchableOpacity>
         </View>
 
         {/* Submit Button */}
         <View style={styles.submitSection}>
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.submitButton]} 
-            onPress={handleSubmitSurvey}
-          >
-            <Text style={[styles.actionButtonText, styles.submitButtonText]}>
-              Submit Survey
-            </Text>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.submitButton]}
+            onPress={handleSubmitSurvey}>
+            <Text style={[styles.actionButtonText, styles.submitButtonText]}>Submit Survey</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -428,4 +438,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-}); 
+});

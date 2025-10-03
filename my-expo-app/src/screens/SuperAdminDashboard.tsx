@@ -34,7 +34,9 @@ export default function SuperAdminDashboard() {
   }, []);
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-white dark:bg-gray-900 justify-center items-center">
+    <SafeAreaView
+      edges={['top', 'left', 'right', 'bottom']}
+      className="flex-1 items-center justify-center bg-white dark:bg-gray-900">
       <Animated.View
         style={{
           opacity: animatedValue,
@@ -46,12 +48,10 @@ export default function SuperAdminDashboard() {
               }),
             },
           ],
-        }}
-      >
+        }}>
         <Text
           className="text-2xl font-bold text-gray-900 dark:text-gray-100"
-          accessibilityLabel="Welcome to SuperAdmin Dashboard"
-        >
+          accessibilityLabel="Welcome to SuperAdmin Dashboard">
           Welcome to SuperAdmin Dashboard
         </Text>
       </Animated.View>

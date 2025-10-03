@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // @ts-ignore
 import LZString from 'lz-string';
 import api from '../api/axiosConfig';
+import { cleanupSurveyImagesBySurveyId } from '../services/imageStorage';
 
 const UNSYNCED_SURVEYS_KEY = 'unsyncedSurveys';
 const MASTER_DATA_KEY = 'masterData';
@@ -96,16 +97,20 @@ export const getAssignments = async (): Promise<any> => {
  * @param {string} token - Auth token
  * @returns {Promise<{success: number, failed: number}>}
  */
-export const syncSurveysToBackend = async (apiBaseUrl: string, token: string): Promise<{success: number, failed: number}> => {
-  const unsynced = (await getUnsyncedSurveys()).filter(s => s.status === 'submitted');
-  let success = 0, failed = 0;
+export const syncSurveysToBackend = async (
+  apiBaseUrl: string,
+  token: string
+): Promise<{ success: number; failed: number }> => {
+  const unsynced = (await getUnsyncedSurveys()).filter((s) => s.status === 'submitted');
+  let success = 0,
+    failed = 0;
   // Read userId from 'user' (primary) or 'userInfo' (fallback)
   // Ensure user object has both id and userId
   await migrateUserObject();
   let userRaw = await AsyncStorage.getItem('user');
   if (!userRaw) userRaw = await AsyncStorage.getItem('userInfo');
   const parsedUser = userRaw ? JSON.parse(userRaw) : null;
-  let userId = parsedUser ? (parsedUser.id || parsedUser.userId) : null;
+  let userId = parsedUser ? parsedUser.id || parsedUser.userId : null;
   // If userId is still null, try to fetch from backend and update AsyncStorage
   if (!userId && token) {
     try {
@@ -241,6 +246,12 @@ export const getUnsyncedSurveys = async (): Promise<any[]> => {
  */
 export const removeUnsyncedSurvey = async (id: string): Promise<void> => {
   try {
+    // Cleanup any persisted images for this survey (files + SQLite rows)
+    try {
+      await cleanupSurveyImagesBySurveyId(id);
+    } catch (e) {
+      console.error('Image cleanup failed for', id, e);
+    }
     const all = await getUnsyncedSurveys();
     const filtered = all.filter((s: any) => s.id !== id);
     const compressed = LZString.compressToUTF16(JSON.stringify(filtered));
@@ -265,7 +276,7 @@ export const getLocalSurvey = async (id: string): Promise<any | null> => {
 export const updateLocalSurvey = async (id: string, updatedSurvey: any): Promise<void> => {
   try {
     const all = await getUnsyncedSurveys();
-    const updated = all.map((s: any) => s.id === id ? updatedSurvey : s);
+    const updated = all.map((s: any) => (s.id === id ? updatedSurvey : s));
     const compressed = LZString.compressToUTF16(JSON.stringify(updated));
     await AsyncStorage.setItem(UNSYNCED_SURVEYS_KEY, compressed);
   } catch (e) {
@@ -279,7 +290,7 @@ export const logSyncedSurvey = async (surveyId: string, userId: string) => {
     const now = new Date().toISOString();
     const logRaw = await AsyncStorage.getItem(SYNCED_SURVEYS_LOG_KEY);
     let log: any[] = logRaw ? JSON.parse(logRaw) : [];
-    if (!log.some(entry => entry.id === surveyId && entry.userId === userId)) {
+    if (!log.some((entry) => entry.id === surveyId && entry.userId === userId)) {
       const entry = { id: surveyId, userId, syncedAt: now };
       log.push(entry);
       console.log('Adding log entry:', entry);

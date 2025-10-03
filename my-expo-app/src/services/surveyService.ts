@@ -14,7 +14,8 @@ export const submitSurvey = async (surveyData: SurveyData): Promise<any> => {
     let errorMsg = 'Failed to submit survey';
     if (error.response && error.response.data) {
       if (error.response.data.message) errorMsg = error.response.data.message;
-      else if (error.response.data.errors && Array.isArray(error.response.data.errors)) errorMsg = error.response.data.errors.map((e: any) => e.message).join(', ');
+      else if (error.response.data.errors && Array.isArray(error.response.data.errors))
+        errorMsg = error.response.data.errors.map((e: any) => e.message).join(', ');
     } else if (error.message) {
       errorMsg = error.message;
     }
@@ -42,22 +43,22 @@ export const fetchMasterData = async () => {
   try {
     // Fetch real master data from the backend
     const masterData = await fetchAllMasterData();
-    
+
     // Transform the data to match the expected format
     return {
-      floorNumbers: masterData.floors.map(floor => ({
+      floorNumbers: masterData.floors.map((floor) => ({
         floorNumberId: floor.floorNumberId,
         floorNumberName: floor.floorNumberName,
       })),
-      occupancyStatuses: masterData.occupancyStatuses.map(status => ({
+      occupancyStatuses: masterData.occupancyStatuses.map((status) => ({
         occupancyStatusId: status.occupancyStatusId,
         occupancyStatusName: status.occupancyStatusName,
       })),
-      constructionNatures: masterData.constructionNatures.map(nature => ({
+      constructionNatures: masterData.constructionNatures.map((nature) => ({
         constructionNatureId: nature.constructionNatureId,
         constructionNatureName: nature.constructionNatureName,
       })),
-      nrPropertyCategories: masterData.nrPropertyCategories.map(category => ({
+      nrPropertyCategories: masterData.nrPropertyCategories.map((category) => ({
         propertyCategoryId: category.propertyCategoryId,
         propertyCategoryName: category.propertyCategoryName,
       })),

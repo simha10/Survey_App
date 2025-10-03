@@ -93,32 +93,27 @@ export default function ProfileScreen() {
           <View className="space-y-2">
             <Text
               className="text-lg font-medium text-gray-900 dark:text-gray-100"
-              accessibilityLabel={`Name: ${profile?.name || 'Not available'}`}
-            >
+              accessibilityLabel={`Name: ${profile?.name || 'Not available'}`}>
               Name: {profile?.name || 'N/A'}
             </Text>
             <Text
               className="text-lg font-medium text-gray-900 dark:text-gray-100"
-              accessibilityLabel={`Username: ${profile?.username || 'Not available'}`}
-            >
+              accessibilityLabel={`Username: ${profile?.username || 'Not available'}`}>
               Username: {profile?.username || 'N/A'}
             </Text>
             <Text
               className="text-lg font-medium text-gray-900 dark:text-gray-100"
-              accessibilityLabel={`Mobile: ${profile?.mobileNumber || 'Not available'}`}
-            >
+              accessibilityLabel={`Mobile: ${profile?.mobileNumber || 'Not available'}`}>
               Mobile: {profile?.mobileNumber || 'N/A'}
             </Text>
             <Text
               className="text-lg font-medium text-gray-900 dark:text-gray-100"
-              accessibilityLabel={`Role: ${profile?.role || 'Not available'}`}
-            >
+              accessibilityLabel={`Role: ${profile?.role || 'Not available'}`}>
               Role: {getRoleDisplayName(profile?.role) || 'N/A'}
             </Text>
             <Text
               className="text-lg font-medium text-gray-900 dark:text-gray-100"
-              accessibilityLabel={`Member Since: ${profile?.createdAt ? formatDate(profile.createdAt) : 'Not available'}`}
-            >
+              accessibilityLabel={`Member Since: ${profile?.createdAt ? formatDate(profile.createdAt) : 'Not available'}`}>
               Member Since: {profile?.createdAt ? formatDate(profile.createdAt) : 'N/A'}
             </Text>
           </View>

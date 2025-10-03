@@ -1,15 +1,34 @@
 import { useState, useRef, useEffect } from 'react';
-import { ScrollView, View, Text, StyleSheet, Button, Alert, findNodeHandle, TouchableOpacity, ActivityIndicator, Image as RNImage, Modal } from 'react-native';
+import {
+  ScrollView,
+  View,
+  Text,
+  StyleSheet,
+  Button,
+  Alert,
+  TouchableOpacity,
+  ActivityIndicator,
+  Image as RNImage,
+  Modal,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FormInput from '../components/FormInput';
 import FormDropdown from '../components/FormDropdown';
-import { saveSurveyLocally, getLocalSurvey, getUnsyncedSurveys, getMasterData } from '../utils/storage';
+import {
+  saveSurveyLocally,
+  getLocalSurvey,
+  getUnsyncedSurveys,
+  getMasterData,
+} from '../utils/storage';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Feather } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
+import { insertImagesForSurvey } from '../services/imageStorage';
+import { insertSurveyImage } from '../services/sqlite';
 
 interface FormData {
   ulbId: string;
@@ -62,7 +81,17 @@ interface FormData {
 }
 
 export default function SurveyForm({ route }: any) {
-  let { surveyType, surveyData: initialSurveyData, editMode, surveyId } = route.params as { surveyType: string, surveyData?: any, editMode?: boolean, surveyId?: string };
+  let {
+    surveyType,
+    surveyData: initialSurveyData,
+    editMode,
+    surveyId,
+  } = route.params as {
+    surveyType: string;
+    surveyData?: any;
+    editMode?: boolean;
+    surveyId?: string;
+  };
   if (surveyType === 'Mix') surveyType = 'Mixed';
   type SurveyTypeKey = 'Residential' | 'Non-Residential' | 'Mixed';
   const surveyTypeKey = surveyType as SurveyTypeKey;
@@ -86,12 +115,17 @@ export default function SurveyForm({ route }: any) {
     front: null,
     left: null,
     right: null,
+    other1: null,
+    other2: null,
   });
   const [cameraVisible, setCameraVisible] = useState(false);
   const [cameraKey, setCameraKey] = useState<keyof typeof photos | null>(null);
   const cameraViewRef = useRef<CameraView | null>(null);
   const [cameraLoading, setCameraLoading] = useState(false);
   const [camPermission, requestCamPermission] = useCameraPermissions();
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -107,10 +141,13 @@ export default function SurveyForm({ route }: any) {
       const granted = status === 'granted';
       setHasLocationPermission(granted);
       if (!granted) {
-        Alert.alert('Permission Required', 'Location permission is needed to fetch GPS coordinates.');
+        Alert.alert(
+          'Permission Required',
+          'Location permission is needed to fetch GPS coordinates.'
+        );
       }
       return granted;
-    } catch (e) {
+    } catch {
       Alert.alert('Error', 'Unable to request location permission.');
       return false;
     }
@@ -121,27 +158,38 @@ export default function SurveyForm({ route }: any) {
     if (!permitted) return;
     setLocLoading(true);
     try {
-      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Highest,
+      });
       const { latitude, longitude } = position.coords;
       const latStr = latitude.toFixed(8);
       const lonStr = longitude.toFixed(8);
       handleInputChange('propertyLatitude', latStr);
       handleInputChange('propertyLongitude', lonStr);
       Alert.alert('Success', '📍 Location fetched successfully!');
-    } catch (e) {
-      Alert.alert('Location Error', 'Unable to fetch GPS location. Please ensure GPS is enabled and try again.');
+    } catch {
+      Alert.alert(
+        'Location Error',
+        'Unable to fetch GPS location. Please ensure GPS is enabled and try again.'
+      );
     } finally {
       setLocLoading(false);
     }
   };
 
   const ensureCameraPermission = async (): Promise<boolean> => {
-    const res = camPermission?.granted ? camPermission : await requestCamPermission();
-    if (!res?.granted) {
-      Alert.alert('Permission Required', 'Camera permission is required to capture photos.');
+    try {
+      const res = camPermission?.granted ? camPermission : await requestCamPermission();
+      if (!res?.granted) {
+        Alert.alert('Permission Required', 'Camera permission is required to capture photos.');
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('Camera permission error:', error);
+      Alert.alert('Error', 'Failed to request camera permission.');
       return false;
     }
-    return true;
   };
 
   const openCameraFor = async (key: keyof typeof photos) => {
@@ -156,24 +204,107 @@ export default function SurveyForm({ route }: any) {
   // Step 1: Skip overlay drawing here. Overlay is added via off-screen compositing in Step 2.
 
   const handleCapture = async () => {
-    if (!cameraViewRef.current || !cameraKey) return;
+    if (!cameraViewRef.current || !cameraKey) {
+      console.error('Camera ref or key not available');
+      return;
+    }
+
+    if (!cameraReady) {
+      console.error('Camera not ready yet');
+      Alert.alert('Camera Not Ready', 'Please wait for the camera to initialize.');
+      return;
+    }
+
     try {
       setCameraLoading(true);
-      const photo = await cameraViewRef.current.takePictureAsync({ quality: 0.8, skipProcessing: false });
-      
-      // Simple compression only - no overlay, no complex processing
-      const compressed = await ImageManipulator.manipulateAsync(
-        photo.uri,
-        [{ resize: { width: 1200 } }],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
-      );
-      
-      setPhotos(prev => ({ ...prev, [cameraKey]: compressed.uri }));
+      console.log('Starting image capture...');
+
+      // Step 1: Take picture with error handling and fallback options
+      let photo;
+      try {
+        // Try with default options first
+        photo = await cameraViewRef.current.takePictureAsync({
+          quality: 0.8,
+          skipProcessing: false,
+        });
+        console.log('Picture taken successfully:', photo.uri);
+      } catch (photoError) {
+        console.error('takePictureAsync failed with default options:', photoError);
+        
+        // Try with minimal options as fallback
+        try {
+          photo = await cameraViewRef.current.takePictureAsync({
+            quality: 0.5,
+            skipProcessing: true,
+          });
+          console.log('Picture taken successfully with fallback options:', photo.uri);
+        } catch (fallbackError) {
+          console.error('takePictureAsync failed with fallback options:', fallbackError);
+          Alert.alert('Camera Error', 'Failed to take picture. Please check camera permissions and try again.');
+          return;
+        }
+      }
+
+      // Step 2: Image manipulation with error handling
+      let compressed;
+      try {
+        compressed = await ImageManipulator.manipulateAsync(
+          photo.uri,
+          [{ resize: { width: 1200 } }],
+          { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+        );
+        console.log('Image compressed successfully:', compressed.uri);
+      } catch (manipulatorError) {
+        console.error('ImageManipulator failed:', manipulatorError);
+        // Use original photo if manipulation fails
+        compressed = photo;
+      }
+
+      // Step 3: File operations with error handling
+      const fileName = `survey_${surveyIdState || 'new'}_${cameraKey}_${Date.now()}.jpg`;
+      const destUri = `${FileSystem.documentDirectory}${fileName}`;
+      let finalUri = compressed.uri;
+
+      try {
+        // Copy the compressed image to document directory
+        await FileSystem.copyAsync({
+          from: compressed.uri,
+          to: destUri,
+        });
+        finalUri = destUri;
+        console.log('File copied successfully to:', destUri);
+      } catch (copyErr) {
+        console.error('File copy failed, using temp URI', copyErr);
+        // Keep using the compressed URI if copy fails
+        finalUri = compressed.uri;
+      }
+
+      // Step 4: Update UI
+      setPhotos((prev) => ({ ...prev, [cameraKey]: finalUri }));
+
+      // Step 5: Database operations with error handling
+      try {
+        await insertSurveyImage({
+          surveyId: surveyIdState || null,
+          photoUri: finalUri,
+          label: String(cameraKey),
+          timestamp: new Date().toISOString(),
+        });
+        console.log('Image saved to database successfully');
+      } catch (dbErr) {
+        console.error('SQLite insertSurveyImage failed', dbErr);
+        // Don't show error to user as image is still captured
+      }
+
+      // Step 6: Close camera
       setCameraVisible(false);
       setCameraKey(null);
+      setCameraReady(false);
+      console.log('Image capture completed successfully');
+
     } catch (e) {
-      console.error('Capture Error', e);
-      Alert.alert('Capture Error', 'Failed to capture the image.');
+      console.error('Unexpected capture error:', e);
+      Alert.alert('Capture Error', 'An unexpected error occurred while capturing the image.');
     } finally {
       setCameraLoading(false);
     }
@@ -191,7 +322,10 @@ export default function SurveyForm({ route }: any) {
     ulbId: assignment?.ulb ? assignment.ulb.ulbId : '',
     zoneId: assignment?.zone ? assignment.zone.zoneId : '',
     wardId: assignment?.ward ? assignment.ward.wardId : '',
-    mohallaId: assignment?.mohallas && assignment.mohallas.length > 0 ? assignment.mohallas[0].mohallaId : '',
+    mohallaId:
+      assignment?.mohallas && assignment.mohallas.length > 0
+        ? assignment.mohallas[0].mohallaId
+        : '',
     parcelId: '',
     mapId: '',
     gisId: '',
@@ -262,7 +396,7 @@ export default function SurveyForm({ route }: any) {
             ...surveyToLoad.locationDetails,
             ...surveyToLoad.otherDetails,
           };
-          setFormData(prev => ({ ...prev, ...flatData }));
+          setFormData((prev) => ({ ...prev, ...flatData }));
         }
         // Always set surveyId state for use in save
         if (loadedSurveyId) {
@@ -280,59 +414,63 @@ export default function SurveyForm({ route }: any) {
 
   useEffect(() => {
     if (assignment) {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         ulbId: assignment.ulb ? assignment.ulb.ulbId : '',
         zoneId: assignment.zone ? assignment.zone.zoneId : '',
         wardId: assignment.ward ? assignment.ward.wardId : '',
-        mohallaId: assignment.mohallas && assignment.mohallas.length > 0 ? assignment.mohallas[0].mohallaId : '',
+        mohallaId:
+          assignment.mohallas && assignment.mohallas.length > 0
+            ? assignment.mohallas[0].mohallaId
+            : '',
       }));
     }
   }, [assignment]);
 
   const createDropdownOptions = (items: any[], labelKey: string, valueKey: string) => {
     if (!items) return [{ label: 'No selection', value: 0 }];
-    return items.map(item => ({
+    return items.map((item) => ({
       label: item[labelKey],
       value: item[valueKey],
     }));
   };
 
   // Transform master data to dropdown options format
-  const responseTypeOptions = masterData?.responseTypes?.map((item: any) => ({
-    label: item.responseTypeName,
-    value: item.responseTypeId,
-  })) || [];
+  // Note: These options are available but not currently used in the form
+  // const responseTypeOptions = masterData?.responseTypes?.map((item: any) => ({
+  //   label: item.responseTypeName,
+  //   value: item.responseTypeId,
+  // })) || [];
 
-  const respondentStatusOptions = masterData?.respondentStatuses?.map((item: any) => ({
-    label: item.respondentStatusName,
-    value: item.respondentStatusId,
-  })) || [];
+  // const respondentStatusOptions = masterData?.respondentStatuses?.map((item: any) => ({
+  //   label: item.respondentStatusName,
+  //   value: item.respondentStatusId,
+  // })) || [];
 
-  const propertyTypeOptions = masterData?.propertyTypes?.map((item: any) => ({
-    label: item.propertyTypeName,
-    value: item.propertyTypeId,
-  })) || [];
+  // const propertyTypeOptions = masterData?.propertyTypes?.map((item: any) => ({
+  //   label: item.propertyTypeName,
+  //   value: item.propertyTypeId,
+  // })) || [];
 
-  const roadTypeOptions = masterData?.roadTypes?.map((item: any) => ({
-    label: item.roadTypeName,
-    value: item.roadTypeId,
-  })) || [];
+  // const roadTypeOptions = masterData?.roadTypes?.map((item: any) => ({
+  //   label: item.roadTypeName,
+  //   value: item.roadTypeId,
+  // })) || [];
 
-  const constructionTypeOptions = masterData?.constructionTypes?.map((item: any) => ({
-    label: item.constructionTypeName,
-    value: item.constructionTypeId,
-  })) || [];
+  // const constructionTypeOptions = masterData?.constructionTypes?.map((item: any) => ({
+  //   label: item.constructionTypeName,
+  //   value: item.constructionTypeId,
+  // })) || [];
 
-  const waterSourceOptions = masterData?.waterSources?.map((item: any) => ({
-    label: item.waterSourceName,
-    value: item.waterSourceId,
-  })) || [];
+  // const waterSourceOptions = masterData?.waterSources?.map((item: any) => ({
+  //   label: item.waterSourceName,
+  //   value: item.waterSourceId,
+  // })) || [];
 
-  const disposalTypeOptions = masterData?.disposalTypes?.map((item: any) => ({
-    label: item.disposalTypeName,
-    value: item.disposalTypeId,
-  })) || [];
+  // const disposalTypeOptions = masterData?.disposalTypes?.map((item: any) => ({
+  //   label: item.disposalTypeName,
+  //   value: item.disposalTypeId,
+  // })) || [];
 
   const handleInputChange = (name: keyof FormData, value: string | number) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -374,14 +512,17 @@ export default function SurveyForm({ route }: any) {
 
     if (surveyTypeKey === 'Non-Residential') {
       // Remove propertyTypeId if present
-      const idx = requiredFields.findIndex(f => f.key === 'propertyTypeId');
+      const idx = requiredFields.findIndex((f) => f.key === 'propertyTypeId');
       if (idx !== -1) requiredFields.splice(idx, 1);
     }
 
-    const firstMissingField = requiredFields.find(field => {
+    const firstMissingField = requiredFields.find((field) => {
       const value = formData[field.key];
       // For propertyTypeId, treat 0 as missing for Residential/Mixed
-      if (field.key === 'propertyTypeId' && (surveyTypeKey === 'Residential' || surveyTypeKey === 'Mixed')) {
+      if (
+        field.key === 'propertyTypeId' &&
+        (surveyTypeKey === 'Residential' || surveyTypeKey === 'Mixed')
+      ) {
         return value === 0 || value === undefined || value === null;
       }
       if (typeof value === 'number') {
@@ -412,7 +553,8 @@ export default function SurveyForm({ route }: any) {
   const handleSave = async () => {
     try {
       if (!validateForm()) return;
-      const toNumber = (v: any) => v === '' || v === null || v === undefined ? undefined : Number(v);
+      const toNumber = (v: any) =>
+        v === '' || v === null || v === undefined ? undefined : Number(v);
       const surveyTypeId = SURVEY_TYPE_IDS[surveyTypeKey];
       const surveyDetails = {
         ulbId: formData.ulbId,
@@ -438,7 +580,10 @@ export default function SurveyForm({ route }: any) {
         ownerName: formData.ownerName,
         fatherHusbandName: formData.fatherHusbandName,
         mobileNumber: formData.mobileNumber,
-        aadharNumber: formData.aadharNumber && formData.aadharNumber.length === 12 ? formData.aadharNumber : undefined,
+        aadharNumber:
+          formData.aadharNumber && formData.aadharNumber.length === 12
+            ? formData.aadharNumber
+            : undefined,
       };
       const locationDetails = {
         propertyLatitude: toNumber(formData.propertyLatitude),
@@ -538,24 +683,32 @@ export default function SurveyForm({ route }: any) {
         await saveSurveyLocally(surveyToSave);
         Alert.alert('Saved', 'Survey saved locally.');
       }
+      // Persist images to SQLite only after a survey has been successfully saved
+      try {
+        await insertImagesForSurvey(idToUse as string, photos);
+      } catch (e) {
+        console.error('Failed inserting images for saved survey', e);
+      }
       setSurveyIdState(idToUse); // always update state
-      const selectedMohalla = assignment?.mohallas?.find((m: any) => m.mohallaId === formData.mohallaId);
+      const selectedMohalla = assignment?.mohallas?.find(
+        (m: any) => m.mohallaId === formData.mohallaId
+      );
       const mohallaName = selectedMohalla ? selectedMohalla.mohallaName : '';
-      (navigation as any).navigate('SurveyIntermediate', { surveyId: idToUse, surveyType: surveyTypeKey, mohallaName });
-    } catch (e) {
+      (navigation as any).navigate('SurveyIntermediate', {
+        surveyId: idToUse,
+        surveyType: surveyTypeKey,
+        mohallaName,
+      });
+    } catch {
       Alert.alert('Error', 'Failed to save survey locally.');
     }
   };
 
   const handleBackConfirm = () => {
-    Alert.alert(
-      'Leave Survey?',
-      'Unsaved changes may be lost. Are you sure you want to go back?',
-      [
-        { text: 'Stay', style: 'cancel' },
-        { text: 'Leave', style: 'destructive', onPress: () => (navigation as any).goBack() },
-      ]
-    );
+    Alert.alert('Leave Survey?', 'Unsaved changes may be lost. Are you sure you want to go back?', [
+      { text: 'Stay', style: 'cancel' },
+      { text: 'Leave', style: 'destructive', onPress: () => (navigation as any).goBack() },
+    ]);
   };
 
   // For yes/no dropdowns, use:
@@ -566,7 +719,7 @@ export default function SurveyForm({ route }: any) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading data...</Text>
         </View>
@@ -575,7 +728,7 @@ export default function SurveyForm({ route }: any) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       <View style={styles.topHeader}>
         <TouchableOpacity onPress={handleBackConfirm} style={styles.topBackButton}>
           <Text style={styles.topBackArrow}>←</Text>
@@ -591,7 +744,12 @@ export default function SurveyForm({ route }: any) {
           <FormDropdown
             label="Mohalla"
             required
-            items={assignment?.mohallas?.map((m: any) => ({ label: m.mohallaName, value: m.mohallaId })) || []}
+            items={
+              assignment?.mohallas?.map((m: any) => ({
+                label: m.mohallaName,
+                value: m.mohallaId,
+              })) || []
+            }
             onValueChange={(value: string | number) => handleInputChange('mohallaId', value)}
             value={formData.mohallaId}
           />
@@ -624,16 +782,20 @@ export default function SurveyForm({ route }: any) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>2. Property Details</Text>
           <FormDropdown
-              label="Response Type"
-              required
-              items={createDropdownOptions(masterData?.responseTypes, 'responseTypeName', 'responseTypeId')}
-              onValueChange={(value) => handleInputChange('responseTypeId', value)}
-              value={formData.responseTypeId}
+            label="Response Type"
+            required
+            items={createDropdownOptions(
+              masterData?.responseTypes,
+              'responseTypeName',
+              'responseTypeId'
+            )}
+            onValueChange={(value) => handleInputChange('responseTypeId', value)}
+            value={formData.responseTypeId}
           />
           <FormInput
-              label="Old House No."
-              onChangeText={(value) => handleInputChange('oldHouseNumber', value)}
-              value={formData.oldHouseNumber}
+            label="Old House No."
+            onChangeText={(value) => handleInputChange('oldHouseNumber', value)}
+            value={formData.oldHouseNumber}
           />
           <FormInput
             label="Electricity Consumer Name"
@@ -654,7 +816,11 @@ export default function SurveyForm({ route }: any) {
           <FormDropdown
             label="Respondent Status"
             required
-            items={createDropdownOptions(masterData?.respondentStatuses, 'respondentStatusName', 'respondentStatusId')}
+            items={createDropdownOptions(
+              masterData?.respondentStatuses,
+              'respondentStatusName',
+              'respondentStatusId'
+            )}
             onValueChange={(value) => handleInputChange('respondentStatusId', value)}
             value={formData.respondentStatusId}
           />
@@ -691,7 +857,10 @@ export default function SurveyForm({ route }: any) {
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>4. Location Details</Text>
-            <TouchableOpacity onPress={handleFetchLocation} accessibilityLabel="Fetch current location" style={styles.iconButton}>
+            <TouchableOpacity
+              onPress={handleFetchLocation}
+              accessibilityLabel="Fetch current location"
+              style={styles.iconButton}>
               {locLoading ? (
                 <ActivityIndicator size="small" color="#3B82F6" />
               ) : (
@@ -711,17 +880,17 @@ export default function SurveyForm({ route }: any) {
             value={String(formData.propertyLongitude ?? '')}
             keyboardType="numeric"
           />
-          <FormInput
-            label="Assessment Year"
-            value={formData.assessmentYear}
-            editable={false}
-          />
+          <FormInput label="Assessment Year" value={formData.assessmentYear} editable={false} />
           {/* Property Type: Only for Residential and Mixed */}
           {(surveyTypeKey === 'Residential' || surveyTypeKey === 'Mixed') && (
             <FormDropdown
               label="Property Type"
               required
-              items={createDropdownOptions(masterData?.propertyTypes, 'propertyTypeName', 'propertyTypeId')}
+              items={createDropdownOptions(
+                masterData?.propertyTypes,
+                'propertyTypeName',
+                'propertyTypeId'
+              )}
               onValueChange={(value) => handleInputChange('propertyTypeId', value)}
               value={formData.propertyTypeId}
             />
@@ -748,7 +917,11 @@ export default function SurveyForm({ route }: any) {
           <FormDropdown
             label="Construction Type"
             required
-            items={createDropdownOptions(masterData?.constructionTypes, 'constructionTypeName', 'constructionTypeId')}
+            items={createDropdownOptions(
+              masterData?.constructionTypes,
+              'constructionTypeName',
+              'constructionTypeId'
+            )}
             onValueChange={(value) => handleInputChange('constructionTypeId', value)}
             value={formData.constructionTypeId}
           />
@@ -795,11 +968,12 @@ export default function SurveyForm({ route }: any) {
             onChangeText={(value: string) => handleInputChange('fourWaySouth', value)}
             value={String(formData.fourWaySouth ?? '')}
           />
-          <FormInput 
+          <FormInput
             label="New Ward Number"
             required
             onChangeText={(value: string) => handleInputChange('newWardNumber', value)}
-            value={formData.newWardNumber} />
+            value={formData.newWardNumber}
+          />
         </View>
 
         <View style={styles.section}>
@@ -807,7 +981,11 @@ export default function SurveyForm({ route }: any) {
           <FormDropdown
             label="Source of Water"
             required
-            items={createDropdownOptions(masterData?.waterSources, 'waterSourceName', 'waterSourceId')}
+            items={createDropdownOptions(
+              masterData?.waterSources,
+              'waterSourceName',
+              'waterSourceId'
+            )}
             onValueChange={(value: string | number) => handleInputChange('waterSourceId', value)}
             value={formData.waterSourceId}
           />
@@ -815,7 +993,9 @@ export default function SurveyForm({ route }: any) {
             label="Rain Water Harvesting"
             required
             items={yesNoOptions}
-            onValueChange={(value: string | number) => handleInputChange('rainWaterHarvestingSystem', value)}
+            onValueChange={(value: string | number) =>
+              handleInputChange('rainWaterHarvestingSystem', value)
+            }
             value={formData.rainWaterHarvestingSystem}
           />
 
@@ -844,7 +1024,9 @@ export default function SurveyForm({ route }: any) {
               />
               <FormInput
                 label="Pollution Measurement"
-                onChangeText={(value: string) => handleInputChange('pollutionMeasurementTaken', value)}
+                onChangeText={(value: string) =>
+                  handleInputChange('pollutionMeasurementTaken', value)
+                }
                 value={formData.pollutionMeasurementTaken}
               />
             </>
@@ -854,20 +1036,28 @@ export default function SurveyForm({ route }: any) {
             label="Water Supply within 200m"
             required
             items={yesNoOptions}
-            onValueChange={(value: string | number) => handleInputChange('waterSupplyWithin200Meters', value)}
+            onValueChange={(value: string | number) =>
+              handleInputChange('waterSupplyWithin200Meters', value)
+            }
             value={formData.waterSupplyWithin200Meters}
           />
           <FormDropdown
             label="Sewerage Line within 100m"
             required
             items={yesNoOptions}
-            onValueChange={(value: string | number) => handleInputChange('sewerageLineWithin100Meters', value)}
+            onValueChange={(value: string | number) =>
+              handleInputChange('sewerageLineWithin100Meters', value)
+            }
             value={formData.sewerageLineWithin100Meters}
           />
           <FormDropdown
             label="Disposal Type"
             required
-            items={createDropdownOptions(masterData?.disposalTypes, 'disposalTypeName', 'disposalTypeId')}
+            items={createDropdownOptions(
+              masterData?.disposalTypes,
+              'disposalTypeName',
+              'disposalTypeId'
+            )}
             onValueChange={(value: string | number) => handleInputChange('disposalTypeId', value)}
             value={formData.disposalTypeId}
           />
@@ -895,34 +1085,185 @@ export default function SurveyForm({ route }: any) {
             <Text style={styles.sectionTitle}>Photos</Text>
           </View>
           <View style={styles.photosGrid}>
-            <TouchableOpacity style={styles.photoCard} onPress={() => openCameraFor('khasra')}>
-              {photos.khasra ? (
-                <RNImage source={{ uri: photos.khasra }} style={styles.photoPreview} />
-              ) : (
-                <Text style={styles.photoLabel}>Khasra No.</Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.photoCard} onPress={() => openCameraFor('front')}>
+            {/* Building (was Front) */}
+            <View style={styles.photoCard}>
               {photos.front ? (
-                <RNImage source={{ uri: photos.front }} style={styles.photoPreview} />
+                <>
+                  <RNImage source={{ uri: photos.front }} style={styles.photoPreview} />
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity
+                      style={styles.cardActionBtn}
+                      onPress={() => {
+                        setViewerUri(photos.front);
+                        setViewerVisible(true);
+                      }}>
+                      <Text style={styles.cardActionText}>View</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.cardActionBtn}
+                      onPress={() => openCameraFor('front')}>
+                      <Text style={styles.cardActionText}>Retake</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
               ) : (
-                <Text style={styles.photoLabel}>Front</Text>
+                <TouchableOpacity
+                  style={styles.photoCardTouch}
+                  onPress={() => openCameraFor('front')}>
+                  <Text style={styles.photoLabel}>Building</Text>
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.photoCard} onPress={() => openCameraFor('left')}>
+            </View>
+
+            {/* Khasra No. */}
+            <View style={styles.photoCard}>
+              {photos.khasra ? (
+                <>
+                  <RNImage source={{ uri: photos.khasra }} style={styles.photoPreview} />
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity
+                      style={styles.cardActionBtn}
+                      onPress={() => {
+                        setViewerUri(photos.khasra);
+                        setViewerVisible(true);
+                      }}>
+                      <Text style={styles.cardActionText}>View</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.cardActionBtn}
+                      onPress={() => openCameraFor('khasra')}>
+                      <Text style={styles.cardActionText}>Retake</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <TouchableOpacity
+                  style={styles.photoCardTouch}
+                  onPress={() => openCameraFor('khasra')}>
+                  <Text style={styles.photoLabel}>Khasra No.</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Left */}
+            <View style={styles.photoCard}>
               {photos.left ? (
-                <RNImage source={{ uri: photos.left }} style={styles.photoPreview} />
+                <>
+                  <RNImage source={{ uri: photos.left }} style={styles.photoPreview} />
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity
+                      style={styles.cardActionBtn}
+                      onPress={() => {
+                        setViewerUri(photos.left);
+                        setViewerVisible(true);
+                      }}>
+                      <Text style={styles.cardActionText}>View</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.cardActionBtn}
+                      onPress={() => openCameraFor('left')}>
+                      <Text style={styles.cardActionText}>Retake</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
               ) : (
-                <Text style={styles.photoLabel}>Left</Text>
+                <TouchableOpacity
+                  style={styles.photoCardTouch}
+                  onPress={() => openCameraFor('left')}>
+                  <Text style={styles.photoLabel}>Left</Text>
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.photoCard} onPress={() => openCameraFor('right')}>
+            </View>
+
+            {/* Right */}
+            <View style={styles.photoCard}>
               {photos.right ? (
-                <RNImage source={{ uri: photos.right }} style={styles.photoPreview} />
+                <>
+                  <RNImage source={{ uri: photos.right }} style={styles.photoPreview} />
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity
+                      style={styles.cardActionBtn}
+                      onPress={() => {
+                        setViewerUri(photos.right);
+                        setViewerVisible(true);
+                      }}>
+                      <Text style={styles.cardActionText}>View</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.cardActionBtn}
+                      onPress={() => openCameraFor('right')}>
+                      <Text style={styles.cardActionText}>Retake</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
               ) : (
-                <Text style={styles.photoLabel}>Right</Text>
+                <TouchableOpacity
+                  style={styles.photoCardTouch}
+                  onPress={() => openCameraFor('right')}>
+                  <Text style={styles.photoLabel}>Right</Text>
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
+            </View>
+
+            {/* Other 1 (optional) */}
+            <View style={styles.photoCard}>
+              {photos.other1 ? (
+                <>
+                  <RNImage source={{ uri: photos.other1 }} style={styles.photoPreview} />
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity
+                      style={styles.cardActionBtn}
+                      onPress={() => {
+                        setViewerUri(photos.other1);
+                        setViewerVisible(true);
+                      }}>
+                      <Text style={styles.cardActionText}>View</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.cardActionBtn}
+                      onPress={() => openCameraFor('other1')}>
+                      <Text style={styles.cardActionText}>Retake</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <TouchableOpacity
+                  style={styles.photoCardTouch}
+                  onPress={() => openCameraFor('other1')}>
+                  <Text style={styles.photoLabel}>Other</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Other 2 (optional) */}
+            <View style={styles.photoCard}>
+              {photos.other2 ? (
+                <>
+                  <RNImage source={{ uri: photos.other2 }} style={styles.photoPreview} />
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity
+                      style={styles.cardActionBtn}
+                      onPress={() => {
+                        setViewerUri(photos.other2);
+                        setViewerVisible(true);
+                      }}>
+                      <Text style={styles.cardActionText}>View</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.cardActionBtn}
+                      onPress={() => openCameraFor('other2')}>
+                      <Text style={styles.cardActionText}>Retake</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <TouchableOpacity
+                  style={styles.photoCardTouch}
+                  onPress={() => openCameraFor('other2')}>
+                  <Text style={styles.photoLabel}>Other</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </View>
 
@@ -931,19 +1272,60 @@ export default function SurveyForm({ route }: any) {
         </View>
       </ScrollView>
 
-      <Modal visible={cameraVisible} animationType="slide" onRequestClose={() => setCameraVisible(false)}>
-        <SafeAreaView style={styles.cameraContainer}>
+      <Modal
+        visible={cameraVisible}
+        animationType="slide"
+        onRequestClose={() => setCameraVisible(false)}>
+        <SafeAreaView style={styles.cameraContainer} edges={['top', 'left', 'right', 'bottom']}>
           <View style={styles.cameraHeader}>
-            <TouchableOpacity onPress={() => setCameraVisible(false)} style={styles.cameraBackBtn}>
+            <TouchableOpacity onPress={() => {
+              setCameraVisible(false);
+              setCameraReady(false);
+            }} style={styles.cameraBackBtn}>
               <Text style={styles.topBackArrow}>←</Text>
             </TouchableOpacity>
             <Text style={styles.topHeaderTitle}>Capture Photo</Text>
           </View>
           <View style={styles.cameraViewWrapper}>
-            <CameraView style={styles.camera} ref={cameraViewRef} facing="back"/>
+            {camPermission?.granted ? (
+              <CameraView 
+                style={styles.camera} 
+                ref={cameraViewRef} 
+                facing="back"
+                onCameraReady={() => {
+                  console.log('Camera is ready');
+                  setCameraReady(true);
+                }}
+                onMountError={(error) => {
+                  console.error('Camera mount error:', error);
+                  Alert.alert('Camera Error', 'Failed to initialize camera. Please try again.');
+                  setCameraVisible(false);
+                }}
+              />
+            ) : (
+              <View style={styles.cameraErrorContainer}>
+                <Text style={styles.cameraErrorText}>Camera permission required</Text>
+                <TouchableOpacity 
+                  style={styles.retryButton}
+                  onPress={async () => {
+                    const permitted = await ensureCameraPermission();
+                    if (permitted) {
+                      // Force re-render by updating state
+                      setCameraVisible(false);
+                      setTimeout(() => setCameraVisible(true), 100);
+                    }
+                  }}
+                >
+                  <Text style={styles.retryButtonText}>Grant Permission</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
           <View style={styles.cameraControls}>
-            <TouchableOpacity onPress={handleCapture} style={styles.captureButton} disabled={cameraLoading}>
+            <TouchableOpacity
+              onPress={handleCapture}
+              style={styles.captureButton}
+              disabled={cameraLoading}>
               {cameraLoading ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
@@ -952,6 +1334,19 @@ export default function SurveyForm({ route }: any) {
             </TouchableOpacity>
           </View>
         </SafeAreaView>
+      </Modal>
+      {/* Image viewer modal */}
+      <Modal
+        visible={viewerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setViewerVisible(false)}>
+        <View style={styles.viewerBackdrop}>
+          <TouchableOpacity style={styles.viewerClose} onPress={() => setViewerVisible(false)}>
+            <Text style={styles.viewerCloseText}>✕</Text>
+          </TouchableOpacity>
+          {viewerUri ? <RNImage source={{ uri: viewerUri }} style={styles.viewerImage} /> : null}
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -1025,6 +1420,12 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     borderWidth: 1,
   },
+  photoCardTouch: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   photoLabel: {
     color: '#374151',
     fontSize: 16,
@@ -1034,6 +1435,50 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
+  },
+  cardActions: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    flexDirection: 'row',
+    gap: 6,
+  },
+  cardActionBtn: {
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  cardActionText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  viewerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  viewerImage: {
+    width: '90%',
+    height: '75%',
+    resizeMode: 'contain',
+  },
+  viewerClose: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  viewerCloseText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '700',
   },
   cameraContainer: {
     flex: 1,
@@ -1116,5 +1561,29 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#111827',
+  },
+  cameraErrorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+    padding: 20,
+  },
+  cameraErrorText: {
+    fontSize: 18,
+    color: '#6b7280',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#3b82f6',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Animated, Image } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  Animated,
+  Image,
+} from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Feather } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
@@ -114,7 +122,10 @@ export default function LoginScreen() {
       }, 1000); // Give Toast a moment to show
     } catch (err: any) {
       console.error('Login error:', err, err?.response, err?.message);
-      Toast.show({ type: 'error', text1: err.response?.data?.error || err.message || 'Network error' });
+      Toast.show({
+        type: 'error',
+        text1: err.response?.data?.error || err.message || 'Network error',
+      });
     } finally {
       setLoading(false);
     }
@@ -136,16 +147,17 @@ export default function LoginScreen() {
             shadowRadius: 12,
             elevation: 8,
             alignItems: 'center',
-          }}
-        >
+          }}>
           {/* Logo */}
           <Image
             source={require('../../assets/logo.png')}
             style={{ width: 72, height: 72, marginBottom: 12, resizeMode: 'contain' }}
           />
-          <Text className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-5">Login into your account</Text>
-          <View className="space-y-5 w-full">
-            <View className="flex-row items-center rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-sm mb-2">
+          <Text className="mb-5 text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Login into your account
+          </Text>
+          <View className="w-full space-y-5">
+            <View className="mb-2 flex-row items-center rounded-xl border border-gray-300 bg-white shadow-sm dark:border-gray-600 dark:bg-gray-800">
               <Feather
                 name="at-sign"
                 size={20}
@@ -162,9 +174,9 @@ export default function LoginScreen() {
               />
             </View>
             {errors.username && (
-              <Text className="text-red-400 text-sm font-medium ml-3 mb-2">{errors.username}</Text>
+              <Text className="mb-2 ml-3 text-sm font-medium text-red-400">{errors.username}</Text>
             )}
-            <View className="flex-row items-center rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-sm mb-2">
+            <View className="mb-2 flex-row items-center rounded-xl border border-gray-300 bg-white shadow-sm dark:border-gray-600 dark:bg-gray-800">
               <Feather
                 name="lock"
                 size={20}
@@ -182,8 +194,7 @@ export default function LoginScreen() {
               <TouchableOpacity
                 onPress={() => setShowPassword((prev) => !prev)}
                 style={{ padding: 8, marginRight: 8 }}
-                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
-              >
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}>
                 <Feather
                   name={showPassword ? 'eye' : 'eye-off'}
                   size={20}
@@ -192,9 +203,9 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
             {errors.password && (
-              <Text className="text-red-400 text-sm font-medium ml-3 mb-2">{errors.password}</Text>
+              <Text className="mb-2 ml-3 text-sm font-medium text-red-400">{errors.password}</Text>
             )}
-            <View className="flex-row items-center rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-sm mb-2">
+            <View className="mb-2 flex-row items-center rounded-xl border border-gray-300 bg-white shadow-sm dark:border-gray-600 dark:bg-gray-800">
               <Feather
                 name="users"
                 size={20}
@@ -205,8 +216,7 @@ export default function LoginScreen() {
                 selectedValue={form.role}
                 onValueChange={(v) => handleChange('role', v)}
                 style={{ flex: 1, padding: 12 }}
-                accessibilityLabel="Select role"
-              >
+                accessibilityLabel="Select role">
                 <Picker.Item label="Select Role" value="" />
                 {roles.map((r) => (
                   <Picker.Item key={r} label={r} value={r} />
@@ -214,17 +224,18 @@ export default function LoginScreen() {
               </Picker>
             </View>
             {errors.role && (
-              <Text className="text-red-400 text-sm font-medium ml-3 mb-2">{errors.role}</Text>
+              <Text className="mb-2 ml-3 text-sm font-medium text-red-400">{errors.role}</Text>
             )}
           </View>
           <TouchableOpacity
             onPress={handleLogin}
             disabled={loading}
-            className={`rounded-xl p-4 mt-4 shadow-lg w-full ${loading ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'}`}
+            className={`mt-4 w-full rounded-xl p-4 shadow-lg ${loading ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'}`}
             accessibilityLabel="Login button"
-            accessibilityRole="button"
-          >
-            <Text className="text-center text-lg font-semibold text-white tracking-wide">Login</Text>
+            accessibilityRole="button">
+            <Text className="text-center text-lg font-semibold tracking-wide text-white">
+              Login
+            </Text>
           </TouchableOpacity>
           {loading && (
             <ActivityIndicator

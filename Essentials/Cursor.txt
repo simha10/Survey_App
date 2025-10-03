@@ -1,137 +1,118 @@
-Prompt:
+📌 Cursor Prompt — Implement SQLite for Image Storage + Selective AsyncStorage Usage
 
-You are working on a React Native + Expo app for field Surveyors using Prisma + Express on the backend. The app already has working login, registration, dashboard, profile, and a dynamic Survey Form that supports Residential, Non-Residential, and Mixed assessments.
+Goal: Implement a robust offline-first storage strategy using SQLite for image metadata and AsyncStorage for lightweight app data, to improve performance, scalability, and field usability.
+Important: Strictly follow the existing project architecture and do not break or refactor unrelated modules. All changes should be additive and scoped, not destructive.
 
-Now, you need to redesign the data flow and offline handling for survey submission. Implement the following changes to the existing codebase without breaking any existing core functionality, and in full alignment with the current architecture:
+🧭 Context & Requirements
 
-🔧 Features to Implement:
+The current mobile app uses AsyncStorage heavily for caching user data, assignments, survey form entries, and offline submissions.
 
-🛑 1. Stop Online Submission on Submit
+However, AsyncStorage has a size limit of ~2 MB, making it unsuitable for storing multiple survey images.
 
-- Modify the current Submit Survey functionality.
+The new feature involves capturing 4 property photos per survey. Each photo is ~2 MB in size, and must be stored offline first (before syncing to the server / Cloudinary).
 
-- Instead of sending the survey to the backend, save it in AsyncStorage using a format like:
+Storing these photos directly in AsyncStorage is not feasible, so we will introduce SQLite as a lightweight, local metadata database, while keeping AsyncStorage for other app data.
 
-{
-  id: string, // unique local ID like survey_<timestamp>_<random>
-  data: CreateSurveyDto,
-  synced: false,
-  createdAt: ISODate,
-  surveyType: 'Residential' | 'Non-Residential' | 'Mixed'
-}
-- Store it under the key unsyncedSurveys.
+The app is offline-first, so data must be fully usable without internet.
 
-💾 2. Implement Local Master Data Caching
+🧱 SQLite Usage Plan
 
-- During login or initial app load, fetch all master data (like propertyTypes, roadTypes, etc.) from the backend, and cache it in AsyncStorage using key masterData.
+Introduce a dedicated SQLite table (e.g., SurveyImages) using expo-sqlite or react-native-sqlite-storage.
 
-await AsyncStorage.setItem('masterData', JSON.stringify(fetchedData));
+Store only metadata in SQLite:
 
-- Update all dropdown components to read from this local masterData cache.
+id (autoincrement / uuid)
 
-🧭 3. Fetch and Store Assignments
+surveyId
 
-- After successful login, fetch SurveyorAssignment data.
+photoUri (local file system path using expo-file-system)
 
-- Store it in AsyncStorage as userAssignments.
+label (e.g., "Khasra No.", "Front", "Left", "Right")
 
-- Modify survey flow to:
+timestamp
 
-- Detect if multiple assignments exist.
+Do not store actual image bytes or base64 in the DB to avoid bloat.
 
-- Prompt surveyor to choose one assignment before proceeding to Survey Form every time.
+Add indexes on surveyId and timestamp for fast lookups.
 
-- Once selected, auto-fill and lock ULB, Zone, Ward.
+📂 File Storage Plan
 
-- Mohalla dropdown should show only mohallas from the selected assignment (which are stored as an array of UUIDs).
+Use expo-file-system to save captured photos locally as compressed files.
 
-🚫 4. Offline-First Design
-- After login, the entire app (survey creation, form filling, saving, etc.) should work without internet.
+Store only the file URI in SQLite.
 
-- Only Sync Survey feature requires network access.
+Clean up files + DB entries after successful sync to the server/Cloudinary.
 
-☁️ 5. Implement Sync Data Logic
+📦 AsyncStorage Usage Plan
 
-- Use the existing "Sync Data" button in the Surveyor Dashboard.
+Use AsyncStorage selectively for:
 
-- It should:
+Caching login credentials (or use SecureStore for secure caching).
 
-  - Fetch unsynced surveys from AsyncStorage.
+Caching master data (ULB, Zone, Ward, Mohallas) after login.
 
-  - For each:
+Storing unsynced survey form data (excluding images).
 
-    - Send to /surveys/addSurvey API with auth token.
+Tracking survey submission states (saved, submitted, synced).
 
-    - If successful:
+Lightweight logs like synced survey count, dates, etc.
 
-      - Mark survey as synced: true and remove from AsyncStorage.
+👉 Do not store images or large objects in AsyncStorage.
 
-      - Or update local status for partial sync support.
+🧠 Implementation Steps
 
-  - Notify surveyor of how many surveys synced successfully or failed.
+Create a SQLite helper module (e.g., services/sqlite.ts) to handle:
 
-✅ 6. Keep Only Relevant Data in AsyncStorage
-- Keep AsyncStorage size in check (~5MB limit).
+Database initialization
 
-- After each successful sync, remove synced survey records from unsyncedSurveys.
+Table creation
 
-- Compress or flatten records if needed.
+Insert, fetch, and delete operations for SurveyImages
 
-📁 File Modifications (Structure-Aware):
-Frontend (React Native)
+Indexed queries by surveyId
 
-- src/screens/SurveyForm.tsx → Modify save & submit flow to use local storage.
+Modify image capture workflow to:
 
-- src/screens/SurveyorDashboard.tsx → Add Sync Data button and status indicator.
+Save the image to expo-file-system
 
-- src/screens/LoginScreen.tsx → Store user, assignments, masterData.
+Insert a metadata row into SQLite (instead of AsyncStorage)
 
-- src/utils/storage.ts → Add helper functions for AsyncStorage handling:
+Modify survey submission workflow to:
 
-  - saveSurveyLocally()
+When syncing, fetch metadata + files from SQLite
 
-  - getUnsyncedSurveys()
+Upload images to Cloudinary
 
-  - syncSurveysToBackend()
+Update server records
 
-- src/components/FormDropdown.tsx → Support loading options from masterData cache.
+On success, delete local file and SQLite row
 
-- src/navigation/AppNavigator.tsx → Handle assignment selection screen if multiple assignments exist.
+Keep AsyncStorage for survey data, assignments, and configs, untouched except removing image references.
 
-Backend (Express + Prisma)
+Add basic cleanup logic on logout or manual purge to clear SQLite image entries + file storage if needed.
 
-- No changes to API logic unless you want to validate duplicate survey IDs.
+⚠️ Critical Instructions for Cursor
 
-- Ensure /surveys/addSurvey accepts fully-formed survey DTO as it already does.
+Do NOT refactor unrelated features or break existing workflows.
 
-📦 Tech Stack Reminder:
+Make minimal, targeted changes to integrate SQLite cleanly.
 
-- Frontend: React Native + Expo + AsyncStorage
+Keep image handling code modular (e.g., separate service files).
 
-- Backend: Express + Prisma + PostgreSQL (Supabase)
+Do not auto-run commands — only provide clear terminal commands for me to execute manually.
 
-- Database: UUID usage for IDs
+Use async, non-blocking DB operations to keep UI smooth.
 
-- Auth: JWT-based
+Follow Expo SDK 54 compatibility for SQLite and FileSystem usage.
 
-- Master Data: Cached locally
+🧪 Post-Implementation Goals
 
-- Survey Assignments: Referenced via SurveyorAssignment table with Mohalla array (UUID[])
+The app should handle dozens of surveys offline with 4 photos each without performance degradation.
 
-🚫 DO NOT:
+SQLite should store image metadata efficiently, while AsyncStorage handles structured survey data and user/session caching.
 
-- Do not run any migration or DB commands automatically — output migration scripts if needed and let the user apply them manually.
+Survey sync should correctly pick up both AsyncStorage survey data and SQLite image metadata, push them to the backend, and clean up after success.
 
-- Do not submit surveys immediately after clicking “Submit Survey”.
+💡 Hint for Cursor: Think of AsyncStorage as “survey data cache” and SQLite + FileSystem as “media cache”. Keep them cleanly separated to maintain speed and offline capability.
 
-- Do not assume network availability during survey filling.
-
-- Do not hardcode backend URLs — use EXPO_PUBLIC_API_BASE_URL.
-
-✅ DO:
-
-- Respect the 5MB AsyncStorage limit.
-
-- Use the selected assignment context throughout the survey.
-
-- Support full offline mode post-login
+✅ End of Prompt.

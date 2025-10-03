@@ -1,5 +1,4 @@
-import * as React from 'react';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,11 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import {
-  getUnsyncedSurveys,
-  syncSurveysToBackend,
-  setSelectedAssignment,
-} from '../utils/storage';
+import { getUnsyncedSurveys, syncSurveysToBackend, setSelectedAssignment } from '../utils/storage';
 import { fetchSurveyorAssignments } from '../services/surveyService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -66,7 +61,7 @@ export default function SurveyorDashboard() {
   const [unsyncedCount, setUnsyncedCount] = useState(0);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       const onBackPress = () => {
         Alert.alert('Exit App', 'Are you sure you want to exit?', [
           {
@@ -101,7 +96,7 @@ export default function SurveyorDashboard() {
       const allSurveys = await getUnsyncedSurveys();
       // Only show ongoing if there is a survey that is not yet submitted
       const ongoing = Array.isArray(allSurveys)
-        ? allSurveys.find((s: any) => (s.status === 'incomplete'))
+        ? allSurveys.find((s: any) => s.status === 'incomplete')
         : null;
       setOngoingSurvey(ongoing && ongoing.surveyType ? ongoing : null);
     } catch (error) {
@@ -158,8 +153,8 @@ export default function SurveyorDashboard() {
             setPrimaryAssignment(assignment);
             await setSelectedAssignment(assignment); // keep selectedAssignment in sync
             Alert.alert('Primary Assignment Set', 'This assignment is now your primary.');
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -180,11 +175,12 @@ export default function SurveyorDashboard() {
                   { text: 'Cancel', style: 'cancel' },
                   {
                     text: 'Continue',
-                    onPress: () => navigation.navigate('SurveyIntermediate', {
-                      surveyId: ongoingSurvey.id,
-                      surveyType: ongoingSurvey.surveyType,
-                    })
-                  }
+                    onPress: () =>
+                      navigation.navigate('SurveyIntermediate', {
+                        surveyId: ongoingSurvey.id,
+                        surveyType: ongoingSurvey.surveyType,
+                      }),
+                  },
                 ]
               );
             },
@@ -199,8 +195,8 @@ export default function SurveyorDashboard() {
                   { text: 'Cancel', style: 'cancel' },
                   {
                     text: 'Start New',
-                    onPress: () => navigation.navigate('SurveyForm', { surveyType })
-                  }
+                    onPress: () => navigation.navigate('SurveyForm', { surveyType }),
+                  },
                 ]
               );
             },
@@ -219,8 +215,8 @@ export default function SurveyorDashboard() {
           { text: 'Cancel', style: 'cancel' },
           {
             text: 'Start New',
-            onPress: () => navigation.navigate('SurveyForm', { surveyType })
-          }
+            onPress: () => navigation.navigate('SurveyForm', { surveyType }),
+          },
         ]
       );
     }
@@ -240,8 +236,8 @@ export default function SurveyorDashboard() {
                 surveyId: ongoingSurvey.id,
                 surveyType: ongoingSurvey.surveyType,
               });
-            }
-          }
+            },
+          },
         ]
       );
     }
@@ -283,8 +279,8 @@ export default function SurveyorDashboard() {
             } finally {
               setIsSyncing(false);
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -295,7 +291,7 @@ export default function SurveyorDashboard() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#3B82F6" />
           <Text style={styles.loadingText}>Loading...</Text>
@@ -305,7 +301,7 @@ export default function SurveyorDashboard() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       {/* Assignments Section */}
       <View className="mb-4 items-center">
         <Text className="mb-2 items-center text-lg font-bold">Your Ward Assignment</Text>
@@ -323,41 +319,58 @@ export default function SurveyorDashboard() {
               </View>
             ) : (
               assignments.map((a, idx) => (
-                <View key={a.assignmentId || idx} className="mb-2 rounded-lg bg-indigo-100 p-4" style={{ position: 'relative' }}>
+                <View
+                  key={a.assignmentId || idx}
+                  className="mb-2 rounded-lg bg-indigo-100 p-4"
+                  style={{ position: 'relative' }}>
                   {/* Primary Button Top Right */}
                   <TouchableOpacity
                     style={{
                       position: 'absolute',
                       top: 8,
                       right: 8,
-                      backgroundColor: primaryAssignment && a.assignmentId === primaryAssignment.assignmentId ? '#22c55e' : '#3b82f6',
+                      backgroundColor:
+                        primaryAssignment && a.assignmentId === primaryAssignment.assignmentId
+                          ? '#22c55e'
+                          : '#3b82f6',
                       paddingVertical: 4,
                       paddingHorizontal: 12,
                       borderRadius: 16,
                       zIndex: 10,
                     }}
                     onPress={() => handleSetPrimary(a)}
-                    disabled={primaryAssignment && a.assignmentId === primaryAssignment.assignmentId}
-                  >
+                    disabled={
+                      primaryAssignment && a.assignmentId === primaryAssignment.assignmentId
+                    }>
                     <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 12 }}>
                       Primary
                     </Text>
                   </TouchableOpacity>
                   <Text>
                     <Text style={{ fontWeight: 'bold', color: '#1e293b' }}>ULB: </Text>
-                    <Text style={{ color: '#3b82f6', fontWeight: '600' }}>{a.ulb?.ulbName || a.ulb?.ulbId || 'N/A'}</Text>
+                    <Text style={{ color: '#3b82f6', fontWeight: '600' }}>
+                      {a.ulb?.ulbName || a.ulb?.ulbId || 'N/A'}
+                    </Text>
                   </Text>
                   <Text>
                     <Text style={{ fontWeight: 'bold', color: '#1e293b' }}>Zone: </Text>
-                    <Text style={{ color: '#3b82f6', fontWeight: '600' }}>{a.zone?.zoneName || a.zone?.zoneId || 'N/A'}</Text>
+                    <Text style={{ color: '#3b82f6', fontWeight: '600' }}>
+                      {a.zone?.zoneName || a.zone?.zoneId || 'N/A'}
+                    </Text>
                   </Text>
                   <Text>
                     <Text style={{ fontWeight: 'bold', color: '#1e293b' }}>Ward: </Text>
-                    <Text style={{ color: '#3b82f6', fontWeight: '600' }}>{a.ward?.wardName || a.ward?.wardId || 'N/A'}</Text>
+                    <Text style={{ color: '#3b82f6', fontWeight: '600' }}>
+                      {a.ward?.wardName || a.ward?.wardId || 'N/A'}
+                    </Text>
                   </Text>
                   <Text>
                     <Text style={{ fontWeight: 'bold', color: '#1e293b' }}>Mohallas: </Text>
-                    <Text style={{ color: '#3b82f6', fontWeight: '600' }}>{a.mohallas && a.mohallas.length > 0 ? a.mohallas.map((m: any) => m.mohallaName).join(', ') : 'N/A'}</Text>
+                    <Text style={{ color: '#3b82f6', fontWeight: '600' }}>
+                      {a.mohallas && a.mohallas.length > 0
+                        ? a.mohallas.map((m: any) => m.mohallaName).join(', ')
+                        : 'N/A'}
+                    </Text>
                   </Text>
                 </View>
               ))
@@ -383,16 +396,12 @@ export default function SurveyorDashboard() {
         <Card
           title="Residential"
           onPress={() => handleCardPress('Residential')}
-          subtitle={
-            ongoingSurvey ? 'Continue ongoing survey first' : 'Non-Commercial Category'
-          }
+          subtitle={ongoingSurvey ? 'Continue ongoing survey first' : 'Non-Commercial Category'}
         />
         <Card
           title="Non-Residential"
           onPress={() => handleCardPress('Non-Residential')}
-          subtitle={
-            ongoingSurvey ? 'Continue ongoing survey first' : 'Commercial Category'
-          }
+          subtitle={ongoingSurvey ? 'Continue ongoing survey first' : 'Commercial Category'}
         />
         <Card
           title="Mixed"

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker'; // If not available, use a simple input for now
@@ -17,7 +17,7 @@ export default function SurveyCountScreen() {
   const [showEndPicker, setShowEndPicker] = useState(false);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       const fetchLog = async () => {
         let userRaw = await AsyncStorage.getItem('user');
         if (!userRaw) userRaw = await AsyncStorage.getItem('userInfo');
@@ -32,14 +32,14 @@ export default function SurveyCountScreen() {
   );
 
   const filtered = log.filter(
-    entry =>
+    (entry) =>
       (!userId || entry.userId === userId) &&
       (!startDate || new Date(entry.syncedAt) >= startDate) &&
       (!endDate || new Date(entry.syncedAt) <= endDate)
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={styles.backButtonText}>←</Text>
