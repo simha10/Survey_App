@@ -25,20 +25,32 @@ export default function SplashScreen() {
         useNativeDriver: true,
       }),
     ]).start();
+    
     const timeout = setTimeout(async () => {
-      const token = await AsyncStorage.getItem('userToken');
-      if (token) {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'AuthenticatedDrawer' }],
-        });
-      } else {
+      try {
+        const token = await AsyncStorage.getItem('userToken');
+        
+        if (token) {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'AuthenticatedDrawer' }],
+          });
+        } else {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'LoginScreen' }],
+          });
+        }
+      } catch (error) {
+        console.error('SplashScreen navigation error:', error);
+        // Fallback to login screen on error
         navigation.reset({
           index: 0,
           routes: [{ name: 'LoginScreen' }],
         });
       }
     }, 3000);
+    
     return () => clearTimeout(timeout);
   }, [logoScale, textOpacity, navigation]);
 

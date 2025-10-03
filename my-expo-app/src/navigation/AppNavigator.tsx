@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createStackNavigator } from '@react-navigation/stack';
-import { View } from 'react-native';
+import { View, Alert } from 'react-native';
 import SideNav from '../components/SideNav';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -86,9 +86,22 @@ export default function AppNavigator() {
   const { userRole } = useAuth();
   const { theme } = useTheme();
 
+  // Navigation error handler
+  const handleNavigationError = (error: any) => {
+    console.error('Navigation error:', error);
+    Alert.alert(
+      'Navigation Error', 
+      'An error occurred while navigating. Please try again.',
+      [{ text: 'OK' }]
+    );
+  };
+
   return (
     <View key={theme} className={theme === 'dark' ? 'dark flex-1' : 'flex-1'}>
-      <NavigationContainer>
+      <NavigationContainer
+        onUnhandledAction={handleNavigationError}
+        fallback={<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} />}
+      >
         <Stack.Navigator initialRouteName="SplashScreen">
           <Stack.Screen
             name="SplashScreen"
