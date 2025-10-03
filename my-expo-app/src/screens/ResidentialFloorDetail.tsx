@@ -1,4 +1,4 @@
-import * as React from 'react';
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { 
   View, 
@@ -213,7 +213,7 @@ export default function ResidentialFloorDetail() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
         <View style={styles.loadingContainer}>
           <Text>Loading form data...</Text>
         </View>
@@ -222,7 +222,7 @@ export default function ResidentialFloorDetail() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       <View style={styles.topHeader}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.topBackButton}>
           <Text style={styles.topBackArrow}>←</Text>

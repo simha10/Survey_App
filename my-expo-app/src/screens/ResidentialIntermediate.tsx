@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -38,7 +38,7 @@ export default function ResidentialIntermediate() {
 
   const surveyId = (route.params as any)?.surveyId;
 
-  const loadSurveyData = React.useCallback(async () => {
+  const loadSurveyData = useCallback(async () => {
     try {
       if (!surveyId) {
         Alert.alert('Error', 'Survey ID not found');
@@ -58,7 +58,7 @@ export default function ResidentialIntermediate() {
   }, [surveyId, navigation]);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       loadSurveyData();
     }, [loadSurveyData])
   );
@@ -169,7 +169,7 @@ export default function ResidentialIntermediate() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
         <View style={styles.loadingContainer}>
           <Text>Loading floor details...</Text>
         </View>
@@ -179,7 +179,7 @@ export default function ResidentialIntermediate() {
 
   if (!surveyData) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>No survey data found</Text>
           <TouchableOpacity 
@@ -196,7 +196,7 @@ export default function ResidentialIntermediate() {
   const floors = surveyData.data && surveyData.data.residentialPropertyAssessments ? surveyData.data.residentialPropertyAssessments : [];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       <View style={styles.topHeader}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.topBackButton}>
           <Text style={styles.topBackArrow}>←</Text>

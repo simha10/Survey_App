@@ -22,7 +22,7 @@ interface FormDropdownProps {
  * FormDropdown is now offline-first: if masterDataKey is provided, options are always loaded from masterData in AsyncStorage.
  * No direct API calls are made here.
  */
-const FormDropdown = forwardRef<Picker, FormDropdownProps>(
+const FormDropdown = forwardRef<Picker<string | number>, FormDropdownProps>(
   ({ label, required, items = [], value, onValueChange, masterDataKey, labelKey = 'name', valueKey = 'id' }, ref) => {
     const [options, setOptions] = useState(items);
 

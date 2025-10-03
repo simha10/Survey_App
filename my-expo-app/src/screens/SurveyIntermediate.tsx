@@ -1,5 +1,4 @@
-import * as React from 'react';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -42,7 +41,7 @@ export default function SurveyIntermediate() {
   }, []);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       loadSurveyData();
     }, [])
   );
@@ -196,7 +195,7 @@ export default function SurveyIntermediate() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
         <View style={styles.loadingContainer}>
           <Text>Loading survey data...</Text>
         </View>
@@ -206,7 +205,7 @@ export default function SurveyIntermediate() {
 
   if (!surveyData) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>No survey data found</Text>
           <TouchableOpacity 
@@ -227,7 +226,7 @@ export default function SurveyIntermediate() {
   const nonResidentialFloorCount = surveyData.data && surveyData.data.nonResidentialPropertyAssessments ? surveyData.data.nonResidentialPropertyAssessments.length : 0;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       <ScrollView>
         <View style={styles.section}>
           <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#111827', marginBottom: 8 }}>Survey Information</Text>

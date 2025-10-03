@@ -11,7 +11,9 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Feather } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
+import { File } from 'expo-file-system';
 import { insertImagesForSurvey, cleanupSurveyImagesBySurveyId } from '../services/imageStorage';
+import { insertSurveyImage } from '../services/sqlite';
 
 interface FormData {
   ulbId: string;
@@ -175,14 +177,16 @@ export default function SurveyForm({ route }: any) {
       );
       
       const fileName = `survey_${surveyIdState || 'new'}_${cameraKey}_${Date.now()}.jpg`;
-      const destUri = `${FileSystem.documentDirectory}${fileName}`;
+      const destUri = `${FileSystem.Paths.document.uri}${fileName}`;
       try {
-        await FileSystem.copyAsync({ from: compressed.uri, to: destUri });
+        const sourceFile = new File(compressed.uri);
+        const destFile = new File(destUri);
+        sourceFile.copy(destFile);
       } catch (copyErr) {
         console.error('File copy failed, using temp URI', copyErr);
       }
-      const info = await FileSystem.getInfoAsync(destUri);
-      const finalUri = info.exists ? destUri : compressed.uri;
+      const destFile = new File(destUri);
+      const finalUri = destFile.exists ? destUri : compressed.uri;
       setPhotos(prev => ({ ...prev, [cameraKey]: finalUri }));
       try {
         await insertSurveyImage({
@@ -597,7 +601,7 @@ export default function SurveyForm({ route }: any) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading data...</Text>
         </View>
@@ -606,7 +610,7 @@ export default function SurveyForm({ route }: any) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       <View style={styles.topHeader}>
         <TouchableOpacity onPress={handleBackConfirm} style={styles.topBackButton}>
           <Text style={styles.topBackArrow}>←</Text>
@@ -1060,7 +1064,7 @@ export default function SurveyForm({ route }: any) {
       </ScrollView>
 
       <Modal visible={cameraVisible} animationType="slide" onRequestClose={() => setCameraVisible(false)}>
-        <SafeAreaView style={styles.cameraContainer}>
+        <SafeAreaView style={styles.cameraContainer} edges={['top', 'left', 'right', 'bottom']}>
           <View style={styles.cameraHeader}>
             <TouchableOpacity onPress={() => setCameraVisible(false)} style={styles.cameraBackBtn}>
               <Text style={styles.topBackArrow}>←</Text>
