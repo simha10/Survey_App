@@ -3,8 +3,9 @@ import { PrismaClient, QCStatusEnum, QCErrorType } from '@prisma/client';
 const prisma = new PrismaClient();
 
 /**
- * Fetch property list for QC, joining all required master/mapping tables and including latest QC status.
- * Supports filtering by property type, ward, mohalla, zone, and search by owner/respondent name.
+ * Fetch property list for QC based on user role and QC level access.
+ * Level 1 (Survey QC): Supervisor can see surveys with QC level 1 or no QC record
+ * Level 2 (In-Office QC): Admin can see surveys with QC level 2 or surveys that passed level 1
  */
 export async function getPropertyListForQC({
   propertyTypeId,
@@ -18,6 +19,9 @@ export async function getPropertyListForQC({
   take = 20,
   fromDate,
   toDate,
+  userRole,
+  qcLevel,
+  qcDone, // Filter for QC Done status: 'ALL', 'YES', 'NO'
 }: {
   propertyTypeId?: number;
   surveyTypeId?: number;
@@ -30,6 +34,9 @@ export async function getPropertyListForQC({
   take?: number;
   fromDate?: string;
   toDate?: string;
+  userRole?: string;
+  qcLevel?: number;
+  qcDone?: string;
 }) {
   // Build where clause for filtering
   const where: any = {};
@@ -75,7 +82,7 @@ export async function getPropertyListForQC({
   // Debug: log the where clause
   console.log('QC Property List WHERE:', JSON.stringify(where, null, 2));
 
-  // Fetch surveys with joins and latest QC status
+  // Fetch surveys with joins and QC filtering
   const surveys = await prisma.surveyDetails.findMany({
     where,
     skip,
@@ -88,7 +95,8 @@ export async function getPropertyListForQC({
       locationDetails: {
         include: {
           propertyType: true,
-          roadType: true,        },
+          roadType: true,
+        },
       },
       propertyDetails: true,
       ownerDetails: true,
@@ -97,18 +105,51 @@ export async function getPropertyListForQC({
       nonResidentialPropertyAssessments: true,
       qcRecords: {
         orderBy: [{ qcLevel: 'desc' }, { reviewedAt: 'desc' }],
-        take: 1, // Only latest QC record
       },
     },
     orderBy: { createdAt: 'desc' },
   });
 
-  return surveys;
+  // Apply QC level and status filtering after fetch
+  return surveys.filter(survey => {
+    const latestQC = survey.qcRecords[0];
+    const currentQCLevel = latestQC?.qcLevel || 0;
+    const currentQCStatus = latestQC?.qcStatus;
+
+    // For Supervisor (Level 1): Show surveys without QC or at level 1
+    if (userRole === 'SUPERVISOR' && qcLevel === 1) {
+      // Filter by QC Done status if specified
+      if (qcDone === 'YES') {
+        return currentQCLevel === 1 && currentQCStatus === 'SURVEY_QC_DONE';
+      }
+      if (qcDone === 'NO') {
+        return currentQCLevel === 0 || (currentQCLevel === 1 && currentQCStatus !== 'SURVEY_QC_DONE');
+      }
+      // 'ALL' or no filter: show all surveys for level 1
+      return currentQCLevel <= 1;
+    }
+
+    // For Admin (Level 2): Only show surveys that passed level 1
+    if (userRole === 'ADMIN' && qcLevel === 2) {
+      // Filter by QC Done status if specified
+      if (qcDone === 'YES') {
+        return currentQCLevel === 2 && currentQCStatus === 'IN_OFFICE_QC_DONE';
+      }
+      if (qcDone === 'NO') {
+        return currentQCLevel === 1 && currentQCStatus === 'SURVEY_QC_DONE';
+      }
+      // 'ALL' or no filter: show all surveys that passed level 1
+      return currentQCLevel >= 1 && currentQCStatus === 'SURVEY_QC_DONE';
+    }
+
+    // Default: show all surveys
+    return true;
+  });
 }
 
 /**
  * Update survey details and create a new QCRecord for a given survey and level.
- * Enforces GIS ID uniqueness before approval.
+ * Enforces GIS ID uniqueness before approval and handles automatic status progression.
  */
 export async function updateSurveyAndQC({
   surveyUniqueCode,
@@ -154,6 +195,22 @@ export async function updateSurveyAndQC({
     ? (errorType as QCErrorType)
     : QCErrorType.NONE;
   
+  // Map QC status based on level for automatic progression
+  let finalQCStatus = qcStatus;
+  if (qcLevel === 1) {
+    if (qcStatus === 'APPROVED') {
+      finalQCStatus = 'SURVEY_QC_DONE';
+    } else if (qcStatus === 'REJECTED') {
+      finalQCStatus = 'REVERTED_TO_SURVEY';
+    }
+  } else if (qcLevel === 2) {
+    if (qcStatus === 'APPROVED') {
+      finalQCStatus = 'IN_OFFICE_QC_DONE';
+    } else if (qcStatus === 'REJECTED') {
+      finalQCStatus = 'REVERTED_TO_IN_OFFICE';
+    }
+  }
+  
   // Update survey details
   await prisma.surveyDetails.update({
     where: { surveyUniqueCode },
@@ -165,7 +222,7 @@ export async function updateSurveyAndQC({
     data: {
       surveyUniqueCode,
       qcLevel,
-      qcStatus,
+      qcStatus: finalQCStatus,
       reviewedById,
       remarks,
       isError,
@@ -383,4 +440,148 @@ export async function getFullPropertyDetails(surveyUniqueCode: string) {
     console.error('QC Service: Database error:', error);
     throw error;
   }
+}
+
+/**
+ * Get surveys for MIS reports - view-only with current QC status display
+ * Shows all surveys with their current QC level and status for reporting purposes
+ */
+export async function getMISReports({
+  propertyTypeId,
+  surveyTypeId,
+  wardId,
+  mohallaId,
+  zoneId,
+  ulbId,
+  search,
+  skip = 0,
+  take = 20,
+  fromDate,
+  toDate,
+  qcStatusFilter, // Filter by specific QC status
+}: {
+  propertyTypeId?: number;
+  surveyTypeId?: number;
+  wardId?: string;
+  mohallaId?: string;
+  zoneId?: string;
+  ulbId?: string;
+  search?: string;
+  skip?: number;
+  take?: number;
+  fromDate?: string;
+  toDate?: string;
+  qcStatusFilter?: string;
+}) {
+  // Build where clause for filtering
+  const where: any = {};
+  if (wardId) where.wardId = wardId;
+  if (mohallaId) where.mohallaId = mohallaId;
+  if (zoneId) where.zoneId = zoneId;
+  if (ulbId) where.ulbId = ulbId;
+
+  // Merge locationDetails filter
+  if (propertyTypeId) {
+    where.locationDetails = { ...(where.locationDetails || {}), propertyTypeId };
+  }
+
+  // Filter by surveyTypeId
+  if (surveyTypeId) {
+    where.surveyTypeId = surveyTypeId;
+  }
+
+  // Date range filter
+  if (fromDate && toDate) {
+    where.entryDate = {
+      gte: new Date(fromDate),
+      lte: new Date(toDate),
+    };
+  } else if (fromDate) {
+    where.entryDate = {
+      gte: new Date(fromDate),
+    };
+  } else if (toDate) {
+    where.entryDate = {
+      lte: new Date(toDate),
+    };
+  }
+
+  // Search by owner/respondent name
+  if (search) {
+    where.OR = [
+      { ownerDetails: { ownerName: { contains: search, mode: 'insensitive' } } },
+      { propertyDetails: { respondentName: { contains: search, mode: 'insensitive' } } },
+    ];
+  }
+
+  // Fetch surveys with all QC records for MIS reporting
+  const surveys = await prisma.surveyDetails.findMany({
+    where,
+    skip,
+    take,
+    include: {
+      ulb: true,
+      zone: true,
+      ward: true,
+      mohalla: true,
+      locationDetails: {
+        include: {
+          propertyType: true,
+          roadType: true,
+        },
+      },
+      propertyDetails: true,
+      ownerDetails: true,
+      otherDetails: true,
+      residentialPropertyAssessments: true,
+      nonResidentialPropertyAssessments: true,
+      qcRecords: {
+        orderBy: [{ qcLevel: 'desc' }, { reviewedAt: 'desc' }],
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  // Add current QC status information to each survey
+  const surveysWithQCStatus = surveys.map(survey => {
+    const latestQC = survey.qcRecords[0];
+    const currentQCLevel = latestQC?.qcLevel || 0;
+    const currentQCStatus = latestQC?.qcStatus || 'SURVEY_QC_PENDING';
+    
+    // Determine display status for MIS reports
+    let displayQCLevel = 'Survey QC';
+    if (currentQCLevel === 1 && currentQCStatus === 'SURVEY_QC_DONE') {
+      displayQCLevel = 'Survey QC Done';
+    } else if (currentQCLevel === 2) {
+      displayQCLevel = 'In-Office QC';
+      if (currentQCStatus === 'IN_OFFICE_QC_DONE') {
+        displayQCLevel = 'In-Office QC Done';
+      }
+    } else if (currentQCStatus.includes('REVERTED')) {
+      displayQCLevel = 'Reverted for Correction';
+    }
+
+    return {
+      ...survey,
+      currentQCLevel,
+      currentQCStatus,
+      displayQCLevel,
+      qcProgress: {
+        level1Completed: currentQCLevel >= 1 && currentQCStatus === 'SURVEY_QC_DONE',
+        level2Completed: currentQCLevel >= 2 && currentQCStatus === 'IN_OFFICE_QC_DONE',
+        hasErrors: latestQC?.isError || false,
+        lastReviewedAt: latestQC?.reviewedAt,
+      }
+    };
+  });
+
+  // Filter by QC status if specified
+  if (qcStatusFilter) {
+    return surveysWithQCStatus.filter(survey => 
+      survey.currentQCStatus === qcStatusFilter ||
+      survey.displayQCLevel.toLowerCase().includes(qcStatusFilter.toLowerCase())
+    );
+  }
+
+  return surveysWithQCStatus;
 } 

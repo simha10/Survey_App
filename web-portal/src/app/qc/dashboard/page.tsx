@@ -54,7 +54,7 @@ interface QCRecord {
   };
 }
 
-const QCManagementPage: React.FC = () => {
+const QCDashboardPage: React.FC = () => {
   const [stats, setStats] = useState<QCStats | null>(null);
   const [recentActions, setRecentActions] = useState<QCRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -363,4 +363,4 @@ const QCManagementPage: React.FC = () => {
   );
 };
 
-export default QCManagementPage;
+export default QCDashboardPage;

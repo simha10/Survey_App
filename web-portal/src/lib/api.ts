@@ -322,9 +322,15 @@ export const qcApi = {
     return response.data;
   },
   
-  // Property list for QC (with filters/search)
+  // Enhanced property list for QC with role-based filtering
   getPropertyList: async (params?: any): Promise<any[]> => {
     const response = await apiClient.get('/api/qc/property-list', { params });
+    return response.data;
+  },
+
+  // MIS Reports - view-only access
+  getMISReports: async (params?: any): Promise<any[]> => {
+    const response = await apiClient.get('/api/qc/mis-reports', { params });
     return response.data;
   },
 
@@ -340,9 +346,27 @@ export const qcApi = {
     return response.data;
   },
 
-  // Update survey QC with remarks
+  // Update survey QC with enhanced level progression
   updateSurveyQC: async (surveyUniqueCode: string, data: any): Promise<any> => {
     const response = await apiClient.put(`/api/qc/survey/${surveyUniqueCode}`, data);
+    return response.data;
+  },
+
+  // Bulk QC action with level support
+  bulkQCAction: async (data: any): Promise<any> => {
+    const response = await apiClient.post('/api/qc/bulk-qc', data);
+    return response.data;
+  },
+
+  // Get full property details for QC edit
+  getPropertyDetails: async (surveyUniqueCode: string): Promise<any> => {
+    const response = await apiClient.get(`/api/qc/property/${surveyUniqueCode}`);
+    return response.data;
+  },
+
+  // Get QC history for a survey
+  getQCHistory: async (surveyUniqueCode: string): Promise<any> => {
+    const response = await apiClient.get(`/api/qc/history/${surveyUniqueCode}`);
     return response.data;
   },
 };

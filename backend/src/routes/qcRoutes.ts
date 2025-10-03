@@ -35,8 +35,11 @@ router.get('/user/:userId', authenticateJWT, (req, res) => {
   res.status(501).json({ error: 'QC functionality not implemented yet' });
 });
 
-// Property list for QC (with filters/search)
-router.get('/property-list', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN']), qcController.getPropertyList);
+// Property list for QC (with filters/search and role-based access)
+router.get('/property-list', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN', 'SUPERVISOR']), qcController.getPropertyList);
+
+// MIS Reports - view-only access for all authorized users
+router.get('/mis-reports', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN', 'SUPERVISOR', 'SURVEYOR']), qcController.getMISReports);
 
 // Single QC update (edit + approve/reject)
 router.put('/survey/:surveyUniqueCode', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN', 'SUPERVISOR']), qcController.updateSurveyQC);
@@ -47,13 +50,13 @@ router.post('/bulk-qc', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN',
 // QC history for a survey
 router.get('/history/:surveyUniqueCode', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN']), qcController.getQCHistory);
 
-// Full property details for QC edit page
-router.get('/property/:surveyUniqueCode', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN']), qcController.getFullPropertyDetails);
+// Full property details for QC edit page (role-based access)
+router.get('/property/:surveyUniqueCode', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN', 'SUPERVISOR']), qcController.getFullPropertyDetails);
 
 // QC remarks summary for a survey
-router.get('/remarks/:surveyUniqueCode', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN']), qcController.getQCRemarksSummary);
+router.get('/remarks/:surveyUniqueCode', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN', 'SUPERVISOR']), qcController.getQCRemarksSummary);
 
 // QC record for specific level
-router.get('/level/:surveyUniqueCode/:qcLevel', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN']), qcController.getQCByLevel);
+router.get('/level/:surveyUniqueCode/:qcLevel', authenticateJWT, restrictToRoles(['SUPERADMIN', 'ADMIN', 'SUPERVISOR']), qcController.getQCByLevel);
 
 export default router; 

@@ -18,6 +18,9 @@ export const getPropertyList = async (req: Request, res: Response) => {
       take,
       fromDate,
       toDate,
+      userRole,
+      qcLevel,
+      qcDone,
     } = req.query;
     const result = await qcService.getPropertyListForQC({
       propertyTypeId: propertyTypeId ? Number(propertyTypeId) : undefined,
@@ -31,6 +34,9 @@ export const getPropertyList = async (req: Request, res: Response) => {
       take: take ? Number(take) : 20,
       fromDate: fromDate as string,
       toDate: toDate as string,
+      userRole: userRole as string,
+      qcLevel: qcLevel ? Number(qcLevel) : undefined,
+      qcDone: qcDone as string,
     });
     try {
       const count = Array.isArray(result) ? result.length : (result ? 1 : 0);
@@ -173,6 +179,55 @@ export const getQCByLevel = async (req: Request, res: Response) => {
     if (!result) {
       return res.status(404).json({ error: "QC record not found for this level" });
     }
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Get MIS reports - view-only data with QC status information
+ */
+export const getMISReports = async (req: Request, res: Response) => {
+  try {
+    const {
+      propertyTypeId,
+      surveyTypeId,
+      wardId,
+      mohallaId,
+      zoneId,
+      ulbId,
+      search,
+      skip,
+      take,
+      fromDate,
+      toDate,
+      qcStatusFilter,
+    } = req.query;
+    
+    const result = await qcService.getMISReports({
+      propertyTypeId: propertyTypeId ? Number(propertyTypeId) : undefined,
+      surveyTypeId: surveyTypeId ? Number(surveyTypeId) : undefined,
+      wardId: wardId as string,
+      mohallaId: mohallaId as string,
+      zoneId: zoneId as string,
+      ulbId: ulbId as string,
+      search: search as string,
+      skip: skip ? Number(skip) : 0,
+      take: take ? Number(take) : 20,
+      fromDate: fromDate as string,
+      toDate: toDate as string,
+      qcStatusFilter: qcStatusFilter as string,
+    });
+    
+    try {
+      const count = Array.isArray(result) ? result.length : (result ? 1 : 0);
+      res.setHeader('X-Total-Count', String(count));
+    } catch (e) {
+      // ignore header set errors
+    }
+    
+    console.log('MIS Reports RESULT COUNT:', Array.isArray(result) ? result.length : 0);
     res.json(result);
   } catch (error: any) {
     res.status(500).json({ error: error.message });

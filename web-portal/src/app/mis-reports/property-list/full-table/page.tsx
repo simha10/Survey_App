@@ -14,11 +14,12 @@ import {
 import { Pencil, Trash2 } from "lucide-react";
 import { masterDataApi, qcApi } from "@/lib/api";
 
-const ERROR_TYPE_OPTIONS = [
-  { value: "MISSING", label: "Missing" },
-  { value: "DUPLICATE", label: "Duplicate" },
-  { value: "OTHER", label: "Other" },
-  { value: "NONE", label: "None" },
+const QC_STATUS_OPTIONS = [
+  { value: "", label: "All Records" },
+  { value: "SURVEY_QC_DONE", label: "Survey QC Done" },
+  { value: "IN_OFFICE_QC_DONE", label: "In-Office QC Done" },
+  { value: "RI_QC_DONE", label: "RI QC Done" },
+  { value: "FINAL_QC_DONE", label: "Final QC Done" },
 ];
 
 // Keep compatibility with previous code, but prefer using qcApi which
@@ -48,21 +49,8 @@ export default function PropertyListResultsPage() {
   const [total, setTotal] = useState(0);
   const [error, setError] = useState("");
 
-  // For inline edits
-  const [remarks, setRemarks] = useState<{ [key: string]: string }>({});
-  const [errorTypes, setErrorTypes] = useState<{ [key: string]: string }>({});
-
-  // Add state for all editable remarks and usernames
-  const [gisRemarks, setGisRemarks] = useState<{ [key: string]: string }>({});
-  const [surveyTeamRemarks, setSurveyTeamRemarks] = useState<{
-    [key: string]: string;
-  }>({});
-  const [riRemarks, setRiRemarks] = useState<{ [key: string]: string }>({});
-  const [assessmentRemarks, setAssessmentRemarks] = useState<{
-    [key: string]: string;
-  }>({});
-
-  const [plotAreaGIS, setPlotAreaGIS] = useState<{ [key: string]: string }>({});
+  // Read-only state for display only
+  const [qcStatusFilter, setQcStatusFilter] = useState<string>("");
   const [wards, setWards] = useState<any[]>([]);
 
   useEffect(() => {
@@ -80,6 +68,7 @@ export default function PropertyListResultsPage() {
     toDate,
     search,
     page,
+    qcStatusFilter,
   ]);
 
   const fetchProperties = async () => {
@@ -96,17 +85,20 @@ export default function PropertyListResultsPage() {
       if (fromDate) params.append("fromDate", fromDate);
       if (toDate) params.append("toDate", toDate);
       if (search) params.append("search", search);
+      if (qcStatusFilter) params.append("qcStatusFilter", qcStatusFilter);
       params.append("skip", ((page - 1) * PAGE_SIZE).toString());
       params.append("take", PAGE_SIZE.toString());
-      // Use qcApi.getPropertyList with params object
+      // Use qcApi.getMISReports for read-only MIS reports
       const paramObj: any = {};
       params.forEach((value, key) => {
         paramObj[key] = value;
       });
-      const data = await qcApi.getPropertyList(paramObj);
+      const data = await qcApi.getMISReports(paramObj);
       setProperties(data || []);
       setTotal(
-        data.length < PAGE_SIZE ? (page - 1) * PAGE_SIZE + data.length : page * PAGE_SIZE + 1
+        data.length < PAGE_SIZE
+          ? (page - 1) * PAGE_SIZE + data.length
+          : page * PAGE_SIZE + 1
       );
     } catch (e) {
       setError("Error fetching property list");
@@ -133,86 +125,10 @@ export default function PropertyListResultsPage() {
       ? "Property List (Mix)"
       : "Property List (QC Results)";
 
-  const handleEdit = (surveyUniqueCode: string) => {
-    window.open(
-      `/mis-reports/property-list/${surveyUniqueCode}/edit?surveyTypeId=${surveyTypeId}`,
-      "_blank"
-    );
-  };
-
-  const handleDelete = (surveyUniqueCode: string) => {
-    // TODO: Implement delete logic
-    toast("Delete not implemented");
-  };
-
-  const handleRemarkChange = (id: string, value: string) => {
-    setRemarks((prev) => ({ ...prev, [id]: value }));
-  };
-
-  const handleErrorTypeChange = (id: string, value: string) => {
-    setErrorTypes((prev) => ({ ...prev, [id]: value }));
-  };
-
-  const handleGisRemarkChange = (id: string, value: string) => {
-    setGisRemarks((prev) => ({ ...prev, [id]: value }));
-  };
-
-  const handleSurveyTeamRemarkChange = (id: string, value: string) => {
-    setSurveyTeamRemarks((prev) => ({ ...prev, [id]: value }));
-  };
-
-  const handleRIRemarkChange = (id: string, value: string) => {
-    setRiRemarks((prev) => ({ ...prev, [id]: value }));
-  };
-
-  const handleAssessmentRemarkChange = (id: string, value: string) => {
-    setAssessmentRemarks((prev) => ({ ...prev, [id]: value }));
-  };
-
-  const handlePlotAreaGISChange = (id: string, value: string) => {
-    setPlotAreaGIS((prev) => ({ ...prev, [id]: value }));
-  };
-
-  const handleSendForQC = async (prop: any) => {
-    try {
-      setLoading(true);
-      const surveyUniqueCode = prop.surveyUniqueCode;
-      const payload = {
-        updateData: {
-          assessmentRemark:
-            assessmentRemarks[surveyUniqueCode] ?? prop.assessmentRemark ?? "",
-          plotAreaGIS:
-            plotAreaGIS[surveyUniqueCode] ??
-            prop.otherDetails?.plotAreaGIS ??
-            "",
-        },
-        qcLevel: prop.qcRecords?.[0]?.qcLevel || 1,
-        qcStatus: "PENDING", // or next status as per your flow
-        reviewedById: prop.user?.userId || "",
-        errorType:
-          errorTypes[surveyUniqueCode] ||
-          prop.qcRecords?.[0]?.errorType ||
-          "NONE",
-        gisTeamRemark:
-          gisRemarks[surveyUniqueCode] ??
-          prop.qcRecords?.[0]?.gisTeamRemark ??
-          "",
-        surveyTeamRemark:
-          surveyTeamRemarks[surveyUniqueCode] ??
-          prop.qcRecords?.[0]?.surveyTeamRemark ??
-          "",
-        RIRemark:
-          riRemarks[surveyUniqueCode] ?? prop.qcRecords?.[0]?.RIRemark ?? "",
-      };
-      // Use qcApi.updateQC which sends auth headers automatically
-      await qcApi.updateQC(surveyUniqueCode, payload);
-      toast.success("Remarks sent for next level QC");
-      fetchProperties();
-    } catch (e) {
-      toast.error("Error sending for QC");
-    } finally {
-      setLoading(false);
-    }
+  const handleQcStatusFilterChange = (value: string) => {
+    setQcStatusFilter(value);
+    // Refetch data with new filter
+    fetchProperties();
   };
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -231,6 +147,25 @@ export default function PropertyListResultsPage() {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">{surveyTypeHeading}</h1>
+
+      {/* QC Status Filter */}
+      <div className="mb-4 flex items-center gap-4">
+        <label className="text-sm font-medium text-gray-300">
+          Filter by QC Status:
+        </label>
+        <select
+          className="border rounded px-3 py-2 bg-black text-white min-w-48"
+          value={qcStatusFilter}
+          onChange={(e) => handleQcStatusFilterChange(e.target.value)}
+        >
+          {QC_STATUS_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {error && <div className="text-red-500 mb-4">{error}</div>}
       <div className="bg-gray-700 shadow-md rounded-lg overflow-x-auto W-full">
         <Table className="w-full border-blue-700 border-2">
@@ -249,7 +184,8 @@ export default function PropertyListResultsPage() {
               <TableHead>Owner Name</TableHead>
               <TableHead>Father/Hub Name</TableHead>
               <TableHead>Respondent</TableHead>
-              <TableHead>Action</TableHead>
+              <TableHead>QC Status</TableHead>
+              <TableHead>QC Level</TableHead>
               <TableHead>Error Type</TableHead>
               <TableHead>GIS Remark</TableHead>
               <TableHead>Survey Team Remark</TableHead>
@@ -259,13 +195,12 @@ export default function PropertyListResultsPage() {
               <TableHead>RI Remark</TableHead>
               <TableHead>Entry Date</TableHead>
               <TableHead>Assessment Remark</TableHead>
-              <TableHead>Send for QC</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {properties.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={26} className="text-center text-gray-500">
+                <TableCell colSpan={23} className="text-center text-gray-500">
                   No properties found.
                 </TableCell>
               </TableRow>
@@ -277,7 +212,10 @@ export default function PropertyListResultsPage() {
                       w.newWardNumber === prop.locationDetails?.newWardNumber
                   )?.wardName || "NA";
                 return (
-                  <TableRow key={prop.surveyUniqueCode} className="border text-xs text-center justify-center">
+                  <TableRow
+                    key={prop.surveyUniqueCode}
+                    className="border text-xs text-center justify-center"
+                  >
                     <TableCell>{prop.mapId || "NA"}</TableCell>
                     <TableCell>{prop.gisId || "NA"}</TableCell>
                     <TableCell>{prop.surveyMatchStatus || "NA"}</TableCell>
@@ -315,77 +253,30 @@ export default function PropertyListResultsPage() {
                     <TableCell>
                       {prop.propertyDetails?.respondentName || "NA"}
                     </TableCell>
-                    <TableCell className="flex gap-2">
-                      <button
-                        className="text-blue-600 hover:text-blue-900"
-                        title="Edit QC"
-                        onClick={() => handleEdit(prop.surveyUniqueCode)}
-                      >
-                        <Pencil size={18} />
-                      </button>
-                      <button
-                        className="text-red-600 hover:text-red-900"
-                        title="Delete"
-                        onClick={() => handleDelete(prop.surveyUniqueCode)}
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </TableCell>
                     <TableCell>
-                      <select
-                        className="border rounded px-2 py-1 bg-black text-white"
-                        value={
-                          errorTypes[prop.surveyUniqueCode] ||
-                          prop.qcRecords?.[0]?.errorType ||
-                          "NONE"
-                        }
-                        onChange={(e) =>
-                          handleErrorTypeChange(
-                            prop.surveyUniqueCode,
-                            e.target.value
-                          )
-                        }
+                      <span
+                        className={`px-2 py-1 rounded text-xs ${
+                          prop.currentQCStatus === "IN_OFFICE_QC_DONE"
+                            ? "bg-green-700 text-white"
+                            : prop.currentQCStatus === "SURVEY_QC_DONE"
+                            ? "bg-blue-700 text-white"
+                            : prop.currentQCStatus?.includes("REVERTED")
+                            ? "bg-red-700 text-white"
+                            : "bg-gray-700 text-white"
+                        }`}
                       >
-                        {ERROR_TYPE_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
+                        {prop.displayQCLevel || "Survey QC Pending"}
+                      </span>
                     </TableCell>
+                    <TableCell>{prop.currentQCLevel || 0}</TableCell>
                     <TableCell>
-                      <input
-                        type="text"
-                        className="border rounded px-2 py-1 bg-black text-white w-64"
-                        value={
-                          gisRemarks[prop.surveyUniqueCode] ??
-                          prop.qcRecords?.[0]?.gisTeamRemark ??
-                          ""
-                        }
-                        onChange={(e) =>
-                          handleGisRemarkChange(
-                            prop.surveyUniqueCode,
-                            e.target.value
-                          )
-                        }
-                      />
+                      {prop.qcRecords?.[0]?.errorType || "NONE"}
                     </TableCell>
-                    <TableCell>
-                      <input
-                        type="text"
-                        className="border rounded px-2 py-1 bg-black text-white w-64"
-                        value={
-                          surveyTeamRemarks[prop.surveyUniqueCode] ??
-                          prop.qcRecords?.[0]?.surveyTeamRemark ??
-                          ""
-                        }
-                        onChange={(e) =>
-                          handleSurveyTeamRemarkChange(
-                            prop.surveyUniqueCode,
-                            e.target.value
-                          )
-                        }
-                      />
+                    <TableCell className="max-w-64 truncate">
+                      {prop.qcRecords?.[0]?.gisTeamRemark || "-"}
+                    </TableCell>
+                    <TableCell className="max-w-64 truncate">
+                      {prop.qcRecords?.[0]?.surveyTeamRemark || "-"}
                     </TableCell>
                     <TableCell>
                       {prop.locationDetails?.roadType?.roadTypeName || "NA"}
@@ -393,70 +284,19 @@ export default function PropertyListResultsPage() {
                     <TableCell>
                       {prop.otherDetails?.totalPlotArea ?? "-"}
                     </TableCell>
-                    <TableCell>
-                      <input
-                        type="text"
-                        className="border rounded px-2 py-1 bg-black text-white w-32"
-                        value={
-                          plotAreaGIS[prop.surveyUniqueCode] ??
-                          prop.otherDetails?.plotAreaGIS ??
-                          ""
-                        }
-                        onChange={(e) =>
-                          handlePlotAreaGISChange(
-                            prop.surveyUniqueCode,
-                            e.target.value
-                          )
-                        }
-                      />
+                    <TableCell className="max-w-32">
+                      {prop.otherDetails?.plotAreaGIS || "-"}
                     </TableCell>
-                    <TableCell>
-                      <input
-                        type="text"
-                        className="border rounded px-2 py-1 bg-black text-white w-64"
-                        value={
-                          riRemarks[prop.surveyUniqueCode] ??
-                          prop.qcRecords?.[0]?.RIRemark ??
-                          ""
-                        }
-                        onChange={(e) =>
-                          handleRIRemarkChange(
-                            prop.surveyUniqueCode,
-                            e.target.value
-                          )
-                        }
-                      />
+                    <TableCell className="max-w-64 truncate">
+                      {prop.qcRecords?.[0]?.RIRemark || "-"}
                     </TableCell>
                     <TableCell>
                       {prop.entryDate
                         ? new Date(prop.entryDate).toLocaleDateString()
                         : "-"}
                     </TableCell>
-                    <TableCell>
-                      <input
-                        type="text"
-                        className="border rounded px-2 py-1 bg-black text-white w-64"
-                        value={
-                          assessmentRemarks[prop.surveyUniqueCode] ??
-                          prop.assessmentRemark ??
-                          ""
-                        }
-                        onChange={(e) =>
-                          handleAssessmentRemarkChange(
-                            prop.surveyUniqueCode,
-                            e.target.value
-                          )
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <button
-                        className="px-6 py-2 border rounded bg-black text-white hover:bg-blue-700 text-xs w-20
-                        "
-                        onClick={() => handleSendForQC(prop)}
-                      >
-                        Send for QC
-                      </button>
+                    <TableCell className="max-w-64 truncate">
+                      {prop.assessmentRemark || "-"}
                     </TableCell>
                   </TableRow>
                 );

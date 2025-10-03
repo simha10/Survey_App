@@ -499,7 +499,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     },
     {
       name: "QC Management",
-      href: "/qc",
+      href: "#",
       icon: (
         <svg
           className="h-5 w-5"
@@ -516,6 +516,41 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         </svg>
       ),
       roles: ["SUPERADMIN", "ADMIN"],
+      children: [
+        {
+          name: "QC Dashboard",
+          href: "/qc/dashboard",
+          roles: ["SUPERADMIN", "ADMIN"],
+          icon: (
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+/>
+            </svg>
+          )
+        },
+        {
+          name: "QC Edit",
+          href: "/qc/edit",
+          roles: ["SUPERADMIN", "ADMIN","SUPERVISOR"],
+          icon: (
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+              />
+            </svg>
+          )
+        }
+      ]
     },
     {
       name: "Survey Management",
