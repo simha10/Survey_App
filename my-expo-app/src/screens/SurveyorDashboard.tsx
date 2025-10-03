@@ -1,5 +1,4 @@
-import * as React from 'react';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -66,7 +65,7 @@ export default function SurveyorDashboard() {
   const [unsyncedCount, setUnsyncedCount] = useState(0);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       const onBackPress = () => {
         Alert.alert('Exit App', 'Are you sure you want to exit?', [
           {
@@ -295,7 +294,7 @@ export default function SurveyorDashboard() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#3B82F6" />
           <Text style={styles.loadingText}>Loading...</Text>
@@ -305,7 +304,7 @@ export default function SurveyorDashboard() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       {/* Assignments Section */}
       <View className="mb-4 items-center">
         <Text className="mb-2 items-center text-lg font-bold">Your Ward Assignment</Text>
