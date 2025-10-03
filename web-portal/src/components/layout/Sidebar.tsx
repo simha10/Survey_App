@@ -47,7 +47,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           />
         </svg>
       ),
-      roles: ["SUPERADMIN", "ADMIN"],
+      roles: ["SUPERADMIN", "ADMIN","SUPERVISOR"],
     },
     {
       name: "General Masters",
@@ -371,12 +371,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           />
         </svg>
       ),
-      roles: ["SUPERADMIN", "ADMIN"],
+      roles: ["SUPERADMIN", "ADMIN","SUPERVISOR"],
       children: [
         {
           name: "Property List",
           href: "/mis-reports/property-list",
-          roles: ["SUPERADMIN", "ADMIN"],
+          roles: ["SUPERADMIN", "ADMIN","SUPERVISOR"],
           icon: (
             <svg
               className="h-5 w-5"
@@ -396,7 +396,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         {
           name: "Search by GISID",
           href: "/mis-reports/search-by-gisid",
-          roles: ["SUPERADMIN", "ADMIN"],
+          roles: ["SUPERADMIN", "ADMIN","SUPERVISOR"],
           icon: (
             <svg
               className="h-5 w-5"
@@ -515,12 +515,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           />
         </svg>
       ),
-      roles: ["SUPERADMIN", "ADMIN"],
+      roles: ["SUPERADMIN", "ADMIN","SUPERVISOR"],
       children: [
         {
           name: "QC Dashboard",
           href: "/qc/dashboard",
-          roles: ["SUPERADMIN", "ADMIN"],
+          roles: ["SUPERADMIN", "ADMIN","SUPERVISOR"],
           icon: (
             <svg
               className="h-5 w-5"

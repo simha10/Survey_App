@@ -266,7 +266,7 @@ const Dashboard: React.FC = () => {
                 <>
                   <QuickActionCard
                     title="Ward Management"
-                    description="Assign surveyors and supervisors to wards"
+                    description="Update status of wards"
                     href="/masters/ward"
                     icon={
                       <svg

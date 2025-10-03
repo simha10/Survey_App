@@ -22,6 +22,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError }) => {
   const roles = [
     { value: "SUPERADMIN", label: "Super Admin" },
     { value: "ADMIN", label: "Admin" },
+    { value: "SUPERVISOR", label: "Supervisor" },
   ];
 
   const validateForm = (): boolean => {
@@ -122,7 +123,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError }) => {
             className="block text-sm font-medium text-gray-700 mb-1"
           >
             Password
-          </label>  
+          </label>
           <input
             id="password"
             type="password"
