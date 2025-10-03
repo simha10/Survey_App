@@ -168,4 +168,4 @@ export const fetchSurveyTypes = async () => {
     console.error('Error fetching survey types:', error);
     throw error;
   }
-}; 
+};

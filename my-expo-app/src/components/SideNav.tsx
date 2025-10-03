@@ -13,7 +13,7 @@ const menuConfig = [
 ];
 
 export default function SideNav(props: DrawerContentComponentProps) {
-  const { userRole, logout } = useAuth();
+  const { logout } = useAuth();
   const [user, setUser] = useState<{ username: string; role: string } | null>(null);
   const animatedValue = React.useRef(new Animated.Value(0)).current;
 
@@ -26,7 +26,7 @@ export default function SideNav(props: DrawerContentComponentProps) {
       duration: 300,
       useNativeDriver: true,
     }).start();
-  }, []);
+  }, [animatedValue]);
 
   const navigateToDashboard = () => {
     if (!user) return;
@@ -74,7 +74,7 @@ export default function SideNav(props: DrawerContentComponentProps) {
         }}>
         <View className="mb-4 pb-2 pt-2">
           <Text className="text-2xl font-bold text-gray-900">
-            {`Hello👋, ${((user as any)?.name || user?.username || 'User')}!`}
+            {`Hello👋, ${(user as any)?.name || user?.username || 'User'}!`}
           </Text>
         </View>
         {menuConfig.map((item) => (
@@ -88,14 +88,8 @@ export default function SideNav(props: DrawerContentComponentProps) {
             className="flex-row items-center rounded-xl bg-white p-3 shadow-sm hover:bg-gray-100 active:bg-gray-200"
             accessibilityLabel={`Navigate to ${item.label}`}
             accessibilityRole="button">
-            <Feather
-              name={item.icon as any}
-              size={24}
-              color={'#111827'}
-            />
-            <Text className="ml-3 text-lg font-semibold text-gray-900">
-              {item.label}
-            </Text>
+            <Feather name={item.icon as any} size={24} color={'#111827'} />
+            <Text className="ml-3 text-lg font-semibold text-gray-900">{item.label}</Text>
           </TouchableOpacity>
         ))}
         {['SUPERADMIN', 'ADMIN'].includes(user?.role ?? '') && (
@@ -105,9 +99,7 @@ export default function SideNav(props: DrawerContentComponentProps) {
             accessibilityLabel="Create a new user"
             accessibilityRole="button">
             <Feather name="user-plus" size={24} color={'#111827'} />
-            <Text className="ml-3 text-lg font-semibold text-gray-900">
-              Create User
-            </Text>
+            <Text className="ml-3 text-lg font-semibold text-gray-900">Create User</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity

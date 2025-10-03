@@ -6,7 +6,7 @@ const getApiUrl = () => {
   if (process.env.EXPO_PUBLIC_API_BASE_URL) {
     return process.env.EXPO_PUBLIC_API_BASE_URL;
   }
-  
+
   // For development, try to detect the current IP
   // You can also manually set this to your current IP
   return 'http://192.168.18.210:4000/api';
@@ -56,4 +56,4 @@ api.interceptors.response.use(
   }
 );
 
-export default api; 
+export default api;

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -23,12 +23,17 @@ import SurveyCountScreen from '../screens/SurveyCountScreen';
 import { useAuth } from '../context/AuthContext';
 import CustomHeader from '../components/CustomHeader';
 import { useTheme } from '../context/ThemeContext';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Drawer = createDrawerNavigator();
 const Stack = createStackNavigator();
 
-function AuthenticatedDrawer({ initialRouteName, userRole }: { initialRouteName: string; userRole: string | null }) {
+function AuthenticatedDrawer({
+  initialRouteName,
+  userRole,
+}: {
+  initialRouteName: string;
+  userRole: string | null;
+}) {
   return (
     <Drawer.Navigator
       initialRouteName={initialRouteName}
@@ -60,11 +65,17 @@ function AuthenticatedDrawer({ initialRouteName, userRole }: { initialRouteName:
         headerShown: true,
       })}>
       {/* Role-specific screens */}
-      {userRole === 'SUPERADMIN' && <Drawer.Screen name="SuperAdminDashboard" component={SuperAdminDashboard} />}
+      {userRole === 'SUPERADMIN' && (
+        <Drawer.Screen name="SuperAdminDashboard" component={SuperAdminDashboard} />
+      )}
       {userRole === 'ADMIN' && <Drawer.Screen name="AdminDashboard" component={AdminDashboard} />}
-      {userRole === 'SUPERVISOR' && <Drawer.Screen name="SupervisorDashboard" component={SupervisorDashboard} />}
-      {userRole === 'SURVEYOR' && <Drawer.Screen name="SurveyorDashboard" component={SurveyorDashboard} />}
-      
+      {userRole === 'SUPERVISOR' && (
+        <Drawer.Screen name="SupervisorDashboard" component={SupervisorDashboard} />
+      )}
+      {userRole === 'SURVEYOR' && (
+        <Drawer.Screen name="SurveyorDashboard" component={SurveyorDashboard} />
+      )}
+
       {/* Common screens */}
       <Drawer.Screen name="ProfileScreen" component={ProfileScreen} />
     </Drawer.Navigator>
@@ -89,10 +100,7 @@ export default function AppNavigator() {
             component={LoginScreen}
             options={{ headerShown: false }}
           />
-          <Stack.Screen
-            name="AuthenticatedDrawer"
-            options={{ headerShown: false }}
-          >
+          <Stack.Screen name="AuthenticatedDrawer" options={{ headerShown: false }}>
             {(props) => {
               // Use param if present, else fallback to userRole
               const initialDashboard =
@@ -100,12 +108,12 @@ export default function AppNavigator() {
                 (userRole === 'SUPERADMIN'
                   ? 'SuperAdminDashboard'
                   : userRole === 'ADMIN'
-                  ? 'AdminDashboard'
-                  : userRole === 'SUPERVISOR'
-                  ? 'SupervisorDashboard'
-                  : userRole === 'SURVEYOR'
-                  ? 'SurveyorDashboard'
-                  : 'ProfileScreen');
+                    ? 'AdminDashboard'
+                    : userRole === 'SUPERVISOR'
+                      ? 'SupervisorDashboard'
+                      : userRole === 'SURVEYOR'
+                        ? 'SurveyorDashboard'
+                        : 'ProfileScreen');
               return (
                 <AuthenticatedDrawer
                   {...props}
@@ -115,11 +123,7 @@ export default function AppNavigator() {
               );
             }}
           </Stack.Screen>
-          <Stack.Screen
-            name="SurveyForm"
-            component={SurveyForm}
-            options={{ headerShown: false }}
-          />
+          <Stack.Screen name="SurveyForm" component={SurveyForm} options={{ headerShown: false }} />
           <Stack.Screen
             name="SurveyIntermediate"
             component={SurveyIntermediate}
@@ -133,7 +137,7 @@ export default function AppNavigator() {
           <Stack.Screen
             name="NonResidentialIntermediate"
             component={NonResidentialIntermediate}
-            options={{ headerShown: false}}
+            options={{ headerShown: false }}
           />
           <Stack.Screen
             name="ResidentialFloorDetail"

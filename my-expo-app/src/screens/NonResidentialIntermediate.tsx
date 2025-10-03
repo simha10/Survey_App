@@ -66,7 +66,7 @@ export default function NonResidentialIntermediate() {
 
   const handleAddNewFloor = () => {
     if (!surveyData) return;
-    
+
     navigation.navigate('NonResidentialFloorDetail', {
       surveyId: surveyData.id,
       editMode: false,
@@ -76,11 +76,11 @@ export default function NonResidentialIntermediate() {
 
   const handleEditFloor = (floorId: string) => {
     if (!surveyData) return;
-    
+
     const floorData = surveyData.data.nonResidentialPropertyAssessments?.find(
-      floor => floor.id === floorId
+      (floor) => floor.id === floorId
     );
-    
+
     navigation.navigate('NonResidentialFloorDetail', {
       surveyId: surveyData.id,
       editMode: true,
@@ -91,40 +91,37 @@ export default function NonResidentialIntermediate() {
 
   const handleDeleteFloor = (floorId: string) => {
     if (!surveyData) return;
-    
-    Alert.alert(
-      'Delete Floor',
-      'Are you sure you want to delete this floor detail?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const updatedFloors = surveyData.data.nonResidentialPropertyAssessments?.filter(
-                floor => floor.id !== floorId
+
+    Alert.alert('Delete Floor', 'Are you sure you want to delete this floor detail?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const updatedFloors =
+              surveyData.data.nonResidentialPropertyAssessments?.filter(
+                (floor) => floor.id !== floorId
               ) || [];
-              
-              const updatedSurveyData = {
-                ...surveyData,
-                data: {
-                  ...surveyData.data,
-                  nonResidentialPropertyAssessments: updatedFloors,
-                },
-              };
-              
-              await updateLocalSurvey(surveyData.id, updatedSurveyData);
-              setSurveyData(updatedSurveyData);
-              Alert.alert('Success', 'Floor detail deleted successfully');
-            } catch (error) {
-              console.error(error);
-              Alert.alert('Error', 'Failed to delete floor detail');
-            }
+
+            const updatedSurveyData = {
+              ...surveyData,
+              data: {
+                ...surveyData.data,
+                nonResidentialPropertyAssessments: updatedFloors,
+              },
+            };
+
+            await updateLocalSurvey(surveyData.id, updatedSurveyData);
+            setSurveyData(updatedSurveyData);
+            Alert.alert('Success', 'Floor detail deleted successfully');
+          } catch (error) {
+            console.error(error);
+            Alert.alert('Error', 'Failed to delete floor detail');
           }
-        }
-      ]
-    );
+        },
+      },
+    ]);
   };
 
   const renderFloorCard = ({ item }: { item: FloorDetail }) => (
@@ -132,21 +129,17 @@ export default function NonResidentialIntermediate() {
       <View style={styles.floorHeader}>
         <Text style={styles.floorTitle}>Floor {item.floorNumber}</Text>
         <View style={styles.floorActions}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleEditFloor(item.id)}
-          >
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleEditFloor(item.id)}>
             <Text style={styles.actionButtonText}>Edit</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.deleteButton]}
-            onPress={() => handleDeleteFloor(item.id)}
-          >
+            onPress={() => handleDeleteFloor(item.id)}>
             <Text style={[styles.actionButtonText, styles.deleteButtonText]}>Delete</Text>
           </TouchableOpacity>
         </View>
       </View>
-      
+
       <View style={styles.floorDetails}>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Establishment:</Text>
@@ -193,10 +186,7 @@ export default function NonResidentialIntermediate() {
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>No survey data found</Text>
-          <TouchableOpacity 
-            style={styles.button}
-            onPress={() => navigation.goBack()}
-          >
+          <TouchableOpacity style={styles.button} onPress={() => navigation.goBack()}>
             <Text style={styles.buttonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -204,7 +194,10 @@ export default function NonResidentialIntermediate() {
     );
   }
 
-  const floors = surveyData.data && surveyData.data.nonResidentialPropertyAssessments ? surveyData.data.nonResidentialPropertyAssessments : [];
+  const floors =
+    surveyData.data && surveyData.data.nonResidentialPropertyAssessments
+      ? surveyData.data.nonResidentialPropertyAssessments
+      : [];
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
@@ -223,7 +216,9 @@ export default function NonResidentialIntermediate() {
         {floors.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateText}>No non-residential floor details added yet</Text>
-            <Text style={styles.emptyStateSubtext}>Tap the button below to add your first floor detail</Text>
+            <Text style={styles.emptyStateSubtext}>
+              Tap the button below to add your first floor detail
+            </Text>
           </View>
         ) : (
           <FlatList
@@ -427,4 +422,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#111827',
   },
-}); 
+});

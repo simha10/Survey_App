@@ -1,7 +1,6 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { useEffect, useState } from 'react';
 import { getMasterData } from '../utils/storage';
 
 interface FormDropdownProps {
@@ -23,7 +22,19 @@ interface FormDropdownProps {
  * No direct API calls are made here.
  */
 const FormDropdown = forwardRef<Picker<string | number>, FormDropdownProps>(
-  ({ label, required, items = [], value, onValueChange, masterDataKey, labelKey = 'name', valueKey = 'id' }, ref) => {
+  (
+    {
+      label,
+      required,
+      items = [],
+      value,
+      onValueChange,
+      masterDataKey,
+      labelKey = 'name',
+      valueKey = 'id',
+    },
+    ref
+  ) => {
     const [options, setOptions] = useState(items);
 
     useEffect(() => {
@@ -31,13 +42,13 @@ const FormDropdown = forwardRef<Picker<string | number>, FormDropdownProps>(
         if (masterDataKey) {
           try {
             const masterData = await getMasterData();
-            const arr = (masterData && masterData[masterDataKey]) ? masterData[masterDataKey] : [];
+            const arr = masterData && masterData[masterDataKey] ? masterData[masterDataKey] : [];
             setOptions(
               Array.isArray(arr)
                 ? arr.map((item: any) => ({ label: item[labelKey], value: item[valueKey] }))
                 : []
             );
-          } catch (e) {
+          } catch {
             setOptions([]);
           }
         } else {
@@ -59,8 +70,7 @@ const FormDropdown = forwardRef<Picker<string | number>, FormDropdownProps>(
             selectedValue={value}
             onValueChange={onValueChange}
             style={styles.picker}
-            itemStyle={styles.pickerItem}
-          >
+            itemStyle={styles.pickerItem}>
             <Picker.Item label="Select an item..." value="" />
             {options.map((item) => (
               <Picker.Item key={item.value} label={item.label} value={item.value} />
@@ -102,4 +112,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default FormDropdown; 
+export default FormDropdown;

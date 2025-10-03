@@ -12,11 +12,7 @@ const FormInput = forwardRef<TextInput, FormInputProps>(({ label, required, ...p
       {label}
       {required && <Text style={styles.required}> *</Text>}
     </Text>
-    <TextInput
-      ref={ref}
-      style={styles.input}
-      {...props}
-    />
+    <TextInput ref={ref} style={styles.input} {...props} />
   </View>
 ));
 
@@ -45,4 +41,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default FormInput; 
+export default FormInput;

@@ -1,21 +1,26 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Alert, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
   ScrollView,
   TextInput,
   KeyboardAvoidingView,
-  Platform
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { getUnsyncedSurveys, saveSurveyLocally, getSelectedAssignment, getMasterData } from '../utils/storage';
+import {
+  getUnsyncedSurveys,
+  saveSurveyLocally,
+  getSelectedAssignment,
+  getMasterData,
+} from '../utils/storage';
 import { fetchNrPropertySubCategories } from '../services/masterDataService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -37,7 +42,11 @@ interface MasterData {
   occupancyStatuses: { occupancyStatusId: number; occupancyStatusName: string }[];
   constructionNatures: { constructionNatureId: number; constructionNatureName: string }[];
   nrPropertyCategories: { propertyCategoryId: number; propertyCategoryName: string }[];
-  nrPropertySubCategories: { subCategoryId: number; subCategoryName: string; propertyCategoryId: number }[];
+  nrPropertySubCategories: {
+    subCategoryId: number;
+    subCategoryName: string;
+    propertyCategoryId: number;
+  }[];
 }
 
 type Navigation = {
@@ -58,7 +67,9 @@ export default function NonResidentialFloorDetail() {
     nrPropertyCategories: [],
     nrPropertySubCategories: [],
   });
-  const [subCategories, setSubCategories] = useState<{ subCategoryId: number; subCategoryName: string; propertyCategoryId: number }[]>([]);
+  const [subCategories, setSubCategories] = useState<
+    { subCategoryId: number; subCategoryName: string; propertyCategoryId: number }[]
+  >([]);
 
   // Form state
   const [formData, setFormData] = useState<FloorDetail>({
@@ -85,7 +96,7 @@ export default function NonResidentialFloorDetail() {
       setFormData(floorData);
     } else {
       // Generate new ID for new floor
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         id: `floor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       }));
@@ -111,18 +122,22 @@ export default function NonResidentialFloorDetail() {
   };
 
   const handleInputChange = (field: keyof FloorDetail, value: string) => {
-    setFormData(prev => {
+    setFormData((prev) => {
       const newData = { ...prev };
-      
+
       // Handle number fields
-      if (field === 'floorNumberId' || field === 'nrPropertyCategoryId' || 
-          field === 'nrSubCategoryId' || field === 'occupancyStatusId' || 
-          field === 'constructionNatureId') {
+      if (
+        field === 'floorNumberId' ||
+        field === 'nrPropertyCategoryId' ||
+        field === 'nrSubCategoryId' ||
+        field === 'occupancyStatusId' ||
+        field === 'constructionNatureId'
+      ) {
         newData[field] = parseInt(value) || 0;
       } else {
         newData[field] = value;
       }
-      
+
       return newData;
     });
   };
@@ -130,7 +145,7 @@ export default function NonResidentialFloorDetail() {
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate) {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         licenseExpiryDate: selectedDate.toISOString().split('T')[0],
       }));
@@ -140,7 +155,7 @@ export default function NonResidentialFloorDetail() {
   const handleCategoryChange = async (categoryId: number) => {
     handleInputChange('nrPropertyCategoryId', categoryId.toString());
     handleInputChange('nrSubCategoryId', '0'); // Reset sub-category selection
-    
+
     if (categoryId) {
       try {
         const fetchedSubCategories = await fetchNrPropertySubCategories(categoryId);
@@ -208,7 +223,10 @@ export default function NonResidentialFloorDetail() {
           constructionNatureId: Number(formData.constructionNatureId),
         };
 
-        const existingFloors = survey.data && survey.data.nonResidentialPropertyAssessments ? survey.data.nonResidentialPropertyAssessments : [];
+        const existingFloors =
+          survey.data && survey.data.nonResidentialPropertyAssessments
+            ? survey.data.nonResidentialPropertyAssessments
+            : [];
         let updatedFloors;
 
         if (editMode) {
@@ -233,7 +251,7 @@ export default function NonResidentialFloorDetail() {
           allSurveys[idx] = updatedSurvey;
           await saveSurveyLocally(updatedSurvey);
         }
-        
+
         Alert.alert(
           'Success',
           editMode ? 'Floor detail updated successfully' : 'Floor detail added successfully',
@@ -269,22 +287,24 @@ export default function NonResidentialFloorDetail() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.topBackButton}>
           <Text style={styles.topBackArrow}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.topHeaderTitle}>{editMode ? 'Edit' : 'Add'} Non-Residential Floor Detail</Text>
+        <Text style={styles.topHeaderTitle}>
+          {editMode ? 'Edit' : 'Add'} Non-Residential Floor Detail
+        </Text>
       </View>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Floor Number */}
           <View style={styles.formGroup}>
-            <Text style={{color: '#111'}}>Floor Number<Text style={{color: 'red'}}>*</Text></Text>
+            <Text style={{ color: '#111' }}>
+              Floor Number<Text style={{ color: 'red' }}>*</Text>
+            </Text>
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.floorNumberId}
                 onValueChange={(value) => handleInputChange('floorNumberId', value.toString())}
-                style={styles.picker}
-              >
+                style={styles.picker}>
                 <Picker.Item label="Select Floor Number" value={0} />
                 {masterData.floorNumbers.map((floor) => (
                   <Picker.Item
@@ -299,15 +319,14 @@ export default function NonResidentialFloorDetail() {
 
           {/* Property Category */}
           <View style={styles.formGroup}>
-            <Text style={{color: '#111'}}>Property Category *</Text>
+            <Text style={{ color: '#111' }}>Property Category *</Text>
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.nrPropertyCategoryId}
                 onValueChange={(value) => {
                   handleCategoryChange(value);
                 }}
-                style={styles.picker}
-              >
+                style={styles.picker}>
                 <Picker.Item label="Select Property Category" value={0} />
                 {masterData.nrPropertyCategories.map((category) => (
                   <Picker.Item
@@ -322,14 +341,13 @@ export default function NonResidentialFloorDetail() {
 
           {/* Property Sub Category */}
           <View style={styles.formGroup}>
-            <Text style={{color: '#111'}}>Property Sub Category *</Text>
+            <Text style={{ color: '#111' }}>Property Sub Category *</Text>
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.nrSubCategoryId}
                 onValueChange={(value) => handleInputChange('nrSubCategoryId', value.toString())}
                 style={styles.picker}
-                enabled={!!formData.nrPropertyCategoryId && subCategories.length > 0}
-              >
+                enabled={!!formData.nrPropertyCategoryId && subCategories.length > 0}>
                 <Picker.Item label="Select Property Sub Category" value={0} />
                 {subCategories.map((subCategory) => (
                   <Picker.Item
@@ -344,7 +362,7 @@ export default function NonResidentialFloorDetail() {
 
           {/* Establishment Name */}
           <View style={styles.formGroup}>
-            <Text style={{color: '#111'}}>Establishment Name *</Text>
+            <Text style={{ color: '#111' }}>Establishment Name *</Text>
             <TextInput
               style={styles.input}
               value={formData.establishmentName}
@@ -355,7 +373,7 @@ export default function NonResidentialFloorDetail() {
 
           {/* License Number */}
           <View style={styles.formGroup}>
-            <Text style={{color: '#111'}}>License Number</Text>
+            <Text style={{ color: '#111' }}>License Number</Text>
             <TextInput
               style={styles.input}
               value={formData.licenseNo}
@@ -366,11 +384,8 @@ export default function NonResidentialFloorDetail() {
 
           {/* License Expiry Date */}
           <View style={styles.formGroup}>
-            <Text style={{color: '#111'}}>License Expiry Date</Text>
-            <TouchableOpacity
-              style={styles.dateInput}
-              onPress={() => setShowDatePicker(true)}
-            >
+            <Text style={{ color: '#111' }}>License Expiry Date</Text>
+            <TouchableOpacity style={styles.dateInput} onPress={() => setShowDatePicker(true)}>
               <Text style={formData.licenseExpiryDate ? styles.dateText : styles.placeholderText}>
                 {formData.licenseExpiryDate || 'Select expiry date'}
               </Text>
@@ -379,13 +394,12 @@ export default function NonResidentialFloorDetail() {
 
           {/* Occupancy Status */}
           <View style={styles.formGroup}>
-            <Text style={{color: '#111'}}>Occupancy Status *</Text>
+            <Text style={{ color: '#111' }}>Occupancy Status *</Text>
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.occupancyStatusId}
                 onValueChange={(value) => handleInputChange('occupancyStatusId', value.toString())}
-                style={styles.picker}
-              >
+                style={styles.picker}>
                 <Picker.Item label="Select Occupancy Status" value={0} />
                 {masterData.occupancyStatuses.map((status) => (
                   <Picker.Item
@@ -400,13 +414,14 @@ export default function NonResidentialFloorDetail() {
 
           {/* Construction Nature */}
           <View style={styles.formGroup}>
-            <Text style={{color: '#111'}}>Construction Nature *</Text>
+            <Text style={{ color: '#111' }}>Construction Nature *</Text>
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.constructionNatureId}
-                onValueChange={(value) => handleInputChange('constructionNatureId', value.toString())}
-                style={styles.picker}
-              >
+                onValueChange={(value) =>
+                  handleInputChange('constructionNatureId', value.toString())
+                }
+                style={styles.picker}>
                 <Picker.Item label="Select Construction Nature" value={0} />
                 {masterData.constructionNatures.map((nature) => (
                   <Picker.Item
@@ -421,7 +436,7 @@ export default function NonResidentialFloorDetail() {
 
           {/* Built-up Area */}
           <View style={styles.formGroup}>
-            <Text style={{color: '#111'}}>Built-up Area (sq ft) *</Text>
+            <Text style={{ color: '#111' }}>Built-up Area (sq ft) *</Text>
             <TextInput
               style={styles.input}
               value={formData.builtupArea}
@@ -437,18 +452,16 @@ export default function NonResidentialFloorDetail() {
           <TouchableOpacity
             style={[styles.button, styles.cancelButton]}
             onPress={() => navigation.goBack()}
-            disabled={saving}
-          >
+            disabled={saving}>
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[styles.button, styles.saveButton, saving && styles.disabledButton]}
             onPress={handleSave}
-            disabled={saving}
-          >
+            disabled={saving}>
             <Text style={styles.saveButtonText}>
-              {saving ? 'Saving...' : (editMode ? 'Update' : 'Save')}
+              {saving ? 'Saving...' : editMode ? 'Update' : 'Save'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -596,4 +609,4 @@ const styles = StyleSheet.create({
   disabledButton: {
     backgroundColor: '#9CA3AF',
   },
-}); 
+});

@@ -49,16 +49,43 @@ export default function SplashScreen() {
         <View style={{ justifyContent: 'center', alignItems: 'center', width: '100%' }}>
           <Image
             source={require('../../assets/logo.png')}
-            style={{ width: 120, height: 120, marginBottom: 12, resizeMode: 'contain', alignSelf: 'center', transform: [{ scale: 1.2 }] }}
+            style={{
+              width: 120,
+              height: 120,
+              marginBottom: 12,
+              resizeMode: 'contain',
+              alignSelf: 'center',
+              transform: [{ scale: 1.2 }],
+            }}
             accessibilityLabel="App logo"
           />
         </View>
         {/* Welcome Message Container */}
-        <View style={{ justifyContent: 'flex-start', alignItems: 'center', width: '100%', marginTop: 8 }}>
-          <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme === 'dark' ? '#f3f4f6' : '#111827', marginBottom: 0, textAlign: 'center' }}>
+        <View
+          style={{
+            justifyContent: 'flex-start',
+            alignItems: 'center',
+            width: '100%',
+            marginTop: 8,
+          }}>
+          <Text
+            style={{
+              fontSize: 24,
+              fontWeight: 'bold',
+              color: theme === 'dark' ? '#f3f4f6' : '#111827',
+              marginBottom: 0,
+              textAlign: 'center',
+            }}>
             Welcome to Property Tax
           </Text>
-          <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme === 'dark' ? '#f3f4f6' : '#111827', marginBottom: 8, textAlign: 'center' }}>
+          <Text
+            style={{
+              fontSize: 24,
+              fontWeight: 'bold',
+              color: theme === 'dark' ? '#f3f4f6' : '#111827',
+              marginBottom: 8,
+              textAlign: 'center',
+            }}>
             Management System
           </Text>
           <ActivityIndicator
