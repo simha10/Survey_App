@@ -60,6 +60,16 @@ export default function SurveyorDashboard() {
   const [primaryAssignment, setPrimaryAssignment] = useState<any>(null);
   const [unsyncedCount, setUnsyncedCount] = useState(0);
 
+  // Wrap all async operations to prevent crashes
+  const safeAsyncOperation = async (operation: () => Promise<void>, errorContext: string) => {
+    try {
+      await operation();
+    } catch (error) {
+      console.error(`Dashboard error in ${errorContext}:`, error);
+      // Don't crash - just log and continue
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
@@ -76,31 +86,38 @@ export default function SurveyorDashboard() {
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
 
-      // Always re-check for ongoing survey on focus
-      checkOngoingSurvey();
-      loadUnsyncedCount();
+      // Safe data loading to prevent crashes
+      safeAsyncOperation(checkOngoingSurvey, 'focus checkOngoingSurvey');
+      safeAsyncOperation(loadUnsyncedCount, 'focus loadUnsyncedCount');
 
       return () => subscription.remove();
     }, [])
   );
 
   useEffect(() => {
-    checkOngoingSurvey();
-    fetchAssignments();
-    loadPrimaryAssignment();
-    loadUnsyncedCount();
+    // Safe initialization to prevent crashes
+    safeAsyncOperation(checkOngoingSurvey, 'init checkOngoingSurvey');
+    safeAsyncOperation(fetchAssignments, 'init fetchAssignments');
+    safeAsyncOperation(loadPrimaryAssignment, 'init loadPrimaryAssignment');
+    safeAsyncOperation(loadUnsyncedCount, 'init loadUnsyncedCount');
   }, []);
 
   const checkOngoingSurvey = async () => {
     try {
+      console.log('Dashboard: Checking ongoing survey...');
       const allSurveys = await getUnsyncedSurveys();
-      // Only show ongoing if there is a survey that is not yet submitted
+      console.log('Dashboard: Got surveys:', allSurveys?.length || 0);
+      
+      // Safe check with proper error handling
       const ongoing = Array.isArray(allSurveys)
-        ? allSurveys.find((s: any) => s.status === 'incomplete')
+        ? allSurveys.find((s: any) => s?.status === 'incomplete')
         : null;
+      
+      console.log('Dashboard: Ongoing survey found:', !!ongoing);
       setOngoingSurvey(ongoing && ongoing.surveyType ? ongoing : null);
     } catch (error) {
-      console.error('Error checking ongoing survey:', error);
+      console.error('Dashboard: Error checking ongoing survey:', error);
+      // Don't crash the dashboard - just set to null
       setOngoingSurvey(null);
     } finally {
       setLoading(false);
@@ -123,19 +140,42 @@ export default function SurveyorDashboard() {
   };
 
   const loadPrimaryAssignment = async () => {
-    const json = await AsyncStorage.getItem('primaryAssignment');
-    if (json) setPrimaryAssignment(JSON.parse(json));
+    try {
+      console.log('Dashboard: Loading primary assignment...');
+      const json = await AsyncStorage.getItem('primaryAssignment');
+      if (json) {
+        const parsed = JSON.parse(json);
+        console.log('Dashboard: Primary assignment loaded');
+        setPrimaryAssignment(parsed);
+      } else {
+        console.log('Dashboard: No primary assignment found');
+        setPrimaryAssignment(null);
+      }
+    } catch (error) {
+      console.error('Dashboard: Error loading primary assignment:', error);
+      setPrimaryAssignment(null);
+    }
   };
 
   const loadUnsyncedCount = async () => {
     try {
+      console.log('Dashboard: Loading unsynced count...');
       const allSurveys = await getUnsyncedSurveys();
+      
+      if (!Array.isArray(allSurveys)) {
+        console.warn('Dashboard: getUnsyncedSurveys returned non-array:', allSurveys);
+        setUnsyncedCount(0);
+        return;
+      }
+      
       const submittedUnsynced = allSurveys.filter(
-        (s: any) => s.status === 'submitted' && !s.synced
+        (s: any) => s?.status === 'submitted' && !s?.synced
       );
+      console.log('Dashboard: Unsynced count:', submittedUnsynced.length);
       setUnsyncedCount(submittedUnsynced.length);
     } catch (error) {
-      console.error('Error loading unsynced count:', error);
+      console.error('Dashboard: Error loading unsynced count:', error);
+      // Don't crash - just set to 0
       setUnsyncedCount(0);
     }
   };

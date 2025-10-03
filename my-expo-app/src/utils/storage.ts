@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import LZString from 'lz-string';
 import api from '../api/axiosConfig';
 import { cleanupSurveyImagesBySurveyId } from '../services/imageStorage';
+import { deleteImagesForSurvey } from '../services/imageStorage';
 
 const UNSYNCED_SURVEYS_KEY = 'unsyncedSurveys';
 const MASTER_DATA_KEY = 'masterData';
@@ -32,8 +33,27 @@ export interface SurveyData {
  */
 export const saveMasterData = async (data: any): Promise<void> => {
   try {
+    // Safety checks to prevent crashes
+    if (typeof AsyncStorage === 'undefined') {
+      console.error('AsyncStorage not available for saveMasterData');
+      throw new Error('AsyncStorage not available');
+    }
+    
+    if (!data) {
+      console.warn('No data provided to saveMasterData');
+      return;
+    }
+    
+    // Check if LZString is available
+    if (typeof LZString === 'undefined' || !LZString.compressToUTF16) {
+      console.warn('LZString not available, saving as uncompressed JSON');
+      await AsyncStorage.setItem(MASTER_DATA_KEY, JSON.stringify(data));
+      return;
+    }
+    
     const compressed = LZString.compressToUTF16(JSON.stringify(data));
     await AsyncStorage.setItem(MASTER_DATA_KEY, compressed);
+    console.log('Master data saved successfully');
   } catch (e) {
     console.error('Failed to save master data', e);
     throw e;
@@ -45,23 +65,56 @@ export const saveMasterData = async (data: any): Promise<void> => {
  */
 export const getMasterData = async (): Promise<any> => {
   try {
+    // Add safety checks
+    if (typeof AsyncStorage === 'undefined') {
+      console.error('AsyncStorage not available for getMasterData');
+      return null;
+    }
+    
     const compressed = await AsyncStorage.getItem(MASTER_DATA_KEY);
-    if (!compressed) return null;
+    if (!compressed) {
+      console.log('No master data found in storage');
+      return null;
+    }
+    
+    // Check if LZString is available
+    if (typeof LZString === 'undefined' || !LZString.decompressFromUTF16) {
+      console.error('LZString not available, trying direct JSON parse');
+      try {
+        return JSON.parse(compressed);
+      } catch {
+        console.error('Failed to parse master data as JSON');
+        return null;
+      }
+    }
+    
     let json = LZString.decompressFromUTF16(compressed);
     if (json && typeof json === 'string' && json.trim() !== '') {
-      return JSON.parse(json);
+      try {
+        return JSON.parse(json);
+      } catch (parseError) {
+        console.error('Failed to parse decompressed master data:', parseError);
+        return null;
+      }
     }
+    
     // Fallback: handle legacy uncompressed JSON stored previously
     try {
       const legacy = JSON.parse(compressed);
+      console.log('Loaded legacy uncompressed master data');
       // Normalize by re-saving in compressed format for future reads
-      await saveMasterData(legacy);
+      try {
+        await saveMasterData(legacy);
+      } catch (saveError) {
+        console.warn('Failed to re-save master data in compressed format:', saveError);
+      }
       return legacy;
-    } catch (_) {
+    } catch (legacyError) {
+      console.error('Failed to parse legacy master data:', legacyError);
       return null;
     }
   } catch (e) {
-    console.error('Failed to get master data', e);
+    console.error('Critical error in getMasterData:', e);
     return null;
   }
 };
@@ -134,7 +187,16 @@ export const syncSurveysToBackend = async (
       }
       const res = await api.post('/surveys/addSurvey', payload);
       if (res.status === 200 || res.status === 201) {
+        // Survey synced successfully - remove from local storage and delete images
         await removeUnsyncedSurvey(survey.id);
+        
+        // Delete images from device storage and SQLite as per requirements
+        try {
+          await deleteImagesForSurvey(survey.id);
+          console.log('Images deleted after successful sync for survey:', survey.id);
+        } catch (imageError) {
+          console.error('Failed to delete images after sync:', imageError);
+        }
         if (userId) {
           console.log('Logging synced survey:', survey.id, userId);
           await logSyncedSurvey(survey.id, userId);
@@ -218,25 +280,61 @@ export const saveSurveyLocally = async (survey: any): Promise<void> => {
  */
 export const getUnsyncedSurveys = async (): Promise<any[]> => {
   try {
+    // Add extra safety checks to prevent crashes
+    if (typeof AsyncStorage === 'undefined') {
+      console.error('AsyncStorage is not available');
+      return [];
+    }
+    
     const compressed = await AsyncStorage.getItem(UNSYNCED_SURVEYS_KEY);
-    if (!compressed) return [];
+    if (!compressed) {
+      console.log('No unsynced surveys found in storage');
+      return [];
+    }
+    
     let json = null;
     try {
+      // Check if LZString is available
+      if (typeof LZString === 'undefined' || !LZString.decompressFromUTF16) {
+        console.error('LZString decompression not available');
+        // Try to parse as regular JSON
+        try {
+          return JSON.parse(compressed);
+        } catch {
+          console.error('Failed to parse as JSON, clearing corrupted data');
+          await AsyncStorage.removeItem(UNSYNCED_SURVEYS_KEY);
+          return [];
+        }
+      }
+      
       json = LZString.decompressFromUTF16(compressed);
       if (!json || typeof json !== 'string' || json.trim() === '') {
-        // Decompression failed or returned empty
+        console.warn('Decompression failed or returned empty, clearing storage');
         await AsyncStorage.removeItem(UNSYNCED_SURVEYS_KEY);
         return [];
       }
-      return JSON.parse(json);
-    } catch (e) {
-      // If decompression or parsing fails, clear the corrupted storage and return []
-      await AsyncStorage.removeItem(UNSYNCED_SURVEYS_KEY);
-      console.error('Failed to get unsynced surveys (corrupted data cleared):', e);
+      
+      const parsed = JSON.parse(json);
+      if (!Array.isArray(parsed)) {
+        console.warn('Parsed data is not an array, clearing storage');
+        await AsyncStorage.removeItem(UNSYNCED_SURVEYS_KEY);
+        return [];
+      }
+      
+      console.log('Successfully loaded', parsed.length, 'unsynced surveys');
+      return parsed;
+    } catch (parseError) {
+      console.error('Decompression or parsing failed, clearing corrupted data:', parseError);
+      try {
+        await AsyncStorage.removeItem(UNSYNCED_SURVEYS_KEY);
+      } catch (removeError) {
+        console.error('Failed to clear corrupted storage:', removeError);
+      }
       return [];
     }
-  } catch (e) {
-    console.error('Failed to get unsynced surveys', e);
+  } catch (storageError) {
+    console.error('Critical error in getUnsyncedSurveys:', storageError);
+    // Return empty array instead of crashing
     return [];
   }
 };
@@ -246,16 +344,21 @@ export const getUnsyncedSurveys = async (): Promise<any[]> => {
  */
 export const removeUnsyncedSurvey = async (id: string): Promise<void> => {
   try {
-    // Cleanup any persisted images for this survey (files + SQLite rows)
+    // Delete images from device storage and SQLite database as per requirements
     try {
-      await cleanupSurveyImagesBySurveyId(id);
+      await deleteImagesForSurvey(id);
+      console.log('Images deleted for removed survey:', id);
     } catch (e) {
       console.error('Image cleanup failed for', id, e);
     }
+    
+    // Remove survey from unsynced surveys list
     const all = await getUnsyncedSurveys();
     const filtered = all.filter((s: any) => s.id !== id);
     const compressed = LZString.compressToUTF16(JSON.stringify(filtered));
     await AsyncStorage.setItem(UNSYNCED_SURVEYS_KEY, compressed);
+    
+    console.log('Survey and associated images removed:', id);
   } catch (e) {
     console.error('Failed to remove unsynced survey', e);
     throw e;
