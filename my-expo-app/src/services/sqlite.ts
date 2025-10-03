@@ -28,7 +28,9 @@ export const initializeDatabase = async (): Promise<void> => {
       timestamp TEXT NOT NULL
     );`
   );
-  await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_survey_images_surveyId ON SurveyImages(surveyId);`);
+  await db.execAsync(
+    `CREATE INDEX IF NOT EXISTS idx_survey_images_surveyId ON SurveyImages(surveyId);`
+  );
 };
 
 export const insertSurveyImage = async (row: SurveyImageRow): Promise<number> => {
@@ -74,5 +76,3 @@ export const deleteImagesBySurveyId = async (surveyId: string | null): Promise<v
 
 // Initialize on import to ensure table exists
 initializeDatabase().catch((e) => console.error('SQLite init failed', e));
-
-

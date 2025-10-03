@@ -1,5 +1,4 @@
-import * as FileSystem from 'expo-file-system';
-import { File } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { deleteImagesBySurveyId, getImagesBySurveyId, insertSurveyImage } from './sqlite';
 
 export const cleanupSurveyImagesBySurveyId = async (surveyId: string): Promise<void> => {
@@ -8,8 +7,7 @@ export const cleanupSurveyImagesBySurveyId = async (surveyId: string): Promise<v
     for (const row of rows) {
       if (row.photoUri) {
         try {
-          const file = new File(row.photoUri);
-          file.delete();
+          await FileSystem.deleteAsync(row.photoUri, { idempotent: true });
         } catch (e) {
           // best-effort cleanup
           console.error('Failed deleting file', row.photoUri, e);
@@ -22,8 +20,18 @@ export const cleanupSurveyImagesBySurveyId = async (surveyId: string): Promise<v
   }
 };
 
-export const insertImagesForSurvey = async (surveyId: string, photos: { [key: string]: string | null }) => {
-  const labels: (keyof typeof photos)[] = ['front', 'khasra', 'left', 'right', 'other1', 'other2'] as any;
+export const insertImagesForSurvey = async (
+  surveyId: string,
+  photos: { [key: string]: string | null }
+) => {
+  const labels: (keyof typeof photos)[] = [
+    'front',
+    'khasra',
+    'left',
+    'right',
+    'other1',
+    'other2',
+  ] as any;
   for (const label of labels) {
     const uri = photos[label as string];
     if (uri) {
@@ -31,7 +39,7 @@ export const insertImagesForSurvey = async (surveyId: string, photos: { [key: st
         // Ensure database is initialized before inserting
         const { initializeDatabase } = await import('./sqlite');
         await initializeDatabase();
-        
+
         await insertSurveyImage({
           surveyId,
           photoUri: uri,
@@ -45,19 +53,30 @@ export const insertImagesForSurvey = async (surveyId: string, photos: { [key: st
   }
 };
 
-export const copyPhotosToDocumentDir = async (surveyId: string, photos: { [key: string]: string | null }) => {
+export const copyPhotosToDocumentDir = async (
+  surveyId: string,
+  photos: { [key: string]: string | null }
+) => {
   const out: { [key: string]: string | null } = { ...photos };
-  const labels: (keyof typeof photos)[] = ['front', 'khasra', 'left', 'right', 'other1', 'other2'] as any;
+  const labels: (keyof typeof photos)[] = [
+    'front',
+    'khasra',
+    'left',
+    'right',
+    'other1',
+    'other2',
+  ] as any;
   for (const label of labels) {
     const uri = photos[label as string];
     if (!uri) continue;
     const fileName = `survey_${surveyId}_${String(label)}_${Date.now()}.jpg`;
-    const destUri = `${FileSystem.Paths.document.uri}${fileName}`;
+    const destUri = `${FileSystem.documentDirectory}${fileName}`;
     try {
-      const sourceFile = new File(uri);
-      const destFile = new File(destUri);
-      sourceFile.copy(destFile);
-      out[label as string] = destFile.exists ? destUri : uri;
+      await FileSystem.copyAsync({
+        from: uri,
+        to: destUri,
+      });
+      out[label as string] = destUri;
     } catch (e) {
       console.error('copyPhotosToDocumentDir failed', label, e);
       out[label as string] = uri;
@@ -65,5 +84,3 @@ export const copyPhotosToDocumentDir = async (surveyId: string, photos: { [key: 
   }
   return out;
 };
-
-

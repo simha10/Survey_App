@@ -47,9 +47,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       // Fetch and store surveyor assignment if role is SURVEYOR
       if (role === 'SURVEYOR') {
-        const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:4000/api'}/surveyor/assigned-mohallas`, {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
+        const response = await fetch(
+          `${process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:4000/api'}/surveyor/assigned-mohallas`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
         if (response.ok) {
           const assignment = await response.json();
           await AsyncStorage.setItem('surveyorAssignment', JSON.stringify(assignment));
@@ -95,4 +98,4 @@ const getStoredProfile = async () => {
     console.error(e);
     return null;
   }
-}; 
+};

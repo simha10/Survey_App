@@ -11,7 +11,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { getUnsyncedSurveys, getAssignments, removeUnsyncedSurvey, logSyncedSurvey } from '../utils/storage';
+import {
+  getUnsyncedSurveys,
+  getAssignments,
+  removeUnsyncedSurvey,
+  logSyncedSurvey,
+} from '../utils/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api/axiosConfig';
 
@@ -36,14 +41,14 @@ interface SurveyRecord {
   status?: string;
 }
 
-const SurveyRecordCard = ({ 
-  survey, 
-  assignments, 
-  onDelete, 
-  onSync, 
-  isSyncing 
-}: { 
-  survey: SurveyRecord; 
+const SurveyRecordCard = ({
+  survey,
+  assignments,
+  onDelete,
+  onSync,
+  isSyncing,
+}: {
+  survey: SurveyRecord;
   assignments: any[];
   onDelete: (surveyId: string) => void;
   onSync: (survey: SurveyRecord) => void;
@@ -57,10 +62,10 @@ const SurveyRecordCard = ({
 
   const getMohallaName = (survey: SurveyRecord) => {
     // First try to get from locationDetails or surveyDetails (if already resolved)
-    const directName = survey.data.locationDetails?.mohallaName || 
-                      survey.data.surveyDetails?.mohallaName;
+    const directName =
+      survey.data.locationDetails?.mohallaName || survey.data.surveyDetails?.mohallaName;
     if (directName) return directName;
-    
+
     // If not found, try to resolve from mohallaId using assignments
     const mohallaId = survey.data.surveyDetails?.mohallaId;
     if (mohallaId && assignments.length > 0) {
@@ -73,20 +78,16 @@ const SurveyRecordCard = ({
         }
       }
     }
-    
+
     return 'N/A';
   };
 
   const getMapId = (survey: SurveyRecord) => {
-    return survey.data.surveyDetails?.mapId || 
-           survey.data.propertyDetails?.mapId || 
-           'N/A';
+    return survey.data.surveyDetails?.mapId || survey.data.propertyDetails?.mapId || 'N/A';
   };
 
   const getGisId = (survey: SurveyRecord) => {
-    return survey.data.surveyDetails?.gisId || 
-           survey.data.propertyDetails?.gisId || 
-           'N/A';
+    return survey.data.surveyDetails?.gisId || survey.data.propertyDetails?.gisId || 'N/A';
   };
 
   return (
@@ -94,45 +95,39 @@ const SurveyRecordCard = ({
       <View style={styles.cardHeader}>
         <View style={styles.cardHeaderLeft}>
           <Text style={styles.surveyType}>{survey.surveyType}</Text>
-          <Text style={styles.createdDate}>
-            {new Date(survey.createdAt).toLocaleDateString()}
-          </Text>
+          <Text style={styles.createdDate}>{new Date(survey.createdAt).toLocaleDateString()}</Text>
         </View>
         <View style={styles.cardActions}>
           <TouchableOpacity
             style={[styles.actionButton, styles.syncButton]}
             onPress={() => onSync(survey)}
-            disabled={isSyncing}
-          >
-            <Text style={styles.actionButtonText}>
-              {isSyncing ? 'Syncing...' : 'Sync'}
-            </Text>
+            disabled={isSyncing}>
+            <Text style={styles.actionButtonText}>{isSyncing ? 'Syncing...' : 'Sync'}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.deleteButton]}
-            onPress={() => onDelete(survey.id)}
-          >
+            onPress={() => onDelete(survey.id)}>
             <Text style={styles.actionButtonText}>Delete</Text>
           </TouchableOpacity>
         </View>
       </View>
-      
+
       <View style={styles.cardContent}>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Mohalla:</Text>
           <Text style={styles.detailValue}>{getMohallaName(survey)}</Text>
         </View>
-        
+
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Map ID:</Text>
           <Text style={styles.detailValue}>{getMapId(survey)}</Text>
         </View>
-        
+
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>GIS ID:</Text>
           <Text style={styles.detailValue}>{getGisId(survey)}</Text>
         </View>
-        
+
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Total Floors:</Text>
           <Text style={styles.detailValue}>{getTotalFloorCount(survey)}</Text>
@@ -169,12 +164,10 @@ export default function SurveyRecordsScreen() {
       const allSurveys = await getUnsyncedSurveys();
       const assignmentsData = await getAssignments();
       setAssignments(assignmentsData?.assignments || []);
-      
+
       // Filter for submitted but unsynced surveys
       const submittedUnsynced = allSurveys.filter(
-        (survey: SurveyRecord) => 
-          survey.status === 'submitted' && 
-          !survey.synced
+        (survey: SurveyRecord) => survey.status === 'submitted' && !survey.synced
       );
       setSurveys(submittedUnsynced);
     } catch (error) {
@@ -211,18 +204,18 @@ export default function SurveyRecordsScreen() {
                   onPress: async () => {
                     try {
                       await removeUnsyncedSurvey(surveyId);
-                      setSurveys(prev => prev.filter(s => s.id !== surveyId));
+                      setSurveys((prev) => prev.filter((s) => s.id !== surveyId));
                       Alert.alert('Success', 'Survey deleted successfully');
                     } catch (error) {
                       console.error('Error deleting survey:', error);
                       Alert.alert('Error', 'Failed to delete survey');
                     }
-                  }
-                }
+                  },
+                },
               ]
             );
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -240,17 +233,17 @@ export default function SurveyRecordsScreen() {
               setSyncingSurveyId(survey.id);
               const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
               const token = await AsyncStorage.getItem('userToken');
-              
+
               if (!apiBaseUrl || !token) {
                 Alert.alert('Error', 'Missing API base URL or auth token.');
                 return;
               }
 
               const res = await api.post('/surveys/addSurvey', survey.data);
-              
+
               if (res.status === 200 || res.status === 201) {
                 await removeUnsyncedSurvey(survey.id);
-                setSurveys(prev => prev.filter(s => s.id !== survey.id));
+                setSurveys((prev) => prev.filter((s) => s.id !== survey.id));
                 // Log the synced survey for Survey Count
                 let userRaw = await AsyncStorage.getItem('user');
                 if (!userRaw) userRaw = await AsyncStorage.getItem('userInfo');
@@ -270,8 +263,8 @@ export default function SurveyRecordsScreen() {
             } finally {
               setSyncingSurveyId(null);
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -314,8 +307,8 @@ export default function SurveyRecordsScreen() {
           data={surveys}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <SurveyRecordCard 
-              survey={item} 
+            <SurveyRecordCard
+              survey={item}
               assignments={assignments}
               onDelete={handleDeleteSurvey}
               onSync={handleSyncSurvey}
@@ -461,4 +454,4 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
   },
-}); 
+});

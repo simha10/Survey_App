@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Animated } from 'react-native';
+import { Text, TouchableOpacity, Animated } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,7 +20,7 @@ const CustomHeader: React.FC<CustomHeaderProps> = ({ title }) => {
       duration: 300,
       useNativeDriver: true,
     }).start();
-  }, []);
+  }, [animatedValue]);
 
   return (
     <SafeAreaView

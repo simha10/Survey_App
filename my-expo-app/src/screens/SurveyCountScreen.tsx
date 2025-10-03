@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker'; // If not available, use a simple input for now
@@ -32,7 +32,7 @@ export default function SurveyCountScreen() {
   );
 
   const filtered = log.filter(
-    entry =>
+    (entry) =>
       (!userId || entry.userId === userId) &&
       (!startDate || new Date(entry.syncedAt) >= startDate) &&
       (!endDate || new Date(entry.syncedAt) <= endDate)

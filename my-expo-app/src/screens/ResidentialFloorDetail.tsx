@@ -1,20 +1,25 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Alert, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
   ScrollView,
   TextInput,
   KeyboardAvoidingView,
-  Platform
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
-import { getUnsyncedSurveys, saveSurveyLocally, getSelectedAssignment, getMasterData } from '../utils/storage';
+import {
+  getUnsyncedSurveys,
+  saveSurveyLocally,
+  getSelectedAssignment,
+  getMasterData,
+} from '../utils/storage';
 
 interface FloorDetail {
   id: string;
@@ -75,7 +80,7 @@ export default function ResidentialFloorDetail() {
       setFormData(floorData);
     } else {
       // Generate new ID for new floor
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         id: `floor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       }));
@@ -103,7 +108,7 @@ export default function ResidentialFloorDetail() {
   };
 
   const handleInputChange = (field: keyof FloorDetail, value: string) => {
-    setFormData(prev => {
+    setFormData((prev) => {
       const newData = { ...prev };
       if (field === 'coveredArea') {
         // Only allow numbers, parse as float, default to 0 if invalid
@@ -119,7 +124,12 @@ export default function ResidentialFloorDetail() {
         newData[field] = parseInt(value) || 0;
       } else {
         // For string fields (allRoomVerandaArea, allBalconyKitchenArea, allGarageArea)
-        newData[field as keyof Pick<FloorDetail, 'allRoomVerandaArea' | 'allBalconyKitchenArea' | 'allGarageArea'>] = value;
+        newData[
+          field as keyof Pick<
+            FloorDetail,
+            'allRoomVerandaArea' | 'allBalconyKitchenArea' | 'allGarageArea'
+          >
+        ] = value;
       }
       return newData;
     });
@@ -157,8 +167,12 @@ export default function ResidentialFloorDetail() {
         const processedFormData = {
           ...formData,
           coveredArea: formData.coveredArea || 0,
-          allRoomVerandaArea: formData.allRoomVerandaArea === '' ? null : parseFloat(formData.allRoomVerandaArea),
-          allBalconyKitchenArea: formData.allBalconyKitchenArea === '' ? null : parseFloat(formData.allBalconyKitchenArea),
+          allRoomVerandaArea:
+            formData.allRoomVerandaArea === '' ? null : parseFloat(formData.allRoomVerandaArea),
+          allBalconyKitchenArea:
+            formData.allBalconyKitchenArea === ''
+              ? null
+              : parseFloat(formData.allBalconyKitchenArea),
           allGarageArea: formData.allGarageArea === '' ? null : parseFloat(formData.allGarageArea),
           carpetArea: formData.carpetArea || 0,
           floorNumberId: Number(formData.floorNumberId),
@@ -166,7 +180,10 @@ export default function ResidentialFloorDetail() {
           constructionNatureId: Number(formData.constructionNatureId),
         };
 
-        const existingFloors = survey.data && survey.data.residentialPropertyAssessments ? survey.data.residentialPropertyAssessments : [];
+        const existingFloors =
+          survey.data && survey.data.residentialPropertyAssessments
+            ? survey.data.residentialPropertyAssessments
+            : [];
         let updatedFloors;
 
         if (editMode) {
@@ -191,7 +208,7 @@ export default function ResidentialFloorDetail() {
           allSurveys[idx] = updatedSurvey;
           await saveSurveyLocally(updatedSurvey);
         }
-        
+
         Alert.alert(
           'Success',
           editMode ? 'Floor detail updated successfully' : 'Floor detail added successfully',
@@ -227,22 +244,24 @@ export default function ResidentialFloorDetail() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.topBackButton}>
           <Text style={styles.topBackArrow}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.topHeaderTitle}>{editMode ? 'Edit' : 'Add'} Residential Floor Detail</Text>
+        <Text style={styles.topHeaderTitle}>
+          {editMode ? 'Edit' : 'Add'} Residential Floor Detail
+        </Text>
       </View>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Floor Number */}
           <View style={styles.formGroup}>
-            <Text style={{color: '#111'}}>Floor Number<Text style={{color: 'red'}}>*</Text></Text>
+            <Text style={{ color: '#111' }}>
+              Floor Number<Text style={{ color: 'red' }}>*</Text>
+            </Text>
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.floorNumberId}
                 onValueChange={(value) => handleInputChange('floorNumberId', value.toString())}
-                style={styles.picker}
-              >
+                style={styles.picker}>
                 <Picker.Item label="Select Floor Number" value={0} />
                 {masterData.floorNumbers.map((floor) => (
                   <Picker.Item
@@ -257,13 +276,14 @@ export default function ResidentialFloorDetail() {
 
           {/* Occupancy Status */}
           <View style={styles.formGroup}>
-            <Text style={{color: '#111'}}>Occupancy Status<Text style={{color: 'red'}}>*</Text></Text>
+            <Text style={{ color: '#111' }}>
+              Occupancy Status<Text style={{ color: 'red' }}>*</Text>
+            </Text>
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.occupancyStatusId}
                 onValueChange={(value) => handleInputChange('occupancyStatusId', value.toString())}
-                style={styles.picker}
-              >
+                style={styles.picker}>
                 <Picker.Item label="Select Occupancy Status" value={0} />
                 {masterData.occupancyStatuses.map((status) => (
                   <Picker.Item
@@ -278,13 +298,16 @@ export default function ResidentialFloorDetail() {
 
           {/* Construction Nature */}
           <View style={styles.formGroup}>
-            <Text style={{color: '#111'}}>Construction Nature<Text style={{color: 'red'}}>*</Text></Text>
+            <Text style={{ color: '#111' }}>
+              Construction Nature<Text style={{ color: 'red' }}>*</Text>
+            </Text>
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.constructionNatureId}
-                onValueChange={(value) => handleInputChange('constructionNatureId', value.toString())}
-                style={styles.picker}
-              >
+                onValueChange={(value) =>
+                  handleInputChange('constructionNatureId', value.toString())
+                }
+                style={styles.picker}>
                 <Picker.Item label="Select Construction Nature" value={0} />
                 {masterData.constructionNatures.map((nature) => (
                   <Picker.Item
@@ -299,7 +322,9 @@ export default function ResidentialFloorDetail() {
 
           {/* Covered Area */}
           <View style={styles.formGroup}>
-            <Text style={{color: '#111'}}>Covered Area (sq ft)<Text style={{color: 'red'}}>*</Text></Text>
+            <Text style={{ color: '#111' }}>
+              Covered Area (sq ft)<Text style={{ color: 'red' }}>*</Text>
+            </Text>
             <TextInput
               style={styles.input}
               value={formData.coveredArea === 0 ? '' : String(formData.coveredArea)}
@@ -311,7 +336,7 @@ export default function ResidentialFloorDetail() {
 
           {/* Total Rooms/Veranda Area */}
           <View style={styles.formGroup}>
-            <Text style={{color: '#111'}}>Total Rooms/Veranda Area (sq ft)</Text>
+            <Text style={{ color: '#111' }}>Total Rooms/Veranda Area (sq ft)</Text>
             <TextInput
               style={styles.input}
               value={formData.allRoomVerandaArea}
@@ -323,7 +348,7 @@ export default function ResidentialFloorDetail() {
 
           {/* Total Balcony/Kitchen Area */}
           <View style={styles.formGroup}>
-            <Text style={{color: '#111'}}>Total Balcony/Kitchen Area (sq ft)</Text>
+            <Text style={{ color: '#111' }}>Total Balcony/Kitchen Area (sq ft)</Text>
             <TextInput
               style={styles.input}
               value={formData.allBalconyKitchenArea}
@@ -335,7 +360,7 @@ export default function ResidentialFloorDetail() {
 
           {/* All Garage Area */}
           <View style={styles.formGroup}>
-            <Text style={{color: '#111'}}>All Garage Area (sq ft)</Text>
+            <Text style={{ color: '#111' }}>All Garage Area (sq ft)</Text>
             <TextInput
               style={styles.input}
               value={formData.allGarageArea}
@@ -347,16 +372,16 @@ export default function ResidentialFloorDetail() {
 
           {/* Carpet Area (Auto-calculated) */}
           <View style={styles.formGroup}>
-            <Text style={{color: '#111'}}>Carpet Area (sq ft)<Text style={{color: 'red'}}>*</Text></Text>
+            <Text style={{ color: '#111' }}>
+              Carpet Area (sq ft)<Text style={{ color: 'red' }}>*</Text>
+            </Text>
             <TextInput
               style={[styles.input, styles.disabledInput]}
               value={formData.carpetArea === 0 ? '' : String(formData.carpetArea)}
               editable={false}
               placeholder="Auto-calculated (80% of covered area)"
             />
-            <Text style={styles.helperText}>
-              Automatically calculated as 80% of covered area
-            </Text>
+            <Text style={styles.helperText}>Automatically calculated as 80% of covered area</Text>
           </View>
         </ScrollView>
 
@@ -365,18 +390,16 @@ export default function ResidentialFloorDetail() {
           <TouchableOpacity
             style={[styles.button, styles.cancelButton]}
             onPress={() => navigation.goBack()}
-            disabled={saving}
-          >
+            disabled={saving}>
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[styles.button, styles.saveButton, saving && styles.disabledButton]}
             onPress={handleSave}
-            disabled={saving}
-          >
+            disabled={saving}>
             <Text style={styles.saveButtonText}>
-              {saving ? 'Saving...' : (editMode ? 'Update' : 'Save')}
+              {saving ? 'Saving...' : editMode ? 'Update' : 'Save'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -505,4 +528,4 @@ const styles = StyleSheet.create({
   disabledButton: {
     backgroundColor: '#9CA3AF',
   },
-}); 
+});
