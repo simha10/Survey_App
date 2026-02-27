@@ -221,7 +221,7 @@ async function main() {
     const category = await prisma.nrPropertyCategoryMaster.findFirst({
       where: { propertyCategoryNumber: subCategory.propertyCategoryNumber }
     });
-    
+
     if (category) {
       await prisma.nrPropertySubCategoryMaster.createMany({
         data: [{
@@ -391,7 +391,7 @@ async function main() {
 
     // Check if user exists
     let user = await prisma.usersMaster.findFirst({ where: { username: userData.username } });
-    
+
     if (!user) {
       // Create user
       user = await prisma.usersMaster.create({
