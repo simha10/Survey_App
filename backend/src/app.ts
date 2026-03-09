@@ -31,6 +31,7 @@ const defaultOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'https://survey-app-orpin-seven.vercel.app',
+  'https://ptms.lrmconsultant.in'
 ];
 
 // Build allowed origins list from environment variables
