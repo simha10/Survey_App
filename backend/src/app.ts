@@ -32,16 +32,40 @@ const defaultOrigins = [
   'http://127.0.0.1:3000',
 ];
 
-// Add frontend URL from environment variables if available
+// Build allowed origins list from environment variables
+const allowedOrigins = [...defaultOrigins];
+
+// Add frontend URLs from environment variables
 if (process.env.FRONTEND_URL) {
-  defaultOrigins.push(process.env.FRONTEND_URL);
+  allowedOrigins.push(process.env.FRONTEND_URL);
+}
+if (process.env.FRONTEND_URL_PRODUCTION) {
+  allowedOrigins.push(process.env.FRONTEND_URL_PRODUCTION);
+}
+if (process.env.CORS_ORIGINS) {
+  // Allow comma-separated list of origins
+  const additionalOrigins = process.env.CORS_ORIGINS.split(',').map(url => url.trim());
+  allowedOrigins.push(...additionalOrigins);
 }
 
 
 
 // CORS Configuration
 const corsOptions = {
-  origin: defaultOrigins,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    // Check if origin is allowed
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log(`Blocked CORS origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true, // Allow cookies and authorization headers
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: [
@@ -57,19 +81,25 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// Add headers middleware for additional CORS support
+// Additional CORS headers for preflight requests
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin);
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  const requestOrigin = req.headers.origin;
   
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-  } else {
-    next();
+  // Only set headers if the origin is allowed
+  if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
+    res.header('Access-Control-Allow-Origin', requestOrigin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(200);
+      return;
+    }
   }
+  
+  next();
 });
 
 // Routes
@@ -130,6 +160,6 @@ const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log('DB URL:', process.env.DATABASE_URL?.substring(0, 5));
   console.log(`Server is running on port ${PORT}`);
-  console.log(`CORS enabled for origins: ${corsOptions.origin.join(', ')}`);
+  console.log(`CORS enabled for origins: ${allowedOrigins.join(', ')}`);
 });
 
