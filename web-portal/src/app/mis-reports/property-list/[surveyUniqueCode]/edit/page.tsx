@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Loading from "@/components/ui/loading";
 import toast from "react-hot-toast";
@@ -159,7 +159,7 @@ const QC_STATUS_OPTIONS = [
 
 const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
 
-export default function PropertyQCEditPage() {
+function PropertyQCEditContent() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -195,7 +195,7 @@ export default function PropertyQCEditPage() {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
           },
-        }
+        },
       );
       if (res.ok) {
         const data = await res.json();
@@ -415,7 +415,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "propertyDetails",
                     "oldHouseNumber",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -429,7 +429,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "propertyDetails",
                     "newProperty",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -445,7 +445,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "propertyDetails",
                     "electricityConsumerName",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -463,7 +463,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "propertyDetails",
                     "waterSewerageConnectionNumber",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -479,7 +479,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "propertyDetails",
                     "respondentName",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -495,7 +495,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "propertyDetails",
                     "respondentStatusId",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               >
@@ -541,7 +541,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "locationDetails",
                     "assessmentYear",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -579,7 +579,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "locationDetails",
                     "propertyTypeId",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               >
@@ -598,7 +598,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "locationDetails",
                     "buildingName",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -612,7 +612,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "locationDetails",
                     "roadTypeId",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               >
@@ -633,7 +633,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "locationDetails",
                     "constructionYear",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -647,7 +647,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "locationDetails",
                     "locality",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -661,7 +661,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "locationDetails",
                     "pinCode",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -675,7 +675,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "locationDetails",
                     "addressRoadName",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -691,7 +691,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "locationDetails",
                     "propertyLatitude",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -705,7 +705,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "locationDetails",
                     "landmark",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -721,7 +721,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "locationDetails",
                     "propertyLongitude",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -735,7 +735,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "locationDetails",
                     "fourWayEast",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -749,7 +749,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "locationDetails",
                     "fourWayWest",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -765,7 +765,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "locationDetails",
                     "fourWayNorth",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -781,7 +781,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "locationDetails",
                     "fourWaySouth",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -795,7 +795,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "locationDetails",
                     "newWardNumber",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -818,7 +818,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "ownerDetails",
                     "ownerName",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -834,7 +834,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "ownerDetails",
                     "fatherHusbandName",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -848,7 +848,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "ownerDetails",
                     "mobileNumber",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -872,7 +872,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "ownerDetails",
                     "aadharNumber",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -889,7 +889,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "ownerDetails",
                     "cancellationDate",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               />
@@ -914,7 +914,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "otherDetails",
                     "waterSourceId",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               >
@@ -937,7 +937,7 @@ export default function PropertyQCEditPage() {
                   handleNestedChange(
                     "otherDetails",
                     "rainWaterHarvestingSystem",
-                    e.target.value
+                    e.target.value,
                   )
                 }
               >
@@ -958,7 +958,7 @@ export default function PropertyQCEditPage() {
                     handleNestedChange(
                       "otherDetails",
                       "waterSupplyWithin200Meters",
-                      e.target.checked ? "YES" : "NO"
+                      e.target.checked ? "YES" : "NO",
                     )
                   }
                 />
@@ -979,7 +979,7 @@ export default function PropertyQCEditPage() {
                     handleNestedChange(
                       "otherDetails",
                       "sewerageLineWithin100Meters",
-                      e.target.checked ? "YES" : "NO"
+                      e.target.checked ? "YES" : "NO",
                     )
                   }
                 />
@@ -1009,7 +1009,7 @@ export default function PropertyQCEditPage() {
                     handleNestedChange(
                       "otherDetails",
                       "totalPlotArea",
-                      e.target.value
+                      e.target.value,
                     )
                   }
                 />
@@ -1025,7 +1025,7 @@ export default function PropertyQCEditPage() {
                     handleNestedChange(
                       "otherDetails",
                       "builtupAreaOfGroundFloor",
-                      e.target.value
+                      e.target.value,
                     )
                   }
                 />
@@ -1074,7 +1074,7 @@ export default function PropertyQCEditPage() {
                           handleAssessmentChange(
                             idx,
                             "floorNumberId",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                       />
@@ -1087,7 +1087,7 @@ export default function PropertyQCEditPage() {
                           handleAssessmentChange(
                             idx,
                             "occupancyStatusId",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                       />
@@ -1100,7 +1100,7 @@ export default function PropertyQCEditPage() {
                           handleAssessmentChange(
                             idx,
                             "constructionNatureId",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                       />
@@ -1113,7 +1113,7 @@ export default function PropertyQCEditPage() {
                           handleAssessmentChange(
                             idx,
                             "coveredArea",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                       />
@@ -1126,7 +1126,7 @@ export default function PropertyQCEditPage() {
                           handleAssessmentChange(
                             idx,
                             "allRoomVerandaArea",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                       />
@@ -1139,7 +1139,7 @@ export default function PropertyQCEditPage() {
                           handleAssessmentChange(
                             idx,
                             "allBalconyKitchenArea",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                       />
@@ -1152,7 +1152,7 @@ export default function PropertyQCEditPage() {
                           handleAssessmentChange(
                             idx,
                             "allGarageArea",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                       />
@@ -1165,7 +1165,7 @@ export default function PropertyQCEditPage() {
                           handleAssessmentChange(
                             idx,
                             "carpetArea",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                       />
@@ -1331,5 +1331,13 @@ export default function PropertyQCEditPage() {
         PTMS, Urban Development Department
       </div>
     </div>
+  );
+}
+
+export default function PropertyQCEditPage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <PropertyQCEditContent />
+    </Suspense>
   );
 }

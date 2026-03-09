@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Loading from "@/components/ui/loading";
 import toast from "react-hot-toast";
@@ -28,7 +28,7 @@ const QC_STATUS_OPTIONS = [
 
 const PAGE_SIZE = 10;
 
-export default function PropertyListResultsPage() {
+function PropertyListResultsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -98,7 +98,7 @@ export default function PropertyListResultsPage() {
       setTotal(
         data.length < PAGE_SIZE
           ? (page - 1) * PAGE_SIZE + data.length
-          : page * PAGE_SIZE + 1
+          : page * PAGE_SIZE + 1,
       );
     } catch (e) {
       setError("Error fetching property list");
@@ -120,10 +120,10 @@ export default function PropertyListResultsPage() {
     surveyTypeId === "1"
       ? "Property List (Residential)"
       : surveyTypeId === "2"
-      ? "Property List (Non-Residential)"
-      : surveyTypeId === "3"
-      ? "Property List (Mix)"
-      : "Property List (QC Results)";
+        ? "Property List (Non-Residential)"
+        : surveyTypeId === "3"
+          ? "Property List (Mix)"
+          : "Property List (QC Results)";
 
   const handleQcStatusFilterChange = (value: string) => {
     setQcStatusFilter(value);
@@ -209,7 +209,7 @@ export default function PropertyListResultsPage() {
                 const wardName =
                   wards.find(
                     (w) =>
-                      w.newWardNumber === prop.locationDetails?.newWardNumber
+                      w.newWardNumber === prop.locationDetails?.newWardNumber,
                   )?.wardName || "NA";
                 return (
                   <TableRow
@@ -228,12 +228,12 @@ export default function PropertyListResultsPage() {
                     <TableCell>
                       {(() => {
                         const resCount = Array.isArray(
-                          prop.residentialPropertyAssessments
+                          prop.residentialPropertyAssessments,
                         )
                           ? prop.residentialPropertyAssessments.length
                           : 0;
                         const nonResCount = Array.isArray(
-                          prop.nonResidentialPropertyAssessments
+                          prop.nonResidentialPropertyAssessments,
                         )
                           ? prop.nonResidentialPropertyAssessments.length
                           : 0;
@@ -259,10 +259,10 @@ export default function PropertyListResultsPage() {
                           prop.currentQCStatus === "IN_OFFICE_QC_DONE"
                             ? "bg-green-700 text-white"
                             : prop.currentQCStatus === "SURVEY_QC_DONE"
-                            ? "bg-blue-700 text-white"
-                            : prop.currentQCStatus?.includes("REVERTED")
-                            ? "bg-red-700 text-white"
-                            : "bg-gray-700 text-white"
+                              ? "bg-blue-700 text-white"
+                              : prop.currentQCStatus?.includes("REVERTED")
+                                ? "bg-red-700 text-white"
+                                : "bg-gray-700 text-white"
                         }`}
                       >
                         {prop.displayQCLevel || "Survey QC Pending"}
@@ -306,5 +306,13 @@ export default function PropertyListResultsPage() {
         </Table>
       </div>
     </div>
+  );
+}
+
+export default function PropertyListResultsPage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <PropertyListResultsContent />
+    </Suspense>
   );
 }

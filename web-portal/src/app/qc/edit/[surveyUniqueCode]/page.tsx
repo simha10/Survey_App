@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Loading from "@/components/ui/loading";
 import toast from "react-hot-toast";
@@ -13,7 +13,7 @@ const ERROR_TYPE_OPTIONS = [
   { value: "NONE", label: "None" },
 ];
 
-export default function QCEditDetailsPage() {
+function QCEditDetailsContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -111,8 +111,8 @@ export default function QCEditDetailsPage() {
       userRole === "SUPERVISOR"
         ? "Survey QC (Level 1)"
         : userRole === "ADMIN"
-        ? "In-Office QC (Level 2)"
-        : "QC";
+          ? "In-Office QC (Level 2)"
+          : "QC";
 
     return `${levelText} - Edit Property Details`;
   };
@@ -388,5 +388,13 @@ export default function QCEditDetailsPage() {
         </button>
       </div>
     </div>
+  );
+}
+
+export default function QCEditDetailsPage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <QCEditDetailsContent />
+    </Suspense>
   );
 }

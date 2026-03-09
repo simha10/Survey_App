@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Loading from "@/components/ui/loading";
 import toast from "react-hot-toast";
@@ -24,7 +24,7 @@ const ERROR_TYPE_OPTIONS = [
 
 const PAGE_SIZE = 10;
 
-export default function QCEditTablePage() {
+function QCEditTableContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useAuth();
@@ -111,7 +111,7 @@ export default function QCEditTablePage() {
       setTotal(
         data.length < PAGE_SIZE
           ? (page - 1) * PAGE_SIZE + data.length
-          : page * PAGE_SIZE + 1
+          : page * PAGE_SIZE + 1,
       );
     } catch (e) {
       setError("Error fetching property list");
@@ -134,17 +134,17 @@ export default function QCEditTablePage() {
       surveyTypeId === "1"
         ? "Residential"
         : surveyTypeId === "2"
-        ? "Non-Residential"
-        : surveyTypeId === "3"
-        ? "Mix"
-        : "All Types";
+          ? "Non-Residential"
+          : surveyTypeId === "3"
+            ? "Mix"
+            : "All Types";
 
     const levelText =
       userRole === "SUPERVISOR"
         ? "Survey QC (Level 1)"
         : userRole === "ADMIN"
-        ? "In-Office QC (Level 2)"
-        : "QC";
+          ? "In-Office QC (Level 2)"
+          : "QC";
 
     return `${levelText} - ${typeText}`;
   };
@@ -152,7 +152,7 @@ export default function QCEditTablePage() {
   const handleEdit = (surveyUniqueCode: string) => {
     window.open(
       `/qc/edit/${surveyUniqueCode}?surveyTypeId=${surveyTypeId}&userRole=${userRole}&qcLevel=${qcLevel}`,
-      "_blank"
+      "_blank",
     );
   };
 
@@ -287,7 +287,7 @@ export default function QCEditTablePage() {
                 const wardName =
                   wards.find(
                     (w) =>
-                      w.newWardNumber === prop.locationDetails?.newWardNumber
+                      w.newWardNumber === prop.locationDetails?.newWardNumber,
                   )?.wardName || "NA";
                 return (
                   <TableRow
@@ -306,12 +306,12 @@ export default function QCEditTablePage() {
                     <TableCell>
                       {(() => {
                         const resCount = Array.isArray(
-                          prop.residentialPropertyAssessments
+                          prop.residentialPropertyAssessments,
                         )
                           ? prop.residentialPropertyAssessments.length
                           : 0;
                         const nonResCount = Array.isArray(
-                          prop.nonResidentialPropertyAssessments
+                          prop.nonResidentialPropertyAssessments,
                         )
                           ? prop.nonResidentialPropertyAssessments.length
                           : 0;
@@ -351,7 +351,7 @@ export default function QCEditTablePage() {
                         onChange={(e) =>
                           handleErrorTypeChange(
                             prop.surveyUniqueCode,
-                            e.target.value
+                            e.target.value,
                           )
                         }
                       >
@@ -374,7 +374,7 @@ export default function QCEditTablePage() {
                         onChange={(e) =>
                           handleGisRemarkChange(
                             prop.surveyUniqueCode,
-                            e.target.value
+                            e.target.value,
                           )
                         }
                       />
@@ -391,7 +391,7 @@ export default function QCEditTablePage() {
                         onChange={(e) =>
                           handleSurveyTeamRemarkChange(
                             prop.surveyUniqueCode,
-                            e.target.value
+                            e.target.value,
                           )
                         }
                       />
@@ -414,7 +414,7 @@ export default function QCEditTablePage() {
                         onChange={(e) =>
                           handlePlotAreaGISChange(
                             prop.surveyUniqueCode,
-                            e.target.value
+                            e.target.value,
                           )
                         }
                       />
@@ -431,7 +431,7 @@ export default function QCEditTablePage() {
                         onChange={(e) =>
                           handleRIRemarkChange(
                             prop.surveyUniqueCode,
-                            e.target.value
+                            e.target.value,
                           )
                         }
                       />
@@ -453,7 +453,7 @@ export default function QCEditTablePage() {
                         onChange={(e) =>
                           handleAssessmentRemarkChange(
                             prop.surveyUniqueCode,
-                            e.target.value
+                            e.target.value,
                           )
                         }
                       />
@@ -467,7 +467,7 @@ export default function QCEditTablePage() {
                         onChange={(e) =>
                           handleRemarkChange(
                             prop.surveyUniqueCode,
-                            e.target.value
+                            e.target.value,
                           )
                         }
                       />
@@ -514,10 +514,18 @@ export default function QCEditTablePage() {
               >
                 {pageNum}
               </button>
-            )
+            ),
           )}
         </div>
       )}
     </div>
+  );
+}
+
+export default function QCEditTablePage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <QCEditTableContent />
+    </Suspense>
   );
 }
