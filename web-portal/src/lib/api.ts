@@ -15,7 +15,6 @@ export interface LoginRequest {
   password: string;
   role: 'SUPERADMIN' | 'ADMIN' | 'SUPERVISOR' | 'SURVEYOR';
 }
-
 export interface LoginResponse {
   token: string;
   user: {
