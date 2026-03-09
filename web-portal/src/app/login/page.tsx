@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthContext";
 import LoginForm from "@/features/auth/LoginForm";
-import toast from "react-hot-toast";
 import Image from "next/image";
 
 const LoginPage: React.FC = () => {
@@ -18,8 +17,7 @@ const LoginPage: React.FC = () => {
     // Check backend status on page load
     const checkBackend = async () => {
       try {
-        const backendUrl =
-          process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "";
         const response = await fetch(`${backendUrl}/health`);
         if (response.ok) {
           setBackendStatus("online");
@@ -29,9 +27,6 @@ const LoginPage: React.FC = () => {
       } catch (error) {
         console.error("Backend check failed:", error);
         setBackendStatus("offline");
-        toast.error(
-          "Backend server is not running. Please start the backend on port 4000.",
-        );
       }
     };
 
@@ -99,8 +94,7 @@ const LoginPage: React.FC = () => {
                   Backend Server Offline
                 </h3>
                 <p className="text-sm text-red-200 mt-1">
-                  Please start your backend server on port 4000 before
-                  attempting to login.
+                  The backend server is currently unreachable. Please ensure it is running and configured correctly.
                 </p>
               </div>
             </div>

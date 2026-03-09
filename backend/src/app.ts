@@ -59,7 +59,7 @@ const corsOptions = {
     }
     
     // Check if origin is allowed
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
       callback(null, true);
     } else {
       console.log(`Blocked CORS origin: ${origin}`);
@@ -86,7 +86,7 @@ app.use((req, res, next) => {
   const requestOrigin = req.headers.origin;
   
   // Only set headers if the origin is allowed
-  if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
+  if (requestOrigin && (allowedOrigins.includes(requestOrigin) || requestOrigin.endsWith('.vercel.app'))) {
     res.header('Access-Control-Allow-Origin', requestOrigin);
     res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
