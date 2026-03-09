@@ -16,6 +16,8 @@ import qcRoutes from './routes/qcRoutes';
 import reportsRoutes from './routes/reportsRoutes';
 import assignmentRoutes from './routes/assignmentRoutes';
 
+const Frontend_URL= process.env.FRONTEND_URL;
+
 dotenv.config();
 
 // Initialize Express app
@@ -28,10 +30,10 @@ const corsOptions = {
     'http://localhost:3000', // Web portal
     'http://127.0.0.1:3000', // Alternative localhost
     'http://localhost:8081', // Expo development server
-    'http://127.0.0.1:8081', // Expo development server
-    'http://localhost:8000', // Web portal
+    'http://127.0.0.1:8081', // Expo development serve, // Web portal
     'http://127.0.0.1:8000', // Web portal
-  ],
+    Frontend_URL // Environment variable for frontend URL
+  ].filter((url): url is string => url !== undefined),
   credentials: true, // Allow cookies and authorization headers
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: [
@@ -43,7 +45,6 @@ const corsOptions = {
   ],
   optionsSuccessStatus: 200, // Some legacy browsers choke on 204
 };
-
 // Middleware
 app.use(cors(corsOptions));
 app.use(express.json());
@@ -119,7 +120,7 @@ app.use((req, res) => {
 // Start server
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
-  console.log('DB URL:', process.env.DATABASE_URL);
+  console.log('DB URL:', process.env.DATABASE_URL?.substring(0, 5));
   console.log(`Server is running on port ${PORT}`);
   console.log(`CORS enabled for origins: ${corsOptions.origin.join(', ')}`);
 });
