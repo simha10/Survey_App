@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
 
 // API Configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 // Types
 export interface ApiResponse<T = any> {

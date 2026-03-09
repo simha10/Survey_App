@@ -4,6 +4,7 @@ import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Loading from "@/components/ui/loading";
 import toast from "react-hot-toast";
 import QCRemarksPanel from "@/components/qc/QCRemarksPanel";
+import { qcApi } from "@/lib/api";
 
 interface PropertyDetails {
   surveyUniqueCode: string;
@@ -157,8 +158,6 @@ const QC_STATUS_OPTIONS = [
   { value: "ERROR", label: "Error" },
 ];
 
-const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
-
 function PropertyQCEditContent() {
   const router = useRouter();
   const params = useParams();
@@ -182,74 +181,59 @@ function PropertyQCEditContent() {
   const fetchProperty = async () => {
     setLoading(true);
     try {
-      console.log("Fetching property with:", {
-        baseUrl,
-        surveyUniqueCode,
-        fullUrl: `${baseUrl}/api/qc/property/${surveyUniqueCode}`,
-        token: localStorage.getItem("auth_token") ? "Present" : "Missing",
-      });
+      console.log("Fetching property with surveyUniqueCode:", surveyUniqueCode);
 
-      const res = await fetch(
-        `${baseUrl}/api/qc/property/${surveyUniqueCode}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
-          },
-        },
-      );
-      if (res.ok) {
-        const data = await res.json();
-        console.log("Fetched property data:", data); // Debug log
-        setProperty(data);
-        setForm(data);
+      const data = await qcApi.getPropertyDetails(surveyUniqueCode);
+      console.log("Fetched property data:", data); // Debug log
+      setProperty(data);
+      setForm(data);
 
-        // Initialize assessment rows based on survey type
-        if (
-          data.residentialPropertyAssessments &&
-          data.residentialPropertyAssessments.length > 0
-        ) {
-          setAssessmentRows(data.residentialPropertyAssessments);
-        } else {
-          // Add default empty row if no assessments exist
-          setAssessmentRows([
-            {
-              floorNumberId: "",
-              occupancyStatusId: "",
-              constructionNatureId: "",
-              coveredArea: "",
-              allRoomVerandaArea: "",
-              allBalconyKitchenArea: "",
-              allGarageArea: "",
-              carpetArea: "",
-            },
-          ]);
-        }
-
-        // Initialize attachments
-        if (data.propertyAttachments) {
-          const attachmentEntries = Object.entries(data.propertyAttachments)
-            .filter(([key, value]) => value && value !== "")
-            .map(([key, value]) => [key, value]);
-          setAttachments(attachmentEntries);
-        } else {
-          setAttachments([]);
-        }
-
-        setErrorMsg("");
+      // Initialize assessment rows based on survey type
+      if (
+        data.residentialPropertyAssessments &&
+        data.residentialPropertyAssessments.length > 0
+      ) {
+        setAssessmentRows(data.residentialPropertyAssessments);
       } else {
-        let errMsg = `Error ${res.status}: `;
-        if (res.status === 401) errMsg += "Unauthorized: Please login.";
-        else if (res.status === 403)
-          errMsg += "Forbidden: You do not have access.";
-        else if (res.status === 404) errMsg += "Property not found.";
-        else errMsg += "Failed to fetch property details.";
-        const err = await res.json().catch(() => ({}));
-        setErrorMsg(err.error ? `${errMsg} (${err.error})` : errMsg);
-        setProperty(null);
+        // Add default empty row if no assessments exist
+        setAssessmentRows([
+          {
+            floorNumberId: "",
+            occupancyStatusId: "",
+            constructionNatureId: "",
+            coveredArea: "",
+            allRoomVerandaArea: "",
+            allBalconyKitchenArea: "",
+            allGarageArea: "",
+            carpetArea: "",
+          },
+        ]);
       }
-    } catch (e) {
+
+      // Initialize attachments
+      if (data.propertyAttachments) {
+        const attachmentEntries = Object.entries(data.propertyAttachments)
+          .filter(([key, value]) => value && value !== "")
+          .map(([key, value]) => [key, value]);
+        setAttachments(attachmentEntries);
+      } else {
+        setAttachments([]);
+      }
+
+      setErrorMsg("");
+    } catch (e: any) {
       console.error("Error fetching property:", e);
-      setErrorMsg("Error fetching property details");
+      let errMsg = "Error fetching property details";
+      if (e.response?.status === 401) errMsg = "Unauthorized: Please login.";
+      else if (e.response?.status === 403)
+        errMsg = "Forbidden: You do not have access.";
+      else if (e.response?.status === 404) errMsg = "Property not found.";
+      setErrorMsg(
+        e.response?.data?.error
+          ? `${errMsg} (${e.response.data.error})`
+          : errMsg,
+      );
+      setProperty(null);
     } finally {
       setLoading(false);
     }
@@ -316,32 +300,22 @@ function PropertyQCEditContent() {
         updateData.nonResidentialPropertyAssessments = assessmentRows;
       }
       // Attachments are UI-only for now (not sent)
-      const res = await fetch(`${baseUrl}/api/qc/survey/${surveyUniqueCode}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
-        },
-        body: JSON.stringify({
-          updateData,
-          qcStatus: "APPROVED",
-          qcLevel: 1,
-          remarks: form.qcRecords?.[0]?.remarks || "",
-          isError: form.qcRecords?.[0]?.isError || false,
-          errorType: form.qcRecords?.[0]?.errorType || "NONE",
-          gisTeamRemark: form.qcRecords?.[0]?.gisTeamRemark || "",
-          surveyTeamRemark: form.qcRecords?.[0]?.surveyTeamRemark || "",
-          RIRemark: form.qcRecords?.[0]?.RIRemark || "",
-        }),
+      await qcApi.updateSurveyQC(surveyUniqueCode, {
+        updateData,
+        qcStatus: "APPROVED",
+        qcLevel: 1,
+        remarks: form.qcRecords?.[0]?.remarks || "",
+        isError: form.qcRecords?.[0]?.isError || false,
+        errorType: form.qcRecords?.[0]?.errorType || "NONE",
+        gisTeamRemark: form.qcRecords?.[0]?.gisTeamRemark || "",
+        surveyTeamRemark: form.qcRecords?.[0]?.surveyTeamRemark || "",
+        RIRemark: form.qcRecords?.[0]?.RIRemark || "",
       });
-      if (res.ok) {
-        toast.success("QC updated successfully");
-        router.push("/mis-reports/property-list/full-table");
-      } else {
-        const err = await res.json();
-        toast.error(err.error || "Failed to update QC");
-      }
+
+      toast.success("QC updated successfully");
+      router.push("/mis-reports/property-list/full-table");
     } catch (e) {
+      console.error("Error updating QC:", e);
       toast.error("Error updating QC");
     } finally {
       setSaving(false);
