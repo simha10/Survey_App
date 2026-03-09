@@ -30,6 +30,7 @@ const defaultOrigins = [
   'http://127.0.0.1:8000',
   'http://localhost:3000',
   'http://127.0.0.1:3000',
+  'https://survey-app-orpin-seven.vercel.app',
 ];
 
 // Build allowed origins list from environment variables
@@ -59,7 +60,7 @@ const corsOptions = {
     }
     
     // Check if origin is allowed
-    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       console.log(`Blocked CORS origin: ${origin}`);
@@ -86,7 +87,7 @@ app.use((req, res, next) => {
   const requestOrigin = req.headers.origin;
   
   // Only set headers if the origin is allowed
-  if (requestOrigin && (allowedOrigins.includes(requestOrigin) || requestOrigin.endsWith('.vercel.app'))) {
+  if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
     res.header('Access-Control-Allow-Origin', requestOrigin);
     res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
