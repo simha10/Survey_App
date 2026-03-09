@@ -78,16 +78,6 @@ const LoginPage: React.FC = () => {
           />
         </div>
 
-        {/* Backend Status */}
-        {backendStatus === "checking" && (
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400 mx-auto mb-2"></div>
-            <p className="text-sm text-gray-300">
-              Checking backend connection...
-            </p>
-          </div>
-        )}
-
         {backendStatus === "offline" && (
           <div className="bg-red-900/20 border border-red-700 rounded-md p-4 mb-6">
             <div className="flex">

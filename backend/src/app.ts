@@ -16,7 +16,7 @@ import qcRoutes from './routes/qcRoutes';
 import reportsRoutes from './routes/reportsRoutes';
 import assignmentRoutes from './routes/assignmentRoutes';
 
-const Frontend_URL= process.env.FRONTEND_URL;
+
 
 dotenv.config();
 
@@ -24,16 +24,24 @@ dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
 
+// Default origins for development
+const defaultOrigins = [
+  'http://localhost:8000',
+  'http://127.0.0.1:8000',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+];
+
+// Add frontend URL from environment variables if available
+if (process.env.FRONTEND_URL) {
+  defaultOrigins.push(process.env.FRONTEND_URL);
+}
+
+
+
 // CORS Configuration
 const corsOptions = {
-  origin: [
-    'http://localhost:3000', // Web portal
-    'http://127.0.0.1:3000', // Alternative localhost
-    'http://localhost:8081', // Expo development server
-    'http://127.0.0.1:8081', // Expo development serve, // Web portal
-    'http://127.0.0.1:8000', // Web portal
-    Frontend_URL // Environment variable for frontend URL
-  ].filter((url): url is string => url !== undefined),
+  origin: defaultOrigins,
   credentials: true, // Allow cookies and authorization headers
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: [
@@ -124,3 +132,4 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`CORS enabled for origins: ${corsOptions.origin.join(', ')}`);
 });
+
