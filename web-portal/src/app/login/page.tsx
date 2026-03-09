@@ -18,7 +18,9 @@ const LoginPage: React.FC = () => {
     // Check backend status on page load
     const checkBackend = async () => {
       try {
-        const response = await fetch("http://localhost:4000/health");
+        const backendUrl =
+          process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+        const response = await fetch(`${backendUrl}/health`);
         if (response.ok) {
           setBackendStatus("online");
         } else {
