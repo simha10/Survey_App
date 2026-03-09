@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthContext";
 import LoginForm from "@/features/auth/LoginForm";
 import toast from "react-hot-toast";
+import Image from "next/image";
 
 const LoginPage: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -27,7 +28,7 @@ const LoginPage: React.FC = () => {
         console.error("Backend check failed:", error);
         setBackendStatus("offline");
         toast.error(
-          "Backend server is not running. Please start the backend on port 4000."
+          "Backend server is not running. Please start the backend on port 4000.",
         );
       }
     };
@@ -51,8 +52,8 @@ const LoginPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
       </div>
     );
   }
@@ -62,20 +63,31 @@ const LoginPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-lg w-full bg-gray-800 rounded-lg shadow-2xl p-8 space-y-8 border border-gray-700">
+        {/* Logo */}
+        <div className="text-center">
+          <Image
+            src="/logo.png"
+            alt="LRM Consultants Logo"
+            width={80}
+            height={80}
+            className="mx-auto mb-4"
+          />
+        </div>
+
         {/* Backend Status */}
         {backendStatus === "checking" && (
           <div className="text-center">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
-            <p className="text-sm text-gray-600">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400 mx-auto mb-2"></div>
+            <p className="text-sm text-gray-300">
               Checking backend connection...
             </p>
           </div>
         )}
 
         {backendStatus === "offline" && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+          <div className="bg-red-900/20 border border-red-700 rounded-md p-4 mb-6">
             <div className="flex">
               <div className="flex-shrink-0">
                 <svg
@@ -91,10 +103,10 @@ const LoginPage: React.FC = () => {
                 </svg>
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">
+                <h3 className="text-sm font-medium text-red-300">
                   Backend Server Offline
                 </h3>
-                <p className="text-sm text-red-700 mt-1">
+                <p className="text-sm text-red-200 mt-1">
                   Please start your backend server on port 4000 before
                   attempting to login.
                 </p>
@@ -105,13 +117,8 @@ const LoginPage: React.FC = () => {
 
         {/* Header */}
         <div className="text-center">
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-300">
-            Sign in to your account
-          </h2>
-          <p className="mt-2 text-sm text-gray-500">Survey Management Portal</p>
-          <p className="mt-1 text-xs text-blue-600 font-medium">
-            Admin Access Only
-          </p>
+          <h2 className="text-3xl font-bold text-white">LRM Consultants</h2>
+          <p className="mt-4 text-sm text-gray-400">Sign in to your account</p>
         </div>
 
         {/* Login Form */}
@@ -119,8 +126,8 @@ const LoginPage: React.FC = () => {
 
         {/* Footer */}
         <div className="text-center">
-          <p className="text-xs text-gray-500">
-            © 2024 Survey Management Portal. All rights reserved.
+          <p className="text-xs text-gray-400">
+            © 2024 LRM Consultants. All rights reserved.
           </p>
         </div>
       </div>

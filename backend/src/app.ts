@@ -29,6 +29,8 @@ const corsOptions = {
     'http://127.0.0.1:3000', // Alternative localhost
     'http://localhost:8081', // Expo development server
     'http://127.0.0.1:8081', // Expo development server
+    'http://localhost:8000', // Web portal
+    'http://127.0.0.1:8000', // Web portal
   ],
   credentials: true, // Allow cookies and authorization headers
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
