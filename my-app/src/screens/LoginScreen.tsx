@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,32 +7,32 @@ import {
   ActivityIndicator,
   Animated,
   Image,
-} from "react-native";
-import { Picker } from "@react-native-picker/picker";
-import { Feather } from "@expo/vector-icons";
-import Toast from "react-native-toast-message";
-import api from "../api/axiosConfig";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useTheme } from "../context/ThemeContext";
-import { useAuth } from "../context/AuthContext";
-import { saveMasterData, saveAssignments } from "../utils/storage";
-import { fetchAllMasterData } from "../services/masterDataService";
-import { fetchSurveyorAssignments } from "../services/surveyService";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as SecureStore from "expo-secure-store";
-import { useNavigation, NavigationProp } from "@react-navigation/native";
+} from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import { Feather } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
+import api from '../api/axiosConfig';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import { saveMasterData, saveAssignments } from '../utils/storage';
+import { fetchAllMasterData } from '../services/masterDataService';
+import { fetchSurveyorAssignments } from '../services/surveyService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
+import { useNavigation, NavigationProp } from '@react-navigation/native';
 
-const roles = ["SUPERADMIN", "ADMIN", "SUPERVISOR", "SURVEYOR"];
+const roles = ['SUPERADMIN', 'ADMIN', 'SUPERVISOR', 'SURVEYOR'];
 
-const LoginScreen = ({ navigation }: any) => {
+export default function LoginScreen() {
   const { login } = useAuth();
-  const [form, setForm] = useState({ username: "", password: "", role: "" });
+  const [form, setForm] = useState({ username: '', password: '', role: '' });
   const [errors, setErrors] = useState<any>({});
   const [loading, setLoading] = useState(false);
   const { theme } = useTheme();
   const animatedValue = React.useRef(new Animated.Value(0)).current;
   const [showPassword, setShowPassword] = useState(false);
-  const navigationProp = useNavigation<NavigationProp<any>>();
+  const navigation = useNavigation<NavigationProp<any>>();
 
   React.useEffect(() => {
     Animated.timing(animatedValue, {
@@ -43,18 +43,18 @@ const LoginScreen = ({ navigation }: any) => {
     // Prefill credentials from SecureStore
     (async () => {
       try {
-        const cachedUsername = await SecureStore.getItemAsync("cachedUsername");
-        const cachedPassword = await SecureStore.getItemAsync("cachedPassword");
-        const cachedRole = await SecureStore.getItemAsync("cachedRole");
+        const cachedUsername = await SecureStore.getItemAsync('cachedUsername');
+        const cachedPassword = await SecureStore.getItemAsync('cachedPassword');
+        const cachedRole = await SecureStore.getItemAsync('cachedRole');
         setForm((prev) => ({
           ...prev,
-          username: typeof cachedUsername === "string" ? cachedUsername : "",
-          password: typeof cachedPassword === "string" ? cachedPassword : "",
-          role: typeof cachedRole === "string" ? cachedRole : "",
+          username: typeof cachedUsername === 'string' ? cachedUsername : '',
+          password: typeof cachedPassword === 'string' ? cachedPassword : '',
+          role: typeof cachedRole === 'string' ? cachedRole : '',
         }));
       } catch (e) {
-        console.error("Error retrieving credentials from SecureStore:", e);
-        setForm((prev) => ({ ...prev, username: "", password: "", role: "" }));
+        console.error('Error retrieving credentials from SecureStore:', e);
+        setForm((prev) => ({ ...prev, username: '', password: '', role: '' }));
       }
     })();
   }, [animatedValue]);
@@ -66,11 +66,9 @@ const LoginScreen = ({ navigation }: any) => {
 
   const validate = () => {
     const errs: any = {};
-    if (!form.username || form.username.length < 3)
-      errs.username = "Username required";
-    if (!form.password || form.password.length < 8)
-      errs.password = "Password min 8 chars";
-    if (!form.role) errs.role = "Role required";
+    if (!form.username || form.username.length < 3) errs.username = 'Username required';
+    if (!form.password || form.password.length < 8) errs.password = 'Password min 8 chars';
+    if (!form.role) errs.role = 'Role required';
     return errs;
   };
 
@@ -80,21 +78,17 @@ const LoginScreen = ({ navigation }: any) => {
     if (Object.keys(validation).length > 0) return;
     setLoading(true);
     try {
-      const res = await api.post("/auth/login", {
+      const res = await api.post('/auth/login', {
         username: form.username,
         password: form.password,
         role: form.role,
       });
       const { token, user } = res.data;
       // Check if selected role matches backend user role
-      if (
-        form.role &&
-        user.role &&
-        form.role.toUpperCase() !== user.role.toUpperCase()
-      ) {
+      if (form.role && user.role && form.role.toUpperCase() !== user.role.toUpperCase()) {
         Toast.show({
-          type: "error",
-          text1: "Role Mismatch",
+          type: 'error',
+          text1: 'Role Mismatch',
           text2: `You selected "${form.role}", but your account role is "${user.role}". Please select the correct role to continue.`,
         });
         setForm((prev) => ({
@@ -104,33 +98,33 @@ const LoginScreen = ({ navigation }: any) => {
         setLoading(false);
         return;
       }
-      await AsyncStorage.setItem("userToken", token);
+      await AsyncStorage.setItem('userToken', token);
       const masterData = await fetchAllMasterData(token);
       await saveMasterData(masterData);
 
-      if (user.role === "SURVEYOR") {
+      if (user.role === 'SURVEYOR') {
         const assignments = await fetchSurveyorAssignments();
         await saveAssignments(assignments);
       }
 
       // Cache credentials securely
-      await SecureStore.setItemAsync("cachedUsername", form.username);
-      await SecureStore.setItemAsync("cachedPassword", form.password);
-      await SecureStore.setItemAsync("cachedRole", form.role);
+      await SecureStore.setItemAsync('cachedUsername', form.username);
+      await SecureStore.setItemAsync('cachedPassword', form.password);
+      await SecureStore.setItemAsync('cachedRole', form.role);
 
       await login(user.role, token, user);
-      Toast.show({ type: "success", text1: "Login successful" });
+      Toast.show({ type: 'success', text1: 'Login successful' });
       setTimeout(() => {
-        navigationProp.reset({
+        navigation.reset({
           index: 0,
-          routes: [{ name: "AuthenticatedDrawer" }],
+          routes: [{ name: 'AuthenticatedDrawer' }],
         });
-      }, 1000);
+      }, 1000); // Give Toast a moment to show
     } catch (err: any) {
-      console.error("Login error:", err, err?.response, err?.message);
+      console.error('Login error:', err, err?.response, err?.message);
       Toast.show({
-        type: "error",
-        text1: err.response?.data?.error || err.message || "Network error",
+        type: 'error',
+        text1: err.response?.data?.error || err.message || 'Network error',
       });
     } finally {
       setLoading(false);
@@ -139,238 +133,177 @@ const LoginScreen = ({ navigation }: any) => {
 
   return (
     <SafeAreaView
-      edges={["left", "right", "bottom"]}
-      style={{
-        flex: 1,
-        backgroundColor: theme === "dark" ? "#111827" : "#fff",
-      }}
-    >
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          padding: 16,
-        }}
-      >
+      edges={['left', 'right', 'bottom']}
+      style={{ flex: 1, backgroundColor: theme === 'dark' ? '#111827' : '#ffffff' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
         <View
           style={{
-            width: "100%",
+            width: '100%',
             maxWidth: 400,
-            backgroundColor: theme === "dark" ? "#1e293b" : "#fff",
+            backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
             borderRadius: 20,
-            padding: 28,
-            shadowColor: "#000",
+            padding: 24,
+            shadowColor: '#000',
             shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.12,
-            shadowRadius: 12,
-            elevation: 8,
-            alignItems: "center",
-          }}
-        >
+            shadowOpacity: 0.1,
+            shadowRadius: 10,
+            elevation: 5,
+            alignItems: 'center',
+          }}>
           {/* Logo */}
           <Image
-            source={require("../../assets/logo.png")}
-            style={{
-              width: 72,
-              height: 72,
-              marginBottom: 12,
-              resizeMode: "contain",
-            }}
+            source={require('../../assets/logo.png')}
+            style={{ width: 80, height: 80, marginBottom: 16, resizeMode: 'contain' }}
           />
           <Text
             style={{
-              marginBottom: 20,
-              fontSize: 22,
-              fontWeight: "bold",
-              color: theme === "dark" ? "#e5e7eb" : "#111827",
-              textAlign: "center",
-            }}
-          >
+              marginBottom: 24,
+              fontSize: 24,
+              fontWeight: 'bold',
+              color: theme === 'dark' ? '#f3f4f6' : '#111827',
+            }}>
             Login into your account
           </Text>
-          <View style={{ width: "100%" }}>
-            <View
-              style={{
-                marginBottom: 8,
-                flexDirection: "row",
-                alignItems: "center",
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: theme === "dark" ? "#475569" : "#d1d5db",
-                backgroundColor: theme === "dark" ? "#0f172a" : "#fff",
-                paddingHorizontal: 12,
-              }}
-            >
-              <Feather
-                name="at-sign"
-                size={20}
-                color={theme === "dark" ? "#e5e7eb" : "#6b7280"}
-                style={{ marginLeft: 0 }}
-              />
-              <TextInput
-                placeholder="Username"
+          <View style={{ width: '100%', gap: 16 }}>
+            {/* Username Input */}
+            <View>
+              <View
                 style={{
-                  flex: 1,
-                  padding: 12,
-                  fontSize: 16,
-                  fontWeight: "500",
-                  color: theme === "dark" ? "#e5e7eb" : "#111827",
-                }}
-                placeholderTextColor={theme === "dark" ? "#6b7280" : "#9ca3af"}
-                value={form.username}
-                onChangeText={(v) => handleChange("username", v)}
-                autoCapitalize="none"
-              />
-            </View>
-            {errors.username && (
-              <Text
-                style={{
-                  marginBottom: 8,
-                  marginLeft: 12,
-                  fontSize: 12,
-                  fontWeight: "500",
-                  color: "#f87171",
-                }}
-              >
-                {errors.username}
-              </Text>
-            )}
-            <View
-              style={{
-                marginBottom: 8,
-                flexDirection: "row",
-                alignItems: "center",
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: theme === "dark" ? "#475569" : "#d1d5db",
-                backgroundColor: theme === "dark" ? "#0f172a" : "#fff",
-                paddingHorizontal: 12,
-              }}
-            >
-              <Feather
-                name="lock"
-                size={20}
-                color={theme === "dark" ? "#e5e7eb" : "#6b7280"}
-                style={{ marginLeft: 0 }}
-              />
-              <TextInput
-                placeholder="Password"
-                style={{
-                  flex: 1,
-                  padding: 12,
-                  fontSize: 16,
-                  fontWeight: "500",
-                  color: theme === "dark" ? "#e5e7eb" : "#111827",
-                }}
-                placeholderTextColor={theme === "dark" ? "#6b7280" : "#9ca3af"}
-                value={form.password}
-                onChangeText={(v) => handleChange("password", v)}
-                secureTextEntry={!showPassword}
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword((prev) => !prev)}
-                style={{ padding: 8, marginRight: 0 }}
-              >
-                <Feather
-                  name={showPassword ? "eye" : "eye-off"}
-                  size={20}
-                  color={theme === "dark" ? "#e5e7eb" : "#6b7280"}
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: theme === 'dark' ? '#4b5563' : '#d1d5db',
+                  backgroundColor: theme === 'dark' ? '#374151' : '#ffffff',
+                  paddingHorizontal: 12,
+                  height: 50,
+                }}>
+                <Feather name="at-sign" size={20} color={theme === 'dark' ? '#d1d5db' : '#6b7280'} />
+                <TextInput
+                  placeholder="Username"
+                  placeholderTextColor={theme === 'dark' ? '#9ca3af' : '#9ca3af'}
+                  style={{
+                    flex: 1,
+                    paddingHorizontal: 10,
+                    fontSize: 16,
+                    color: theme === 'dark' ? '#f3f4f6' : '#111827',
+                  }}
+                  value={form.username}
+                  onChangeText={(v) => handleChange('username', v)}
+                  autoCapitalize="none"
+                  accessibilityLabel="Enter username"
                 />
-              </TouchableOpacity>
+              </View>
+              {errors.username && (
+                <Text style={{ marginTop: 4, marginLeft: 12, fontSize: 13, color: '#f87171' }}>
+                  {errors.username}
+                </Text>
+              )}
             </View>
-            {errors.password && (
-              <Text
+
+            {/* Password Input */}
+            <View>
+              <View
                 style={{
-                  marginBottom: 8,
-                  marginLeft: 12,
-                  fontSize: 12,
-                  fontWeight: "500",
-                  color: "#f87171",
-                }}
-              >
-                {errors.password}
-              </Text>
-            )}
-            <View
-              style={{
-                marginBottom: 8,
-                flexDirection: "row",
-                alignItems: "center",
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: theme === "dark" ? "#475569" : "#d1d5db",
-                backgroundColor: theme === "dark" ? "#0f172a" : "#fff",
-                paddingHorizontal: 12,
-              }}
-            >
-              <Feather
-                name="users"
-                size={20}
-                color={theme === "dark" ? "#e5e7eb" : "#6b7280"}
-                style={{ marginLeft: 0 }}
-              />
-              <Picker
-                selectedValue={form.role}
-                onValueChange={(v) => handleChange("role", v)}
-                style={{
-                  flex: 1,
-                  padding: 12,
-                  color: theme === "dark" ? "#e5e7eb" : "#111827",
-                }}
-              >
-                <Picker.Item label="Select Role" value="" />
-                {roles.map((r) => (
-                  <Picker.Item key={r} label={r} value={r} />
-                ))}
-              </Picker>
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: theme === 'dark' ? '#4b5563' : '#d1d5db',
+                  backgroundColor: theme === 'dark' ? '#374151' : '#ffffff',
+                  paddingHorizontal: 12,
+                  height: 50,
+                }}>
+                <Feather name="lock" size={20} color={theme === 'dark' ? '#d1d5db' : '#6b7280'} />
+                <TextInput
+                  placeholder="Password"
+                  placeholderTextColor={theme === 'dark' ? '#9ca3af' : '#9ca3af'}
+                  style={{
+                    flex: 1,
+                    paddingHorizontal: 10,
+                    fontSize: 16,
+                    color: theme === 'dark' ? '#f3f4f6' : '#111827',
+                  }}
+                  value={form.password}
+                  onChangeText={(v) => handleChange('password', v)}
+                  secureTextEntry={!showPassword}
+                  accessibilityLabel="Enter password"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword((prev) => !prev)}
+                  style={{ padding: 4 }}
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}>
+                  <Feather
+                    name={showPassword ? 'eye' : 'eye-off'}
+                    size={20}
+                    color={theme === 'dark' ? '#d1d5db' : '#6b7280'}
+                  />
+                </TouchableOpacity>
+              </View>
+              {errors.password && (
+                <Text style={{ marginTop: 4, marginLeft: 12, fontSize: 13, color: '#f87171' }}>
+                  {errors.password}
+                </Text>
+              )}
             </View>
-            {errors.role && (
-              <Text
+
+            {/* Role Picker */}
+            <View>
+              <View
                 style={{
-                  marginBottom: 8,
-                  marginLeft: 12,
-                  fontSize: 12,
-                  fontWeight: "500",
-                  color: "#f87171",
-                }}
-              >
-                {errors.role}
-              </Text>
-            )}
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: theme === 'dark' ? '#4b5563' : '#d1d5db',
+                  backgroundColor: theme === 'dark' ? '#374151' : '#ffffff',
+                  paddingHorizontal: 12,
+                  height: 50,
+                }}>
+                <Feather name="users" size={20} color={theme === 'dark' ? '#d1d5db' : '#6b7280'} />
+                <View style={{ flex: 1, justifyContent: 'center' }}>
+                  <Picker
+                    selectedValue={form.role}
+                    onValueChange={(v) => handleChange('role', v)}
+                    style={{ color: theme === 'dark' ? '#f3f4f6' : '#111827' }}
+                    dropdownIconColor={theme === 'dark' ? '#f3f4f6' : '#111827'}
+                    accessibilityLabel="Select role">
+                    <Picker.Item label="Select Role" value="" />
+                    {roles.map((r) => (
+                      <Picker.Item key={r} label={r} value={r} />
+                    ))}
+                  </Picker>
+                </View>
+              </View>
+              {errors.role && (
+                <Text style={{ marginTop: 4, marginLeft: 12, fontSize: 13, color: '#f87171' }}>
+                  {errors.role}
+                </Text>
+              )}
+            </View>
           </View>
+
           <TouchableOpacity
             onPress={handleLogin}
             disabled={loading}
             style={{
-              marginTop: 16,
-              width: "100%",
+              marginTop: 24,
+              width: '100%',
               borderRadius: 12,
-              padding: 16,
-              backgroundColor: loading ? "#93c5fd" : "#2563eb",
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              elevation: 3,
+              paddingVertical: 14,
+              backgroundColor: loading ? '#93c5fd' : '#2563eb',
+              alignItems: 'center',
             }}
-          >
-            <Text
-              style={{
-                textAlign: "center",
-                fontSize: 18,
-                fontWeight: "600",
-                letterSpacing: 0.5,
-                color: "#fff",
-              }}
-            >
+            accessibilityLabel="Login button"
+            accessibilityRole="button">
+            <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#ffffff', letterSpacing: 0.5 }}>
               Login
             </Text>
           </TouchableOpacity>
           {loading && (
             <ActivityIndicator
               size="large"
-              color={theme === "dark" ? "#e5e7eb" : "#2563eb"}
+              color={theme === 'dark' ? '#e5e7eb' : '#2563eb'}
               style={{ marginTop: 16 }}
             />
           )}
@@ -379,6 +312,4 @@ const LoginScreen = ({ navigation }: any) => {
       </View>
     </SafeAreaView>
   );
-};
-
-export default LoginScreen;
+}

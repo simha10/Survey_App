@@ -1,11 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../api/axiosConfig';
+import { SurveyData } from '../utils/storage';
 import { fetchAllMasterData } from './masterDataService';
+import api from '../api/axiosConfig';
 
-export const submitSurvey = async (surveyData: any): Promise<any> => {
+const API_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.18.206:4000/api';
+
+export const submitSurvey = async (surveyData: SurveyData): Promise<any> => {
   try {
     // No need to manually get token, axios interceptor handles it
-    const response = await api.post('/surveys/addSurvey', surveyData);
+    const response = await api.post('/surveys/addSurvey', surveyData.data);
     return response.data;
   } catch (error: any) {
     let errorMsg = 'Failed to submit survey';
@@ -93,41 +96,3 @@ export const fetchMasterData = async () => {
     };
   }
 };
-
-export const surveyService = {
-  createSurvey: async (surveyData: any) => {
-    const response = await api.post('/surveys', surveyData);
-    return response.data;
-  },
-
-  getSurveys: async (params?: any) => {
-    const response = await api.get('/surveys', { params });
-    return response.data;
-  },
-
-  getSurveyById: async (id: string) => {
-    const response = await api.get(`/surveys/${id}`);
-    return response.data;
-  },
-
-  updateSurvey: async (id: string, surveyData: any) => {
-    const response = await api.put(`/surveys/${id}`, surveyData);
-    return response.data;
-  },
-
-  deleteSurvey: async (id: string) => {
-    const response = await api.delete(`/surveys/${id}`);
-    return response.data;
-  },
-
-  submitSurvey: async (id: string) => {
-    const response = await api.post(`/surveys/${id}/submit`);
-    return response.data;
-  },
-
-  getSurveyStats: async (params?: any) => {
-    const response = await api.get('/surveys/stats', { params });
-    return response.data;
-  },
-};
-

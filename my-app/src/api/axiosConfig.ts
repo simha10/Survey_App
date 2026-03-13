@@ -1,11 +1,23 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.18.206:4000/api').trim();
+// Get the current IP address dynamically or use environment variable
+const getApiUrl = () => {
+  if (process.env.EXPO_PUBLIC_API_BASE_URL) {
+    return process.env.EXPO_PUBLIC_API_BASE_URL;
+  }
 
+  // For development, try to detect the current IP
+  // You can also manually set this to your current IP
+  return 'http://192.168.18.210:4000/api';
+};
+
+const API_URL = getApiUrl();
+
+// Create axios instance
 const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 30000,
+  baseURL: API_URL,
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -20,7 +32,7 @@ api.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
     } catch (error) {
-      console.error('Error getting token:', error);
+      console.error('Error getting auth token:', error);
     }
     return config;
   },
@@ -31,16 +43,17 @@ api.interceptors.request.use(
 
 // Response interceptor to handle errors
 api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
+  (response) => {
+    return response;
+  },
+  (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid
-      await AsyncStorage.removeItem('userToken');
-      // You might want to navigate to login here
+      // Handle unauthorized access
+      console.log('Unauthorized access, redirecting to login');
+      // You can dispatch a logout action here if using Redux
     }
     return Promise.reject(error);
   }
 );
 
 export default api;
-

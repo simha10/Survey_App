@@ -1,25 +1,36 @@
 import { useEffect } from 'react';
-import { NativeModules, Alert } from 'react-native';
-
-const { ExponentMemoryWarning } = NativeModules;
+import { AppState } from 'react-native';
 
 export const useMemoryWarning = () => {
   useEffect(() => {
-    if (!ExponentMemoryWarning) {
-      return;
-    }
+    const handleMemoryWarning = () => {
+      console.warn('Memory warning received - attempting cleanup');
+      
+      // Force garbage collection if available
+      if (global.gc) {
+        try {
+          global.gc();
+        } catch (e) {
+          console.warn('Could not force garbage collection:', e);
+        }
+      }
+      
+      // Clear any unnecessary image caches
+      // This is app-specific cleanup that can be extended
+    };
 
-    const listener = ExponentMemoryWarning.addEventListener((warning: any) => {
-      console.warn('Memory Warning:', warning);
-      Alert.alert(
-        'Memory Warning',
-        'Your device is running low on memory. Please close some apps to improve performance.',
-        [{ text: 'OK' }]
-      );
-    });
+    const handleAppStateChange = (nextAppState: string) => {
+      if (nextAppState === 'background') {
+        // App is going to background, good time to clean up
+        handleMemoryWarning();
+      }
+    };
+
+    // Listen for app state changes
+    const appStateListener = AppState.addEventListener('change', handleAppStateChange);
 
     return () => {
-      listener.remove();
+      appStateListener?.remove();
     };
   }, []);
 };

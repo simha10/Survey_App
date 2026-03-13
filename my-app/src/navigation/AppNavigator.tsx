@@ -7,7 +7,7 @@ import SideNav from '../components/SideNav';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-// SplashScreen is now handled in App.tsx, not in the navigator
+import SplashScreen from '../screens/SplashScreen';
 import SuperAdminDashboard from '../screens/SuperAdminDashboard';
 import AdminDashboard from '../screens/AdminDashboard';
 import SupervisorDashboard from '../screens/SupervisorDashboard';
@@ -86,23 +86,30 @@ export default function AppNavigator() {
   const { userRole } = useAuth();
   const { theme } = useTheme();
 
+  console.log('[AppNavigator] Rendering, userRole:', userRole, 'theme:', theme);
+
   // Navigation error handler
   const handleNavigationError = (error: any) => {
     console.error('Navigation error:', error);
     Alert.alert(
-      'Navigation Error',
+      'Navigation Error', 
       'An error occurred while navigating. Please try again.',
       [{ text: 'OK' }]
     );
   };
 
   return (
-    <View key={theme} style={{ flex: 1 }}>
+    <View key={theme} style={{ flex: 1, backgroundColor: theme === 'dark' ? '#111827' : '#ffffff' }}>
       <NavigationContainer
         onUnhandledAction={handleNavigationError}
         fallback={<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} />}
       >
-        <Stack.Navigator initialRouteName="LoginScreen">
+        <Stack.Navigator initialRouteName="SplashScreen">
+          <Stack.Screen
+            name="SplashScreen"
+            component={SplashScreen}
+            options={{ headerShown: false }}
+          />
           <Stack.Screen
             name="LoginScreen"
             component={LoginScreen}

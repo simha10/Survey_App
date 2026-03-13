@@ -1,89 +1,114 @@
-import React from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import RNPickerSelect from "react-native-picker-select";
+import React, { forwardRef, useEffect, useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import { getMasterData } from '../utils/storage';
 
 interface FormDropdownProps {
   label: string;
-  value: string;
-  onValueChange: (value: string) => void;
-  items: { label: string; value: string }[];
-  placeholder?: string;
-  error?: string;
   required?: boolean;
+  items?: { label: string; value: string | number }[];
+  value: string | number;
+  onValueChange: (value: string | number) => void;
+  /**
+   * If provided, will load options from masterData[masterDataKey] in AsyncStorage
+   */
+  masterDataKey?: string;
+  labelKey?: string;
+  valueKey?: string;
 }
 
-const FormDropdown: React.FC<FormDropdownProps> = ({
-  label,
-  value,
-  onValueChange,
-  items,
-  placeholder = "Select an option",
-  error,
-  required = false,
-}) => {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.label}>
-        {label}
-        {required && <Text style={styles.required}> *</Text>}
-      </Text>
-      <View style={[styles.inputContainer, error ? styles.inputError : null]}>
-        <RNPickerSelect
-          value={value}
-          onValueChange={onValueChange}
-          items={items}
-          placeholder={{ label: placeholder, value: "" }}
-          style={{
-            inputIOS: styles.picker,
-            inputAndroid: styles.picker,
-          }}
-          useNativeAndroidPickerStyle={false}
-          Icon={() => <Ionicons name="chevron-down" size={20} color="#666" />}
-        />
+/**
+ * FormDropdown is now offline-first: if masterDataKey is provided, options are always loaded from masterData in AsyncStorage.
+ * No direct API calls are made here.
+ */
+const FormDropdown = forwardRef<Picker<string | number>, FormDropdownProps>(
+  (
+    {
+      label,
+      required,
+      items = [],
+      value,
+      onValueChange,
+      masterDataKey,
+      labelKey = 'name',
+      valueKey = 'id',
+    },
+    ref
+  ) => {
+    const [options, setOptions] = useState(items);
+
+    useEffect(() => {
+      const loadOptionsFromMasterData = async () => {
+        if (masterDataKey) {
+          try {
+            const masterData = await getMasterData();
+            const arr = masterData && masterData[masterDataKey] ? masterData[masterDataKey] : [];
+            setOptions(
+              Array.isArray(arr)
+                ? arr.map((item: any) => ({ label: item[labelKey], value: item[valueKey] }))
+                : []
+            );
+          } catch {
+            setOptions([]);
+          }
+        } else {
+          setOptions(items);
+        }
+      };
+      loadOptionsFromMasterData();
+    }, [masterDataKey, items, labelKey, valueKey]);
+
+    return (
+      <View style={styles.container}>
+        <Text style={styles.label}>
+          {label}
+          {required && <Text style={styles.required}> *</Text>}
+        </Text>
+        <View style={styles.pickerContainer}>
+          <Picker
+            ref={ref}
+            selectedValue={value}
+            onValueChange={onValueChange}
+            style={styles.picker}
+            itemStyle={styles.pickerItem}>
+            <Picker.Item label="Select an item..." value="" />
+            {options.map((item) => (
+              <Picker.Item key={item.value} label={item.label} value={item.value} />
+            ))}
+          </Picker>
+        </View>
       </View>
-      {error && <Text style={styles.errorText}>{error}</Text>}
-    </View>
-  );
-};
+    );
+  }
+);
 
 const styles = StyleSheet.create({
   container: {
     marginBottom: 16,
   },
   label: {
+    marginBottom: 8,
     fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 6,
+    fontWeight: '600',
+    color: '#374151', // gray-700 - same as FormInput
   },
-  required: {
-    color: "red",
-  },
-  inputContainer: {
+  pickerContainer: {
+    backgroundColor: '#F9FAFB', // gray-50 - same as FormInput
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: '#D1D5DB', // gray-300 - same as FormInput
     borderRadius: 8,
-    backgroundColor: "#fff",
-  },
-  inputError: {
-    borderColor: "red",
+    overflow: 'hidden',
   },
   picker: {
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    fontSize: 16,
+    height: 48,
+    color: '#111827', // gray-900 - same as FormInput
   },
-  errorText: {
-    fontSize: 12,
-    color: "red",
-    marginTop: 4,
+  pickerItem: {
+    fontSize: 16,
+    color: '#111827', // gray-900 - same as FormInput
+  },
+  required: {
+    color: '#EF4444', // red-500 - same as FormInput
   },
 });
 

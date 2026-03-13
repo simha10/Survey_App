@@ -1,3 +1,4 @@
+// src/services/authService.ts
 import api from '../api/axiosConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
@@ -50,7 +51,7 @@ export async function register(data: {
   username: string;
   password: string;
   role: string;
-  mobileNumber?: string;
+  mobileNumber: string;
 }) {
   try {
     const token = await AsyncStorage.getItem('userToken');
@@ -63,6 +64,26 @@ export async function register(data: {
   }
 }
 
+// Mock dropdown data if backend not ready
+export async function getWardMohallaOptions() {
+  // Replace with real API call if available
+  return [
+    { id: 'uuid-mohalla-1', name: 'Mohalla 1' },
+    { id: 'uuid-mohalla-2', name: 'Mohalla 2' },
+  ];
+}
+export async function getZoneWardOptions() {
+  return [
+    { id: 'uuid-zone-1', name: 'Zone 1' },
+    { id: 'uuid-zone-2', name: 'Zone 2' },
+  ];
+}
+export async function getUlbZoneOptions() {
+  return [
+    { id: 'uuid-ulb-1', name: 'ULB Zone 1' },
+    { id: 'uuid-ulb-2', name: 'ULB Zone 2' },
+  ];
+}
 export async function logout() {
   // Cache last used credentials if available
   try {
@@ -82,8 +103,7 @@ export async function logout() {
   await AsyncStorage.removeItem('user');
   return true;
 }
-
-// Fetch fresh profile data from backend
+// Optionally, fetch fresh profile data from backend
 export async function getProfile() {
   try {
     const token = await AsyncStorage.getItem('userToken');

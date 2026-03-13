@@ -27,6 +27,7 @@ const ensureSurveyImageDirectory = async (): Promise<void> => {
 
 /**
  * Store image in permanent device storage and save URI to SQLite
+ * Simplified version with crash protection
  */
 export const storeImageForSurvey = async (
   surveyId: string,
@@ -34,13 +35,14 @@ export const storeImageForSurvey = async (
   label: string
 ): Promise<string> => {
   try {
-    console.log(`Starting image storage: ${label} for survey ${surveyId}`);
+    console.log(`Starting safe image storage: ${label} for survey ${surveyId}`);
     
     // Step 1: Ensure directory exists
     try {
       await ensureSurveyImageDirectory();
     } catch (dirError) {
       console.error('Directory creation failed:', dirError);
+      // Continue with temp URI if directory creation fails
       return tempImageUri;
     }
     
@@ -58,10 +60,11 @@ export const storeImageForSurvey = async (
       console.log(`File copied to permanent storage: ${permanentUri}`);
     } catch (copyError) {
       console.error('File copy failed:', copyError);
+      // Return temp URI if copy fails
       return tempImageUri;
     }
     
-    // Step 4: Store URI in database
+    // Step 4: Store URI in database (non-critical, can fail)
     try {
       await insertSurveyImage({
         surveyId,
@@ -71,19 +74,21 @@ export const storeImageForSurvey = async (
       });
       console.log(`Database record created for: ${permanentUri}`);
     } catch (dbError) {
-      console.error('Database storage failed:', dbError);
+      console.error('Database storage failed (non-critical):', dbError);
+      // Continue with file storage even if database fails
     }
     
     return permanentUri;
     
   } catch (error) {
     console.error(`Image storage failed for ${label}:`, error);
+    // Return original URI as fallback
     return tempImageUri;
   }
 };
 
 /**
- * Get all images for a survey from SQLite
+ * Get all images for a survey from SQLite (URIs only)
  */
 export const getImagesForSurvey = async (surveyId: string | null): Promise<{ label: string; uri: string; timestamp: string }[]> => {
   try {
@@ -95,34 +100,43 @@ export const getImagesForSurvey = async (surveyId: string | null): Promise<{ lab
       timestamp: record.timestamp,
     }));
   } catch (error) {
-    console.error('Failed to get images for survey:', error);
+    console.error(`Failed to get images for survey ${surveyId}:`, error);
     return [];
   }
 };
 
 /**
- * Delete images from both storage and database for a specific survey
+ * Delete all images for a survey from both storage and SQLite
+ * Called on: survey discontinuation, unsynced survey deletion, successful sync
  */
-export const deleteImagesBySurveyIdFromStorage = async (surveyId: string): Promise<void> => {
+export const deleteImagesForSurvey = async (surveyId: string): Promise<void> => {
   try {
-    const images = await getImagesBySurveyId(surveyId);
+    console.log(`Starting image cleanup for survey: ${surveyId}`);
     
-    // Delete physical files
-    for (const image of images) {
+    // Get all image records from database first
+    const imageRecords = await getImagesBySurveyId(surveyId);
+    
+    // Delete physical files from storage
+    const deletePromises = imageRecords.map(async (record) => {
       try {
-        const fileInfo = await FileSystem.getInfoAsync(image.photoUri);
+        const fileInfo = await FileSystem.getInfoAsync(record.photoUri);
         if (fileInfo.exists) {
-          await FileSystem.deleteAsync(image.photoUri);
-          console.log(`Deleted file: ${image.photoUri}`);
+          await FileSystem.deleteAsync(record.photoUri, { idempotent: true });
+          console.log(`Deleted image file: ${record.photoUri}`);
         }
-      } catch (deleteError) {
-        console.error(`Failed to delete file ${image.photoUri}:`, deleteError);
+      } catch (fileError) {
+        console.error(`Failed to delete image file ${record.photoUri}:`, fileError);
       }
-    }
+    });
     
-    // Delete database records
+    // Wait for all file deletions to complete
+    await Promise.allSettled(deletePromises);
+    
+    // Delete records from SQLite database
     await deleteImagesBySurveyId(surveyId);
-    console.log(`Deleted all images for survey ${surveyId}`);
+    
+    console.log(`Image cleanup completed for survey: ${surveyId}`);
+    
   } catch (error) {
     console.error(`Failed to delete images for survey ${surveyId}:`, error);
     throw error;
@@ -130,13 +144,111 @@ export const deleteImagesBySurveyIdFromStorage = async (surveyId: string): Promi
 };
 
 /**
- * Clean up orphaned image files from storage
+ * Clean up orphaned image files (files that exist but have no database record)
  */
 export const cleanupOrphanedImages = async (): Promise<void> => {
   try {
+    console.log('Starting orphaned image cleanup');
+    
+    const dirInfo = await FileSystem.getInfoAsync(SURVEY_IMAGES_DIR);
+    if (!dirInfo.exists) {
+      return;
+    }
+    
     const files = await FileSystem.readDirectoryAsync(SURVEY_IMAGES_DIR);
-    console.log(`Found ${files.length} files in survey images directory`);
+    
+    for (const filename of files) {
+      const filePath = `${SURVEY_IMAGES_DIR}${filename}`;
+      
+      // Check if this file has a corresponding database record
+      // Extract survey ID from filename (format: surveyId_label_timestamp.jpg)
+      const parts = filename.split('_');
+      if (parts.length >= 2) {
+        const surveyId = parts[0];
+        const images = await getImagesBySurveyId(surveyId);
+        
+        // If no database records exist for this survey, delete the file
+        if (images.length === 0) {
+          try {
+            await FileSystem.deleteAsync(filePath, { idempotent: true });
+            console.log(`Deleted orphaned image: ${filename}`);
+          } catch (deleteError) {
+            console.error(`Failed to delete orphaned image ${filename}:`, deleteError);
+          }
+        }
+      }
+    }
+    
+    console.log('Orphaned image cleanup completed');
+    
   } catch (error) {
     console.error('Failed to cleanup orphaned images:', error);
   }
+};
+
+/**
+ * Get storage statistics for survey images
+ */
+export const getImageStorageStats = async (): Promise<{ totalFiles: number; totalSize: number }> => {
+  try {
+    const dirInfo = await FileSystem.getInfoAsync(SURVEY_IMAGES_DIR);
+    if (!dirInfo.exists) {
+      return { totalFiles: 0, totalSize: 0 };
+    }
+    
+    const files = await FileSystem.readDirectoryAsync(SURVEY_IMAGES_DIR);
+    let totalSize = 0;
+    
+    for (const filename of files) {
+      const filePath = `${SURVEY_IMAGES_DIR}${filename}`;
+      const fileInfo = await FileSystem.getInfoAsync(filePath);
+      if (fileInfo.exists && fileInfo.size) {
+        totalSize += fileInfo.size;
+      }
+    }
+    
+    return {
+      totalFiles: files.length,
+      totalSize,
+    };
+    
+  } catch (error) {
+    console.error('Failed to get storage stats:', error);
+    return { totalFiles: 0, totalSize: 0 };
+  }
+};
+
+// Legacy functions kept for compatibility but updated to use new system
+export const insertImagesForSurvey = async (
+  surveyId: string,
+  photos: { [key: string]: string | null }
+) => {
+  console.log('Note: insertImagesForSurvey is deprecated. Use storeImageForSurvey instead.');
+  
+  const labels: (keyof typeof photos)[] = [
+    'front',
+    'khasra',
+    'left',
+    'right',
+    'other1',
+    'other2',
+  ] as any;
+  
+  for (const label of labels) {
+    const uri = photos[label as string];
+    if (uri) {
+      try {
+        await storeImageForSurvey(surveyId, uri, String(label));
+        console.log(`Image ${label} stored successfully`);
+      } catch (e) {
+        console.error('insertImagesForSurvey failed for', label, e);
+        // Continue with other images even if one fails
+      }
+    }
+  }
+};
+
+export const cleanupSurveyImagesBySurveyId = async (surveyId: string): Promise<void> => {
+  console.log('Note: cleanupSurveyImagesBySurveyId is deprecated. Use deleteImagesForSurvey instead.');
+  await deleteImagesForSurvey(surveyId);
 };

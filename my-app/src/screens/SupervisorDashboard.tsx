@@ -1,163 +1,122 @@
-import React from "react";
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
-  StyleSheet,
+  Animated,
+  Alert,
+  BackHandler,
+  ActivityIndicator,
   ScrollView,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "../context/AuthContext";
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '../context/ThemeContext';
+import { fetchSurveyorAssignments } from '../services/surveyService';
 
-const SupervisorDashboard = ({ navigation }: any) => {
-  const { user } = useAuth();
+export default function SupervisorDashboard() {
+  const { theme } = useTheme();
+  const animatedValue = React.useRef(new Animated.Value(0)).current;
+  const [dashboard, setDashboard] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const menuItems = [
-    {
-      name: "All Surveys",
-      icon: "list",
-      screen: "SurveyRecords",
-      color: "#2196F3",
-    },
-    {
-      name: "Survey Count",
-      icon: "analytics",
-      screen: "SurveyCount",
-      color: "#4CAF50",
-    },
-    { name: "Profile", icon: "person", screen: "Profile", color: "#9C27B0" },
-  ];
+  useEffect(() => {
+    const onBackPress = () => {
+      Alert.alert('Exit App', 'Are you sure you want to exit?', [
+        { text: 'Cancel', onPress: () => null, style: 'cancel' },
+        { text: 'YES', onPress: () => BackHandler.exitApp() },
+      ]);
+      return true;
+    };
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    fetchDashboard();
+    return () => subscription.remove();
+  }, []);
+
+  const fetchDashboard = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchSurveyorAssignments();
+      setDashboard(data);
+    } catch (err) {
+      setError('Failed to load dashboard');
+      setDashboard(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    Animated.timing(animatedValue, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.welcomeText}>Welcome,</Text>
-          <Text style={styles.userName}>{user?.name || "Supervisor"}</Text>
-        </View>
-
-        <View style={styles.statsCard}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>0</Text>
-            <Text style={styles.statLabel}>Pending QC</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>0</Text>
-            <Text style={styles.statLabel}>Approved</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>0</Text>
-            <Text style={styles.statLabel}>Rejected</Text>
-          </View>
-        </View>
-
-        <View style={styles.menuContainer}>
-          {menuItems.map((item) => (
-            <TouchableOpacity
-              key={item.name}
-              style={styles.menuItem}
-              onPress={() => navigation.navigate(item.screen)}
-            >
-              <View
-                style={[styles.iconContainer, { backgroundColor: item.color }]}
-              >
-                <Ionicons name={item.icon as any} size={32} color="#fff" />
-              </View>
-              <Text style={styles.menuText}>{item.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+    <SafeAreaView
+      edges={['top', 'left', 'right', 'bottom']}
+      style={{ flex: 1, backgroundColor: theme === 'dark' ? '#111827' : '#ffffff' }}>
+      <ScrollView
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 16,
+        }}>
+        <Animated.View
+          style={{
+            opacity: animatedValue,
+            transform: [
+              {
+                scale: animatedValue.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }),
+              },
+            ],
+          }}>
+          <Text
+            style={{ fontSize: 24, fontWeight: 'bold', color: theme === 'dark' ? '#f3f4f6' : '#111827' }}
+            accessibilityLabel="Supervisor Dashboard">
+            Supervisor Dashboard
+          </Text>
+          {loading ? (
+            <ActivityIndicator size="large" color="#3B82F6" style={{ marginTop: 24 }} />
+          ) : error ? (
+            <Text style={{ color: 'red', marginTop: 24 }}>{error}</Text>
+          ) : !dashboard || !dashboard.mohallas || dashboard.mohallas.length === 0 ? (
+            <Text style={{ color: '#6B7280', marginTop: 24 }}>No assignments for you.</Text>
+          ) : (
+            <View style={{ marginTop: 24, width: '100%' }}>
+              <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 8 }}>
+                Assigned Mohallas
+              </Text>
+              {dashboard.mohallas.map((m: any, idx: number) => (
+                <View
+                  key={m.mohallaId || idx}
+                  style={{
+                    backgroundColor: '#E0E7FF',
+                    borderRadius: 8,
+                    padding: 10,
+                    marginBottom: 10,
+                  }}>
+                  <Text style={{ fontWeight: 'bold' }}>Mohalla: {m.mohallaName}</Text>
+                  <Text>Surveyors:</Text>
+                  {m.surveyors.length === 0 ? (
+                    <Text style={{ color: '#6B7280' }}>No surveyors assigned.</Text>
+                  ) : (
+                    m.surveyors.map((s: any, sidx: number) => (
+                      <Text key={s.userId || sidx} style={{ marginLeft: 8 }}>
+                        - {s.name || s.username}
+                      </Text>
+                    ))
+                  )}
+                  <Text>Survey Count: {m.surveyCount}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
-  content: {
-    padding: 20,
-  },
-  header: {
-    marginBottom: 24,
-  },
-  welcomeText: {
-    fontSize: 16,
-    color: "#666",
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#1a237e",
-    marginTop: 4,
-  },
-  statsCard: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: "center",
-  },
-  statNumber: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#1a237e",
-  },
-  statLabel: {
-    fontSize: 12,
-    color: "#666",
-    marginTop: 4,
-    textAlign: "center",
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: "#e0e0e0",
-  },
-  menuContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  menuItem: {
-    width: "48%",
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 16,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  iconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  menuText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-  },
-});
-
-export default SupervisorDashboard;
+}

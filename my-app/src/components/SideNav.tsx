@@ -58,10 +58,13 @@ export default function SideNav(props: DrawerContentComponentProps) {
   };
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-white">
+    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={{ flex: 1, backgroundColor: '#ffffff' }}>
       <Animated.View
-        className="flex-1 space-y-3 p-4"
         style={{
+          flex: 1,
+          padding: 16,
+          paddingTop: 32,
+          gap: 12,
           opacity: animatedValue,
           transform: [
             {
@@ -72,8 +75,8 @@ export default function SideNav(props: DrawerContentComponentProps) {
             },
           ],
         }}>
-        <View className="mb-4 pb-2 pt-2">
-          <Text className="text-2xl font-bold text-gray-900">
+        <View style={{ marginBottom: 24, paddingVertical: 8 }}>
+          <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#111827' }}>
             {`Hello👋, ${(user as any)?.name || user?.username || 'User'}!`}
           </Text>
         </View>
@@ -85,30 +88,51 @@ export default function SideNav(props: DrawerContentComponentProps) {
                 ? navigateToDashboard()
                 : props.navigation.navigate(item.route)
             }
-            className="flex-row items-center rounded-xl bg-white p-3 shadow-sm hover:bg-gray-100 active:bg-gray-200"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#f3f4f6',
+              padding: 16,
+              borderRadius: 12,
+              marginBottom: 8,
+            }}
             accessibilityLabel={`Navigate to ${item.label}`}
             accessibilityRole="button">
             <Feather name={item.icon as any} size={24} color={'#111827'} />
-            <Text className="ml-3 text-lg font-semibold text-gray-900">{item.label}</Text>
+            <Text style={{ marginLeft: 16, fontSize: 16, fontWeight: '600', color: '#111827' }}>{item.label}</Text>
           </TouchableOpacity>
         ))}
         {['SUPERADMIN', 'ADMIN'].includes(user?.role ?? '') && (
           <TouchableOpacity
             onPress={() => props.navigation.navigate('RegisterScreen')}
-            className="flex-row items-center rounded-xl bg-white p-3 shadow-sm hover:bg-gray-100 active:bg-gray-200"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#f3f4f6',
+              padding: 16,
+              borderRadius: 12,
+              marginBottom: 8,
+            }}
             accessibilityLabel="Create a new user"
             accessibilityRole="button">
             <Feather name="user-plus" size={24} color={'#111827'} />
-            <Text className="ml-3 text-lg font-semibold text-gray-900">Create User</Text>
+            <Text style={{ marginLeft: 16, fontSize: 16, fontWeight: '600', color: '#111827' }}>Create User</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity
           onPress={handleLogout}
-          className="flex-row items-center rounded-xl bg-white p-3 shadow-sm hover:bg-red-50 active:bg-red-100"
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: '#fee2e2',
+            padding: 16,
+            borderRadius: 12,
+            marginTop: 16,
+          }}
           accessibilityLabel="Log out"
           accessibilityRole="button">
           <Feather name="log-out" size={24} color="#ef4444" />
-          <Text className="ml-3 text-lg font-semibold text-red-500">Logout</Text>
+          <Text style={{ marginLeft: 16, fontSize: 16, fontWeight: '600', color: '#ef4444' }}>Logout</Text>
         </TouchableOpacity>
       </Animated.View>
     </SafeAreaView>

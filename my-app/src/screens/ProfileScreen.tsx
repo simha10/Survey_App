@@ -1,161 +1,126 @@
-import React from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Alert,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "../context/AuthContext";
+import React, { useEffect, useState } from 'react';
+import { View, Text, ActivityIndicator, Animated } from 'react-native';
+import { useAuth } from '../context/AuthContext';
+import Toast from 'react-native-toast-message';
+import { useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '../context/ThemeContext';
 
-const ProfileScreen = ({ navigation }: any) => {
-  const { user, logout } = useAuth();
+export default function ProfileScreen() {
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const navigation = useNavigation<any>();
+  const { theme } = useTheme();
+  const animatedValue = React.useRef(new Animated.Value(0)).current;
+  const { getStoredProfile } = useAuth();
 
-  const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Logout", onPress: logout, style: "destructive" },
-    ]);
+  // Map role codes to display names
+  const getRoleDisplayName = (role: string): string => {
+    const roleMap: { [key: string]: string } = {
+      SUPERADMIN: 'Super Admin',
+      ADMIN: 'Admin',
+      SUPERVISOR: 'Supervisor',
+      SURVEYOR: 'Surveyor',
+    };
+    return roleMap[role] || role;
   };
 
-  const menuItems = [
-    { name: "Edit Profile", icon: "person-outline", action: () => {} },
-    { name: "Change Password", icon: "lock-closed-outline", action: () => {} },
-    { name: "Settings", icon: "settings-outline", action: () => {} },
-    { name: "Help & Support", icon: "help-circle-outline", action: () => {} },
-  ];
+  // Helper to format date as DD/MM/YYYY
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await getStoredProfile();
+        if (!data) {
+          navigation.replace('LoginScreen');
+          return;
+        }
+        setProfile(data);
+      } catch (err) {
+        console.error(err);
+        Toast.show({ type: 'error', text1: 'Failed to load profile' });
+        navigation.replace('LoginScreen');
+      } finally {
+        setLoading(false);
+      }
+    })();
+    Animated.timing(animatedValue, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [animatedValue, navigation, getStoredProfile]);
+
+  if (loading) {
+    return (
+      <SafeAreaView
+        edges={['left', 'right', 'bottom']}
+        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme === 'dark' ? '#111827' : '#ffffff' }}>
+        <ActivityIndicator
+          size="large"
+          color={theme === 'dark' ? '#e5e7eb' : '#2563eb'}
+          accessibilityLabel="Loading profile"
+        />
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.profileHeader}>
-          <View style={styles.avatar}>
-            <Ionicons name="person" size={50} color="#fff" />
-          </View>
-          <Text style={styles.userName}>{user?.name || "User"}</Text>
-          <Text style={styles.userEmail}>
-            {user?.email || "email@example.com"}
-          </Text>
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleText}>{user?.role || "User"}</Text>
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={{ flex: 1, backgroundColor: theme === 'dark' ? '#111827' : '#ffffff' }}>
+      <Animated.View
+        style={{
+          flex: 1,
+          padding: 16,
+          opacity: animatedValue,
+          transform: [
+            {
+              translateY: animatedValue.interpolate({
+                inputRange: [0, 1],
+                outputRange: [20, 0],
+              }),
+            },
+          ],
+        }}>
+        <Text style={{ marginBottom: 16, fontSize: 24, fontWeight: 'bold', color: theme === 'dark' ? '#f3f4f6' : '#111827' }}>Profile</Text>
+        <View style={{ borderRadius: 12, borderWidth: 1, borderColor: theme === 'dark' ? '#374151' : '#e5e7eb', backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff', padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
+          <View style={{ gap: 8 }}>
+            <Text
+              style={{ fontSize: 18, fontWeight: '500', color: theme === 'dark' ? '#f3f4f6' : '#111827' }}
+              accessibilityLabel={`Name: ${profile?.name || 'Not available'}`}>
+              Name: {profile?.name || 'N/A'}
+            </Text>
+            <Text
+              style={{ fontSize: 18, fontWeight: '500', color: theme === 'dark' ? '#f3f4f6' : '#111827' }}
+              accessibilityLabel={`Username: ${profile?.username || 'Not available'}`}>
+              Username: {profile?.username || 'N/A'}
+            </Text>
+            <Text
+              style={{ fontSize: 18, fontWeight: '500', color: theme === 'dark' ? '#f3f4f6' : '#111827' }}
+              accessibilityLabel={`Mobile: ${profile?.mobileNumber || 'Not available'}`}>
+              Mobile: {profile?.mobileNumber || 'N/A'}
+            </Text>
+            <Text
+              style={{ fontSize: 18, fontWeight: '500', color: theme === 'dark' ? '#f3f4f6' : '#111827' }}
+              accessibilityLabel={`Role: ${profile?.role || 'Not available'}`}>
+              Role: {getRoleDisplayName(profile?.role) || 'N/A'}
+            </Text>
+            <Text
+              style={{ fontSize: 18, fontWeight: '500', color: theme === 'dark' ? '#f3f4f6' : '#111827' }}
+              accessibilityLabel={`Member Since: ${profile?.createdAt ? formatDate(profile.createdAt) : 'Not available'}`}>
+              Member Since: {profile?.createdAt ? formatDate(profile.createdAt) : 'N/A'}
+            </Text>
           </View>
         </View>
-
-        <View style={styles.menuContainer}>
-          {menuItems.map((item) => (
-            <TouchableOpacity
-              key={item.name}
-              style={styles.menuItem}
-              onPress={item.action}
-            >
-              <Ionicons name={item.icon as any} size={24} color="#1a237e" />
-              <Text style={styles.menuText}>{item.name}</Text>
-              <Ionicons name="chevron-forward" size={20} color="#ccc" />
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={24} color="#fff" />
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
-      </ScrollView>
+        <Toast />
+      </Animated.View>
     </SafeAreaView>
   );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
-  content: {
-    padding: 20,
-  },
-  profileHeader: {
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 24,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#1a237e",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#1a237e",
-  },
-  userEmail: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 4,
-  },
-  roleBadge: {
-    backgroundColor: "#e8eaf6",
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginTop: 12,
-  },
-  roleText: {
-    color: "#1a237e",
-    fontSize: 14,
-    fontWeight: "600",
-    textTransform: "capitalize",
-  },
-  menuContainer: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  menuText: {
-    flex: 1,
-    fontSize: 16,
-    color: "#333",
-    marginLeft: 12,
-  },
-  logoutButton: {
-    backgroundColor: "#d32f2f",
-    paddingVertical: 16,
-    borderRadius: 8,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  logoutText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-    marginLeft: 8,
-  },
-});
-
-export default ProfileScreen;
+}
