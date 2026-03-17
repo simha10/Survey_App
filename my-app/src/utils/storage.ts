@@ -181,10 +181,28 @@ export const syncSurveysToBackend = async (
     try {
       // Deep clone the survey data to avoid mutating local storage
       const payload = JSON.parse(JSON.stringify(survey.data));
-      // If Non-Residential, remove propertyTypeId from locationDetails
-      if (survey.surveyType === 'Non-Residential' && payload.locationDetails) {
-        delete payload.locationDetails.propertyTypeId;
+      
+      // For Non-Residential surveys, ensure propertyTypeId is removed from all locations
+      // This handles both new surveys (where it's already excluded) and old surveys (where it might exist)
+      if (survey.surveyType === 'Non-Residential') {
+        // Remove from locationDetails if it exists there
+        if (payload.locationDetails) {
+          delete payload.locationDetails.propertyTypeId;
+        }
+        // Remove from surveyDetails if it exists there
+        if (payload.surveyDetails) {
+          delete payload.surveyDetails.propertyTypeId;
+        }
+        // Remove from propertyDetails if it exists there
+        if (payload.propertyDetails) {
+          delete payload.propertyDetails.propertyTypeId;
+        }
+        // Remove from otherDetails if it exists there
+        if (payload.otherDetails) {
+          delete payload.otherDetails.propertyTypeId;
+        }
       }
+      
       const res = await api.post('/surveys/addSurvey', payload);
       if (res.status === 200 || res.status === 201) {
         // Survey synced successfully - remove from local storage and delete images

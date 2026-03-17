@@ -1035,7 +1035,8 @@ export default function SurveyForm({ route }: any) {
     }
 
     if (surveyTypeKey === 'Non-Residential') {
-      // Remove propertyTypeId if present
+      // For Non-Residential, propertyTypeId is OPTIONAL (not required)
+      // Remove it from required fields list
       const idx = requiredFields.findIndex((f) => f.key === 'propertyTypeId');
       if (idx !== -1) requiredFields.splice(idx, 1);
     }
@@ -1502,20 +1503,28 @@ export default function SurveyForm({ route }: any) {
             keyboardType="numeric"
           />
           <FormInput label="Assessment Year" value={formData.assessmentYear} editable={false} />
-          {/* Property Type: Only for Residential and Mixed */}
-          {(surveyTypeKey === 'Residential' || surveyTypeKey === 'Mixed') && (
-            <FormDropdown
-              label="Property Type"
-              required
-              items={createDropdownOptions(
-                masterData?.propertyTypes,
-                'propertyTypeName',
-                'propertyTypeId'
-              )}
-              onValueChange={(value) => handleInputChange('propertyTypeId', value)}
-              value={formData.propertyTypeId}
-            />
-          )}
+          {/* Property Type: For all survey types, but required only for Residential/Mixed */}
+          <FormDropdown
+            label={`Property Type`}
+            required={surveyTypeKey !== 'Non-Residential'}
+            items={
+              surveyTypeKey === 'Non-Residential'
+                ? // Only show PLOT/LAND option for Non-Residential
+                  createDropdownOptions(
+                    masterData?.propertyTypes?.filter((pt: any) => pt.propertyTypeId === 3),
+                    'propertyTypeName',
+                    'propertyTypeId'
+                  )
+                : // Show all property types for Residential and Mixed
+                  createDropdownOptions(
+                    masterData?.propertyTypes,
+                    'propertyTypeName',
+                    'propertyTypeId'
+                  )
+            }
+            onValueChange={(value) => handleInputChange('propertyTypeId', value)}
+            value={formData.propertyTypeId}
+          />
           <FormInput
             label="Building Name"
             onChangeText={(value) => handleInputChange('buildingName', value)}
