@@ -1,38 +1,45 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+
 import MainLayout from "@/components/layout/MainLayout";
 import ULBSelector from "@/components/masters/ULBSelector";
 import ZoneSelector from "@/components/masters/ZoneSelector";
 import WardSelector from "@/components/masters/WardSelector";
 import MohallaSelector from "@/components/masters/MohallaSelector";
 import SurveyTypeSelector from "@/components/masters/SurveyTypeSelector";
+import PropertyTypeSelector from "@/components/masters/PropertyTypeSelector";
+import UserSelector from "@/components/masters/UserSelector";
+import { useAuth } from "@/features/auth/AuthContext";
 
-export default function PropertyListFilterPage() {
-  const router = useRouter();
+export default function QCEditFilterPage() {
+  const { user } = useAuth();
+  
   const [ulbId, setUlbId] = useState<string | null>(null);
   const [zoneId, setZoneId] = useState<string | null>(null);
   const [wardId, setWardId] = useState<string | null>(null);
   const [mohallaId, setMohallaId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [mapId, setMapId] = useState<string>("");
-  const [gisId, setGisId] = useState<string>("");
   const [fromDate, setFromDate] = useState<string>("");
   const [toDate, setToDate] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [surveyTypeId, setSurveyTypeId] = useState<string | null>(null);
-  const [subGisId, setSubGisId] = useState<string>("");
+  const [propertyTypeId, setPropertyTypeId] = useState<string | null>(null);
+  const [qcDone, setQcDone] = useState<string>("ALL");
+
+  // Reset cascading filters
   useEffect(() => {
     setZoneId(null);
     setWardId(null);
     setMohallaId(null);
     setUserId(null);
   }, [ulbId]);
+
   useEffect(() => {
     setWardId(null);
     setMohallaId(null);
     setUserId(null);
   }, [zoneId]);
+
   useEffect(() => {
     setMohallaId(null);
     setUserId(null);
@@ -45,6 +52,7 @@ export default function PropertyListFilterPage() {
       return;
     }
     setError("");
+    
     const params = new URLSearchParams({
       surveyTypeId,
       ulbId,
@@ -52,16 +60,16 @@ export default function PropertyListFilterPage() {
       wardId: wardId || "",
       mohallaId: mohallaId || "",
       userId: userId || "",
-      mapId,
-      gisId,
-      subGisId,
+      propertyTypeId: propertyTypeId || "",
       fromDate,
       toDate,
+      qcDone,
+      userRole: user?.role || "",
+      qcLevel: "1", // Default to Level 1 QC
     });
-    window.open(
-      `/mis-reports/property-list/full-table?${params.toString()}`,
-      "_blank"
-    );
+    
+    // Open in new tab
+    window.open(`/qc/edit/table?${params.toString()}`, "_blank");
   };
 
   return (
@@ -69,7 +77,7 @@ export default function PropertyListFilterPage() {
       <div className="min-w-full mx-auto">
         <div className="border rounded shadow bg-black">
           <div className="bg-sky-900 text-white text-lg font-bold px-6 py-2 rounded-t border-2 border-gray-900">
-            Property List Report
+            QC Edit - Property Review
           </div>
           <form
             onSubmit={handleSubmit}
@@ -79,12 +87,15 @@ export default function PropertyListFilterPage() {
               value={surveyTypeId}
               onChange={setSurveyTypeId}
             />
+            
             <div>
               <ULBSelector value={ulbId} onChange={setUlbId} />
             </div>
+            
             <div>
               <ZoneSelector ulbId={ulbId} value={zoneId} onChange={setZoneId} />
             </div>
+            
             <div>
               <WardSelector
                 zoneId={zoneId}
@@ -92,65 +103,75 @@ export default function PropertyListFilterPage() {
                 onChange={setWardId}
               />
             </div>
+            
             <MohallaSelector
               wardId={wardId}
               value={mohallaId}
               onChange={setMohallaId}
             />
+            
             <div>
-              <label className="block font-semibold mb-1">Map ID</label>
-              <input
-                type="text"
-                className="w-full border rounded px-3 py-2"
-                value={mapId}
-                onChange={(e) => setMapId(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="block font-semibold mb-1">GIS ID</label>
-              <input
-                type="text"
-                className="w-full border rounded px-3 py-2"
-                value={gisId}
-                onChange={(e) => setGisId(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="block font-semibold mb-1">SubGIS ID</label>
-              <input
-                type="text"
-                className="w-full border rounded px-3 py-2"
-                value={subGisId}
-                onChange={(e) => setSubGisId(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="block font-semibold mb-1">From Date</label>
+              <label className="block text-gray-300 mb-1">From Date</label>
               <input
                 type="date"
-                className="w-full border rounded px-3 py-2"
+                className="w-full border rounded px-3 py-2 bg-gray-800 text-white"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
               />
             </div>
+            
             <div>
-              <label className="block font-semibold mb-1">To Date</label>
+              <label className="block text-gray-300 mb-1">To Date</label>
               <input
                 type="date"
-                className="w-full border rounded px-3 py-2"
+                className="w-full border rounded px-3 py-2 bg-gray-800 text-white"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
               />
             </div>
+            
+            <div>
+              <label className="block text-gray-300 mb-1">QC Status</label>
+              <select
+                className="w-full border rounded px-3 py-2 bg-gray-800 text-white"
+                value={qcDone}
+                onChange={(e) => setQcDone(e.target.value)}
+              >
+                <option value="ALL">All</option>
+                <option value="PENDING">Pending QC</option>
+                <option value="DONE">QC Done</option>
+              </select>
+            </div>
+            
             {error && (
-              <div className="md:col-span-2 text-red-500 text-sm">{error}</div>
+              <div className="col-span-2 text-red-500 text-sm">{error}</div>
             )}
-            <div className="md:col-span-2 flex justify-end mt-4">
+            
+            <div className="col-span-2 flex gap-4 mt-4">
               <button
                 type="submit"
-                className="px-6 py-2 bg-white text-black rounded hover:bg-gray-200 font-semibold"
+                className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
               >
-                Submit
+                View Properties
+              </button>
+              <button
+                type="button"
+                className="px-6 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+                onClick={() => {
+                  setSurveyTypeId(null);
+                  setUlbId(null);
+                  setZoneId(null);
+                  setWardId(null);
+                  setMohallaId(null);
+                  setUserId(null);
+                  setPropertyTypeId(null);
+                  setFromDate("");
+                  setToDate("");
+                  setQcDone("ALL");
+                  setError("");
+                }}
+              >
+                Reset
               </button>
             </div>
           </form>

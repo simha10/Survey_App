@@ -73,8 +73,8 @@ export default function WardMasterPage() {
 
   return (
     <MainLayout>
-      <div className="bg-gray-900 min-h-screen p-8 text-white">
-        <h1 className="text-3xl font-bold mb-6">Ward Master</h1>
+      <div className="bg-gray-900 min-h-screen text-white">
+        <h1 className="text-2xl font-bold mb-4">Ward Master</h1>
 
         {/* Selection Dropdowns */}
         <div className="mb-6 flex gap-4">
@@ -119,7 +119,7 @@ export default function WardMasterPage() {
             <div className="text-red-400">Error loading wards</div>
           )}
           {!wardsLoading && !wardsError && (
-            <table className="w-full bg-gray-800 rounded-lg overflow-hidden">
+            <table className="w-full bg-gray-800 rounded-lg overflow-hidden text-sm font-medium">
               <thead>
                 <tr>
                   <th className="px-4 py-2 text-left">Ward Number</th>

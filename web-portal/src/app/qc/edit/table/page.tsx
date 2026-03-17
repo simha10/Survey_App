@@ -11,7 +11,7 @@ import {
   TableRow,
   TableCell,
 } from "@/components/ui/table";
-import { Pencil, Check, X } from "lucide-react";
+import { Pencil, Check, X, Trash2 } from "lucide-react";
 import { qcApi, masterDataApi } from "@/lib/api";
 import { useAuth } from "@/features/auth/AuthContext";
 
@@ -227,6 +227,38 @@ function QCEditTableContent() {
     }
   };
 
+  const handleDelete = async (prop: any) => {
+    if (!confirm(`Are you sure you want to mark this survey as DUPLICATE?\n\nGIS ID: ${prop.gisId}\nThis is a soft delete - the record will be marked as duplicate but not removed from database.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const surveyUniqueCode = prop.surveyUniqueCode;
+      
+      // Mark as duplicate with error type DUPLICATE
+      const payload = {
+        updateData: {},
+        qcLevel: qcLevel,
+        qcStatus: "REJECTED" as const,
+        reviewedById: user?.userId || "",
+        remarks: "Marked as duplicate during QC review",
+        errorType: "DUPLICATE" as const,
+        gisTeamRemark: "Duplicate survey identified",
+        surveyTeamRemark: "",
+        RIRemark: "",
+      };
+
+      await qcApi.updateSurveyQC(surveyUniqueCode, payload);
+      toast.success("Survey marked as DUPLICATE successfully");
+      fetchProperties();
+    } catch (e) {
+      toast.error("Error marking survey as duplicate");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const handlePageChange = (newPage: number) => {
@@ -332,13 +364,22 @@ function QCEditTableContent() {
                       {prop.propertyDetails?.respondentName || "NA"}
                     </TableCell>
                     <TableCell>
-                      <button
-                        className="text-blue-600 hover:text-blue-900"
-                        title="Edit QC Details"
-                        onClick={() => handleEdit(prop.surveyUniqueCode)}
-                      >
-                        <Pencil size={18} />
-                      </button>
+                      <div className="flex gap-2 justify-center">
+                        <button
+                          className="text-blue-600 hover:text-blue-900"
+                          title="Edit QC Details"
+                          onClick={() => handleEdit(prop.surveyUniqueCode)}
+                        >
+                          <Pencil size={18} />
+                        </button>
+                        <button
+                          className="text-red-600 hover:text-red-900"
+                          title="Mark as Duplicate (Delete)"
+                          onClick={() => handleDelete(prop)}
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <select

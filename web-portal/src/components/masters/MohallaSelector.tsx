@@ -26,9 +26,9 @@ export default function MohallaSelector({
 
   return (
     <div>
-      <label className="block font-semibold mb-1">Select Mohalla</label>
+      <label className="block font-semibold mb-1 text-sm">Select Mohalla</label>
       <select
-        className="w-full border rounded px-3 py-2 bg-gray-800"
+        className="w-full border rounded px-3 py-2 bg-gray-800 text-sm"
         value={value || ""}
         onChange={(e) => onChange(e.target.value || null)}
         disabled={isLoading || !!error || !wardId}

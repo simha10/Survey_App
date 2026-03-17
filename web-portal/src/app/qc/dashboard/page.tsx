@@ -134,18 +134,17 @@ const QCDashboardPage: React.FC = () => {
   return (
     <ProtectedRoute requireWebPortalAccess>
       <MainLayout>
-        <div className="p-6">
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-100">
+            <h1 className="text-xl font-bold text-gray-100">
               Quality Control Dashboard
             </h1>
-            <p className="text-gray-400 mt-2">
+            <p className="text-sm text-gray-400 mt-2">
               Overview of survey QC status, trends, and recent actions
             </p>
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-2">
             <div className="bg-black p-6 rounded-lg shadow-md">
               <div className="flex items-center">
                 <div className="p-2 bg-blue-100 rounded-lg">
@@ -200,7 +199,7 @@ const QCDashboardPage: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div className="bg-black p-6 rounded-lg shadow-md">
+            <div className="bg-black p-2 rounded-lg shadow-md">
               <div className="flex items-center">
                 <div className="p-2 bg-green-100 rounded-lg">
                   <svg
@@ -255,9 +254,9 @@ const QCDashboardPage: React.FC = () => {
           </div>
 
           {/* Charts */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div className="bg-black p-6 rounded-lg shadow-md">
-              <h2 className="text-lg font-semibold mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-2">
+            <div className="bg-black p-2 rounded-lg shadow-md">
+              <h2 className="text-lg font-semibold mb-2">
                 QC Status Breakdown
               </h2>
               {stats?.statusCounts && stats.statusCounts.length > 0 ? (
@@ -304,8 +303,8 @@ const QCDashboardPage: React.FC = () => {
           </div>
 
           {/* Recent QC Actions */}
-          <div className="bg-black p-6 rounded-lg shadow-md mb-6">
-            <h2 className="text-lg font-semibold mb-4">Recent QC Actions</h2>
+          <div className="bg-black p-2 rounded-lg shadow-md mb-2">
+            <h2 className="text-lg font-semibold mb-2">Recent QC Actions</h2>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -357,7 +356,6 @@ const QCDashboardPage: React.FC = () => {
               </TableBody>
             </Table>
           </div>
-        </div>
       </MainLayout>
     </ProtectedRoute>
   );

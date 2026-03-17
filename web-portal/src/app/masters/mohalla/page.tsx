@@ -58,7 +58,7 @@ export default function MohallaMasterPage() {
 
   return (
     <MainLayout>
-      <div className="bg-gray-900 min-h-screen p-8 text-white">
+      <div className="bg-gray-900 min-h-screen text-white">
         <h1 className="text-3xl font-bold mb-6">Mohalla Master</h1>
 
         {/* Selection Dropdowns */}
@@ -105,7 +105,7 @@ export default function MohallaMasterPage() {
             <div className="text-red-400">Error loading mohallas</div>
           )}
           {!mohallasLoading && !mohallasError && (
-            <table className="w-full bg-gray-800 rounded-lg overflow-hidden">
+            <table className="w-full text-sm bg-gray-800 rounded-lg overflow-hidden">
               <thead>
                 <tr>
                   <th className="px-4 py-2 text-left">Mohalla Name</th>

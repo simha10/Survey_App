@@ -35,9 +35,9 @@ export default function ZoneMasterPage() {
 
   return (
     <MainLayout>
-      <div className="bg-gray-900 min-h-screen p-8 text-white">
-        <h1 className="text-3xl font-bold mb-6">Zone Master</h1>
-        <div className="mb-6">
+      <div className="bg-gray-900 min-h-screen text-white">
+        <h1 className="text-2xl font-bold mb-4">Zone Master</h1>
+        <div className="mb-4">
           <ULBSelector value={selectedUlb} onChange={setSelectedUlb} />
         </div>
         <div>
@@ -48,7 +48,7 @@ export default function ZoneMasterPage() {
             <div className="text-red-400">Error loading zones</div>
           )}
           {!zonesLoading && !zonesError && (
-            <table className="w-full bg-gray-800 rounded-lg overflow-hidden">
+            <table className="w-full bg-gray-800 rounded-lg overflow-hidden text-sm">
               <thead>
                 <tr>
                   <th className="px-4 py-2 text-left">Zone Number</th>

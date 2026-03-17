@@ -12,7 +12,8 @@
     "dummy:cleanup": "node scripts/runDummyData.js --cleanup",
     "dummy:validate": "node scripts/runDummyData.js --validate",
     "dummy:reset": "npm run dummy:cleanup && npm run dummy:validate",
-    "dummy:manage": "node scripts/dummyDataManager.js"
+    "dummy:manage": "node scripts/dummyDataManager.js",
+    "seed:test-surveys": "ts-node prisma/seedTestSurveys.ts"
   },
   "keywords": [],
   "author": "",

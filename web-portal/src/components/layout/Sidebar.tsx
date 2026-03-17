@@ -354,7 +354,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       ],
     },
     {
-      name: "LRMC Reports",
+      name: "LRMC MIS Reports",
       href: "#",
       icon: (
         <svg

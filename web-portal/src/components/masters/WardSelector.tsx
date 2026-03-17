@@ -31,9 +31,9 @@ export default function WardSelector({
 
   return (
     <div>
-      <label className="block mb-2 text-white font-semibold">Select Ward</label>
+      <label className="block mb-2 text-white text-sm font-semibold">Select Ward</label>
       <select
-        className="w-full bg-gray-800 text-white border border-gray-700 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-500"
+        className="w-full bg-gray-800 text-white text-sm border border-gray-700 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-500"
         value={value || ""}
         onChange={(e) => onChange(e.target.value || null)}
         disabled={isLoading || !!error || !zoneId}
