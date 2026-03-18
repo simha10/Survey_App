@@ -325,6 +325,7 @@ async function main() {
     { roleName: 'ADMIN', description: 'System Admin' },
     { roleName: 'SUPERVISOR', description: 'System Supervisor' },
     { roleName: 'SURVEYOR', description: 'System Surveyor' },
+    { roleName: 'VIEWER', description: 'Read-only Viewer' },
   ];
 
   await prisma.rolePermissionMaster.createMany({
@@ -349,6 +350,9 @@ async function main() {
   const surveyorRole = await prisma.rolePermissionMaster.findFirst({
     where: { roleName: 'SURVEYOR' }
   });
+  const viewerRole = await prisma.rolePermissionMaster.findFirst({
+    where: { roleName: 'VIEWER' }
+  });
 
   // 4. Create test users with different roles
   const testUsers = [
@@ -359,6 +363,7 @@ async function main() {
       mobileNumber: '1234567890',
       role: 'SUPERADMIN',
       roleId: superAdminRole?.roleId,
+      ulbs: [], // Empty array for now, can be updated later
     },
     {
       username: 'admin',
@@ -367,6 +372,7 @@ async function main() {
       mobileNumber: '1234567891',
       role: 'ADMIN',
       roleId: adminRole?.roleId,
+      ulbs: [],
     },
     {
       username: 'supervisor',
@@ -375,6 +381,7 @@ async function main() {
       mobileNumber: '1234567892',
       role: 'SUPERVISOR',
       roleId: supervisorRole?.roleId,
+      ulbs: [],
     },
     {
       username: 'surveyor',
@@ -383,6 +390,25 @@ async function main() {
       mobileNumber: '1234567893',
       role: 'SURVEYOR',
       roleId: surveyorRole?.roleId,
+      ulbs: [],
+    },
+    {
+      username: 'viewer',
+      name: 'System Viewer',
+      password: 'viewer123',
+      mobileNumber: '1234567894',
+      role: 'VIEWER',
+      roleId: viewerRole?.roleId,
+      ulbs: [],
+    },
+    {
+      username: 'user',
+      name: 'User',
+      password: 'user123',
+      mobileNumber: '1234567891',
+      role: 'ADMIN',
+      roleId: adminRole?.roleId,
+      ulbs: [],
     },
   ];
 
@@ -401,6 +427,7 @@ async function main() {
           password: hashedPassword,
           mobileNumber: userData.mobileNumber,
           isActive: true,
+          ulbs: userData.ulbs || [],
         },
       });
 
@@ -458,12 +485,13 @@ async function main() {
   // Run this after: npx prisma generate
   console.log('⚠️  QC Workflow tables seeding requires Prisma client regeneration first');
 
-  console.log('All master tables, roles and test users seeded successfully!');
   console.log('\nTest User Credentials:');
   console.log('SuperAdmin - Username: superadmin, Password: superadmin123');
   console.log('Admin - Username: admin, Password: admin123');
   console.log('Supervisor - Username: supervisor, Password: supervisor123');
   console.log('Surveyor - Username: surveyor, Password: surveyor123');
+  console.log('Viewer - Username: viewer, Password: viewer123');
+  console.log('User - Username: user, Password: user123');
 }
 
 main()

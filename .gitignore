@@ -252,3 +252,4 @@ node_modules/
 **/.env
 **/.env.* 
 
+/backend/Data/*

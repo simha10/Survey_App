@@ -155,6 +155,12 @@ export default function SurveyIntermediate() {
 
   const handleSubmitSurvey = async () => {
     if (!surveyData) return;
+    
+    // Validate floor details before submission
+    if (!validateFloorDetails()) {
+      return; // Validation failed, don't proceed
+    }
+    
     Alert.alert(
       'Submit Survey',
       'Are you sure you want to submit this survey? This action cannot be undone.',
@@ -211,6 +217,62 @@ export default function SurveyIntermediate() {
     });
   };
 
+  const validateFloorDetails = (): boolean => {
+    if (!surveyData) return false;
+
+    const hasResidentialFloors = residentialFloorCount > 0;
+    const hasNonResidentialFloors = nonResidentialFloorCount > 0;
+    const propertyTypeId = surveyData.data.propertyDetails?.propertyTypeId;
+    const isPLOT_LAND = propertyTypeId === 3;
+
+    // Validation logic based on survey type
+    if (surveyData.surveyType === 'Residential') {
+      // Residential: Require floors EXCEPT for PLOT/LAND
+      if (isPLOT_LAND) {
+        // PLOT/LAND doesn't require floor details
+        return true;
+      } else {
+        // Other property types require at least 1 floor
+        if (!hasResidentialFloors) {
+          Alert.alert(
+            'Validation Error',
+            'At least one floor detail is required for this property type. Please add floor details before submitting.'
+          );
+          return false;
+        }
+      }
+    } else if (surveyData.surveyType === 'Non-Residential') {
+      // Non-Residential: Always require at least 1 floor (no exceptions)
+      if (!hasNonResidentialFloors) {
+        Alert.alert(
+          'Validation Error',
+          'At least one floor detail is required for Non-Residential properties. Please add floor details before submitting.'
+        );
+        return false;
+      }
+    } else if (surveyData.surveyType === 'Mixed') {
+      // Mixed: Both residential and non-residential parts need validation
+      // Residential part: Require floors EXCEPT for PLOT/LAND
+      if (!isPLOT_LAND && !hasResidentialFloors) {
+        Alert.alert(
+          'Validation Error',
+          'At least one residential floor detail is required for this property type. Please add residential floor details before submitting.'
+        );
+        return false;
+      }
+      // Non-Residential part: Always require at least 1 floor
+      if (!hasNonResidentialFloors) {
+        Alert.alert(
+          'Validation Error',
+          'At least one non-residential floor detail is required. Please add non-residential floor details before submitting.'
+        );
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
@@ -246,6 +308,21 @@ export default function SurveyIntermediate() {
       ? surveyData.data.nonResidentialPropertyAssessments.length
       : 0;
 
+  // Determine if floor details are required and show warnings
+  const propertyTypeId = surveyData.data.propertyDetails?.propertyTypeId;
+  const isPLOT_LAND = propertyTypeId === 3;
+  
+  const needsResidentialFloors = 
+    (surveyData.surveyType === 'Residential' || surveyData.surveyType === 'Mixed') &&
+    !isPLOT_LAND &&
+    residentialFloorCount === 0;
+  
+  const needsNonResidentialFloors = 
+    (surveyData.surveyType === 'Non-Residential' || surveyData.surveyType === 'Mixed') &&
+    nonResidentialFloorCount === 0;
+
+  const canSubmitSurvey = !needsResidentialFloors && !needsNonResidentialFloors;
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       <ScrollView>
@@ -279,13 +356,37 @@ export default function SurveyIntermediate() {
           {(surveyData.surveyType === 'Residential' || surveyData.surveyType === 'Mixed') && (
             <View style={styles.infoRow}>
               <Text style={styles.label}>Residential Floors:</Text>
-              <Text style={styles.value}>{residentialFloorCount}</Text>
+              <Text style={[styles.value, residentialFloorCount === 0 ? styles.warningText : {}]}>
+                {residentialFloorCount}
+              </Text>
             </View>
           )}
           {(surveyData.surveyType === 'Non-Residential' || surveyData.surveyType === 'Mixed') && (
             <View style={styles.infoRow}>
               <Text style={styles.label}>Non-Residential Floors:</Text>
-              <Text style={styles.value}>{nonResidentialFloorCount}</Text>
+              <Text style={[styles.value, nonResidentialFloorCount === 0 ? styles.warningText : {}]}>
+                {nonResidentialFloorCount}
+              </Text>
+            </View>
+          )}
+          
+          {/* Warning Messages */}
+          {needsResidentialFloors && (
+            <View style={styles.warningBox}>
+              <Text style={styles.warningIcon}>⚠️</Text>
+              <Text style={styles.warningText}>
+                {isPLOT_LAND 
+                  ? 'PLOT/LAND property type selected - floor details are optional'
+                  : 'At least one residential floor detail is required before submission'}
+              </Text>
+            </View>
+          )}
+          {needsNonResidentialFloors && (
+            <View style={styles.warningBox}>
+              <Text style={styles.warningIcon}>⚠️</Text>
+              <Text style={styles.warningText}>
+                At least one non-residential floor detail is required before submission
+              </Text>
             </View>
           )}
         </View>
@@ -325,10 +426,25 @@ export default function SurveyIntermediate() {
         {/* Submit Button */}
         <View style={styles.submitSection}>
           <TouchableOpacity
-            style={[styles.actionButton, styles.submitButton]}
-            onPress={handleSubmitSurvey}>
-            <Text style={[styles.actionButtonText, styles.submitButtonText]}>Submit Survey</Text>
+            style={[
+              styles.actionButton,
+              canSubmitSurvey ? styles.submitButton : styles.disabledButton
+            ]}
+            onPress={canSubmitSurvey ? handleSubmitSurvey : undefined}
+            disabled={!canSubmitSurvey}
+          >
+            <Text style={[
+              styles.actionButtonText,
+              canSubmitSurvey ? styles.submitButtonText : styles.disabledButtonText
+            ]}>
+              Submit Survey {!canSubmitSurvey && '(Floor Details Required)'}
+            </Text>
           </TouchableOpacity>
+          {!canSubmitSurvey && (
+            <Text style={styles.disabledHelpText}>
+              Please add required floor details before submitting
+            </Text>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -394,6 +510,25 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontWeight: '600',
   },
+  warningText: {
+    fontSize: 14,
+    color: '#F59E0B',
+    fontWeight: '600',
+  },
+  warningIcon: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  warningBox: {
+    backgroundColor: '#FEF3C7',
+    borderLeftWidth: 4,
+    borderLeftColor: '#F59E0B',
+    padding: 12,
+    marginTop: 12,
+    borderRadius: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   actionButton: {
     backgroundColor: '#3B82F6',
     paddingVertical: 12,
@@ -425,6 +560,24 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  disabledButton: {
+    backgroundColor: '#9CA3AF',
+    opacity: 0.5,
+  },
+  disabledButtonText: {
+    color: '#D1D5DB',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  disabledHelpText: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
   button: {
     backgroundColor: '#3B82F6',

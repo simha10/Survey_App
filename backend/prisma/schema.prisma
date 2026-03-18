@@ -212,6 +212,7 @@ model UsersMaster {
   isActive                      Boolean               @default(false)
   description                   String?
   name                          String?               @db.VarChar(100)
+  ulbs                          String[]              @db.VarChar(36)
   admins                        Admins?
   auditLogs                     AuditLog[]
   bulkActionLogs                BulkActionLog[]
@@ -438,6 +439,7 @@ model PropertyDetails {
   waterSewerageConnectionNumber String?                @db.VarChar(50)
   respondentName                String                 @db.Char(50)
   respondentStatusId            Int
+  newHouseNumber                String?                @db.VarChar(15)
   respondentStatus              RespondentStatusMaster @relation(fields: [respondentStatusId], references: [respondentStatusId])
   responseType                  ResponseTypeMaster     @relation(fields: [responseTypeId], references: [responseTypeId])
   survey                        SurveyDetails          @relation(fields: [surveyUniqueCode], references: [surveyUniqueCode])
