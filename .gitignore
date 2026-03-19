@@ -252,4 +252,7 @@ node_modules/
 **/.env
 **/.env.* 
 
+# Ignore all app.json files in subdirectories
+**/app.json
+
 /backend/Data/*

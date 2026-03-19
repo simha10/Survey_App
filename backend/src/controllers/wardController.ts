@@ -704,6 +704,20 @@ export const updateWard = async (req: Request, res: Response) => {
     const { wardId } = req.params;
     const { newWardNumber, wardName, description, isActive } = req.body;
     
+    // Validate wardId format
+    if (!wardId || typeof wardId !== 'string') {
+      return res.status(400).json({ error: 'Invalid wardId' });
+    }
+    
+    // Check if ward exists before updating
+    const existingWard = await prisma.wardMaster.findUnique({
+      where: { wardId },
+    });
+    
+    if (!existingWard) {
+      return res.status(404).json({ error: 'Ward not found' });
+    }
+    
     const ward = await prisma.wardMaster.update({
       where: { wardId },
       data: {
@@ -722,9 +736,15 @@ export const updateWard = async (req: Request, res: Response) => {
     });
     
     res.json(ward);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating ward:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    
+    // Handle Prisma "record not found" error
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'Ward not found or already deleted' });
+    }
+    
+    res.status(500).json({ message: 'Internal server error', details: error.message });
   }
 };
 
@@ -772,11 +792,17 @@ export const getWardsByZone = async (req: Request, res: Response) => {
           },
         },
       },
-      orderBy: {
-        ward: { newWardNumber: 'asc' },
-      },
     });
-    const wards = mappings.map((m: any) => m.ward);
+    
+    let wards = mappings.map((m: any) => m.ward);
+    
+    // Sort by integer value of newWardNumber
+    wards.sort((a: any, b: any) => {
+      const aNum = parseInt(a.newWardNumber.replace(/\D/g, '')) || 0;
+      const bNum = parseInt(b.newWardNumber.replace(/\D/g, '')) || 0;
+      return aNum - bNum;
+    });
+    
     res.json(wards);
   } catch (error) {
     console.error('Error fetching wards by zone:', error);
@@ -806,24 +832,53 @@ export const getAllWardStatuses = async (req: Request, res: Response) => {
 // Update status for a ward (mohallas inherit status from ward)
 export const updateWardStatus = async (req: Request, res: Response) => {
   try {
-    const parsed = UpdateWardStatusSchema.safeParse(req.body);
+    console.log('=== UPDATE WARD STATUS REQUEST ===');
+    console.log('Request body:', req.body);
+    console.log('Request params:', req.params);
+    
+    // Support both path parameter and body parameter for wardId
+    const wardIdFromPath = req.params.wardId;
+    const wardIdFromBody = req.body.wardId;
+    const wardId = wardIdFromPath || wardIdFromBody;
+    const wardStatusId = req.body.wardStatusId;
+    
+    console.log('Ward ID from path:', wardIdFromPath);
+    console.log('Ward ID from body:', wardIdFromBody);
+    console.log('Final Ward ID:', wardId);
+    console.log('Ward Status ID:', wardStatusId);
+    
+    // Prepare data for validation
+    const dataToValidate = { wardId, wardStatusId };
+    const parsed = UpdateWardStatusSchema.safeParse(dataToValidate);
     if (!parsed.success) {
-      return res.status(400).json({ error: 'Invalid input data' });
+      console.error('Validation failed:', parsed.error);
+      return res.status(400).json({ error: 'Invalid input data', details: parsed.error.errors });
     }
 
-    const { wardId, wardStatusId } = parsed.data;
     const userId = (req as any).user?.userId;
+
+    console.log('Parsed data:', { wardId, wardStatusId, userId });
 
     if (!wardId || !wardStatusId || !userId) {
       return res.status(400).json({ error: 'wardId, wardStatusId, and userId are required' });
     }
 
     // Validate existence
+    console.log('Checking if ward exists:', wardId);
     const ward = await prisma.wardMaster.findUnique({ where: { wardId } });
-    if (!ward) return res.status(404).json({ error: 'Ward not found' });
+    console.log('Ward found:', !!ward);
+    if (!ward) {
+      console.error('Ward not found:', wardId);
+      return res.status(404).json({ error: 'Ward not found' });
+    }
 
+    console.log('Checking if status exists:', wardStatusId);
     const status = await prisma.wardStatusMaster.findUnique({ where: { wardStatusId } });
-    if (!status) return res.status(404).json({ error: 'Status not found' });
+    console.log('Status found:', !!status);
+    if (!status) {
+      console.error('Status not found:', wardStatusId);
+      return res.status(404).json({ error: 'Status not found' });
+    }
 
     // Check if a mapping already exists for this ward-status combination
     const existingMapping = await prisma.wardStatusMapping.findFirst({
@@ -869,6 +924,11 @@ export const updateWardStatus = async (req: Request, res: Response) => {
         new_value: `wardId:${wardId},wardStatusId:${wardStatusId}`,
       },
     });
+
+    console.log('=== WARD STATUS UPDATE SUCCESSFUL ===');
+    console.log('Ward ID:', wardId);
+    console.log('New Status ID:', wardStatusId);
+    console.log('New Status Name:', status.statusName);
 
     res.json({ 
       message: 'Ward status updated successfully. Mohallas will inherit this status.',
@@ -955,8 +1015,15 @@ export const getAllWardsWithStatus = async (req: Request, res: Response) => {
           }
         }
       },
-      orderBy: { newWardNumber: 'asc' },
     });
+    
+    // Sort by integer value of newWardNumber
+    wards.sort((a: any, b: any) => {
+      const aNum = parseInt(a.newWardNumber.replace(/\D/g, '')) || 0;
+      const bNum = parseInt(b.newWardNumber.replace(/\D/g, '')) || 0;
+      return aNum - bNum;
+    });
+    
     res.json(wards);
   } catch (error) {
     console.error('Error fetching wards with status:', error);
@@ -995,12 +1062,16 @@ export const getWardsByZoneWithStatus = async (req: Request, res: Response) => {
           },
         },
       },
-      orderBy: {
-        ward: { newWardNumber: 'asc' },
-      },
     });
     
     let wards = mappings.map((m: any) => m.ward);
+    
+    // Sort by integer value of newWardNumber
+    wards.sort((a: any, b: any) => {
+      const aNum = parseInt(a.newWardNumber.replace(/\D/g, '')) || 0;
+      const bNum = parseInt(b.newWardNumber.replace(/\D/g, '')) || 0;
+      return aNum - bNum;
+    });
     
     // Filter by status if provided
     if (status && typeof status === 'string') {

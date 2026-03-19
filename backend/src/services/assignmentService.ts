@@ -141,7 +141,7 @@ export const bulkAssign = async (data: any) => {
 // Get all assignments for a user
 export const getAssignmentsByUser = async (userId: string) => {
   const assignments = await prisma.surveyorAssignment.findMany({
-    where: { userId, isActive: true },
+    where: { userId },
     include: {
       ward: true,
     },
@@ -156,6 +156,7 @@ export const getAssignmentsByUser = async (userId: string) => {
       mohallas,
       assignmentType: a.assignmentType,
       assignmentId: a.assignmentId,
+      isActive: a.isActive,
     };
   }));
   return { assignments: result };

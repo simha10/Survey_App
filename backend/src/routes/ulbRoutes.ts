@@ -5,12 +5,16 @@ import {
   getUlbById, 
   createUlb, 
   updateUlb, 
-  deleteUlb 
+  deleteUlb,
+  getUlbWithStats
 } from '../controllers/ulbController';
 
 const router = express.Router();
 
-// Get all ULBs
+// Get all ULBs with statistics
+router.get('/with-stats', authenticateJWT, getUlbWithStats);
+
+// Get all ULBs (legacy endpoint)
 router.get('/', authenticateJWT, getAllUlbs);
 
 // Get ULB by ID

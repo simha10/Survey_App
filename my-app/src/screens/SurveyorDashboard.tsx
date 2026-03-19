@@ -7,12 +7,18 @@ import {
   Alert,
   ActivityIndicator,
   BackHandler,
+  ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { getUnsyncedSurveys, syncSurveysToBackend, setSelectedAssignment } from '../utils/storage';
 import { fetchSurveyorAssignments } from '../services/surveyService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import Toast from 'react-native-toast-message';
+import { getUnsavedDraft, clearUnsavedDraft } from '../utils/draftStorage';
+import { SurveyRecoveryDialog } from '../components/SurveyRecoveryDialog';
 
 type Navigation = {
   navigate: (screen: string, params?: any) => void;
@@ -59,6 +65,14 @@ export default function SurveyorDashboard() {
   const [assignmentsError, setAssignmentsError] = useState<string | null>(null);
   const [primaryAssignment, setPrimaryAssignment] = useState<any>(null);
   const [unsyncedCount, setUnsyncedCount] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  // Recovery dialog state
+  const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
+  const [unsavedDraft, setUnsavedDraft] = useState<any>(null);
+  
+  // Track if we should skip draft check (user just intentionally exited)
+  const skipDraftCheckRef = React.useRef(false);
 
   // Wrap all async operations to prevent crashes
   const safeAsyncOperation = async (operation: () => Promise<void>, errorContext: string) => {
@@ -89,6 +103,15 @@ export default function SurveyorDashboard() {
       // Safe data loading to prevent crashes
       safeAsyncOperation(checkOngoingSurvey, 'focus checkOngoingSurvey');
       safeAsyncOperation(loadUnsyncedCount, 'focus loadUnsyncedCount');
+      
+      // Only check for unsaved draft if NOT just exited from survey form
+      // This prevents showing recovery dialog immediately after user intentionally exits
+      if (!skipDraftCheckRef.current) {
+        safeAsyncOperation(checkForUnsavedDraft, 'focus checkForUnsavedDraft');
+      } else {
+        console.log('[Dashboard] Skipping draft check - user just exited survey form');
+        skipDraftCheckRef.current = false; // Reset for next time
+      }
 
       return () => subscription.remove();
     }, [])
@@ -124,12 +147,58 @@ export default function SurveyorDashboard() {
     }
   };
 
+  const checkForUnsavedDraft = async () => {
+    try {
+      console.log('Dashboard: Checking for unsaved draft...');
+      
+      // First check if we should skip (user just exited survey form)
+      const skipFlag = await AsyncStorage.getItem('@ptms_skip_draft_check');
+      if (skipFlag === 'true') {
+        console.log('[Dashboard] Skip flag found - user just exited survey form');
+        await AsyncStorage.removeItem('@ptms_skip_draft_check'); // Clear flag
+        return; // Don't show recovery dialog
+      }
+      
+      const draft = await getUnsavedDraft();
+      
+      if (draft) {
+        console.log('Dashboard: Found unsaved draft:', draft.surveyId);
+        setUnsavedDraft(draft);
+        setShowRecoveryDialog(true);
+      } else {
+        console.log('Dashboard: No unsaved draft found');
+      }
+    } catch (error) {
+      console.error('Dashboard: Error checking unsaved draft:', error);
+    }
+  };
+
   const fetchAssignments = async () => {
     setAssignmentsLoading(true);
     setAssignmentsError(null);
     try {
       const data = await fetchSurveyorAssignments();
-      setAssignments(data.assignments || []);
+      // Filter to show only active assignments
+      const activeAssignments = (data.assignments || []).filter((a: any) => a.isActive === true);
+      setAssignments(activeAssignments);
+      
+      // CRITICAL: Validate primary assignment against active list
+      const currentPrimaryJson = await AsyncStorage.getItem('primaryAssignment');
+      if (currentPrimaryJson) {
+        const currentPrimary = JSON.parse(currentPrimaryJson);
+        const isStillActive = activeAssignments.some(
+          (a: any) => a.assignmentId === currentPrimary.assignmentId
+        );
+        
+        if (!isStillActive) {
+          console.log('Dashboard: Primary assignment is no longer active, clearing it');
+          await AsyncStorage.removeItem('primaryAssignment');
+          setPrimaryAssignment(null);
+          await setSelectedAssignment(null);
+        } else {
+          console.log('Dashboard: Primary assignment verified as active');
+        }
+      }
     } catch (err: any) {
       console.error(err);
       setAssignmentsError('Failed to load assignments');
@@ -145,8 +214,19 @@ export default function SurveyorDashboard() {
       const json = await AsyncStorage.getItem('primaryAssignment');
       if (json) {
         const parsed = JSON.parse(json);
-        console.log('Dashboard: Primary assignment loaded');
-        setPrimaryAssignment(parsed);
+        
+        // Check if the stored primary assignment is still active
+        if (parsed.isActive === false) {
+          console.log('Dashboard: Primary assignment is inactive, clearing it');
+          await AsyncStorage.removeItem('primaryAssignment');
+          setPrimaryAssignment(null);
+          
+          // Also clear selectedAssignment to keep them in sync
+          await setSelectedAssignment(null);
+        } else {
+          console.log('Dashboard: Primary assignment loaded and active');
+          setPrimaryAssignment(parsed);
+        }
       } else {
         console.log('Dashboard: No primary assignment found');
         setPrimaryAssignment(null);
@@ -180,10 +260,79 @@ export default function SurveyorDashboard() {
     }
   };
 
+  const refreshData = async () => {
+    if (refreshing) return; // Prevent concurrent refreshes
+    
+    setRefreshing(true);
+    console.log('Dashboard: Starting refresh...');
+    
+    try {
+      // Refresh all data in parallel for better performance
+      await Promise.all([
+        (async () => {
+          try {
+            const data = await fetchSurveyorAssignments();
+            // Filter to show only active assignments
+            const activeAssignments = (data.assignments || []).filter((a: any) => a.isActive === true);
+            setAssignments(activeAssignments);
+            setAssignmentsError(null);
+            
+            // CRITICAL: If there's a primary assignment, verify it's still in the active list
+            const currentPrimaryJson = await AsyncStorage.getItem('primaryAssignment');
+            if (currentPrimaryJson) {
+              const currentPrimary = JSON.parse(currentPrimaryJson);
+              const isStillActive = activeAssignments.some(
+                (a: any) => a.assignmentId === currentPrimary.assignmentId
+              );
+              
+              if (!isStillActive) {
+                console.log('Dashboard: Primary assignment is no longer active, clearing it');
+                await AsyncStorage.removeItem('primaryAssignment');
+                setPrimaryAssignment(null);
+                await setSelectedAssignment(null);
+              } else {
+                console.log('Dashboard: Primary assignment is still active');
+              }
+            }
+          } catch (err: any) {
+            console.error('Dashboard: Error refreshing assignments:', err);
+            setAssignmentsError('Failed to load assignments');
+            setAssignments([]);
+          } finally {
+            setAssignmentsLoading(false);
+          }
+        })(),
+        loadPrimaryAssignment(),
+        checkOngoingSurvey(),
+        loadUnsyncedCount(),
+      ]);
+      
+      console.log('Dashboard: Refresh completed successfully');
+      // Show toast message on successful refresh
+      Toast.show({
+        type: 'success',
+        text1: 'Dashboard Refreshed Successfully',
+        position: 'top',
+        visibilityTime: 3000,
+        autoHide: true,
+        props: {
+          style: {
+            marginTop: 60,
+          },
+        },
+      });
+    } catch (error) {
+      console.error('Dashboard: Error during refresh:', error);
+      // Don't show error to user during refresh - just log it
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const handleSetPrimary = async (assignment: any) => {
     Alert.alert(
       'Set Primary Assignment',
-      `Are you sure you want to set this assignment as your primary?\n\nULB: ${assignment.ulb?.ulbName || assignment.ulb?.ulbId || 'N/A'}\nZone: ${assignment.zone?.zoneName || assignment.zone?.zoneId || 'N/A'}`,
+      `Are you sure you want to set this assignment as your primary?\n\nULB: ${assignment.ulb?.ulbName || assignment.ulb?.ulbId || 'N/A'}\nZone: ${assignment.zone?.zoneName || assignment.zone?.zoneId || 'N/A'}\nWard: ${assignment.ward?.wardName || assignment.ward?.wardId || 'N/A'}`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -199,7 +348,50 @@ export default function SurveyorDashboard() {
     );
   };
 
-  const handleCardPress = (surveyType: string) => {
+  const handleCardPress = async (surveyType: string) => {
+    try {
+      // Check for unsaved draft BEFORE allowing new survey
+      const existingDraft = await getUnsavedDraft();
+      
+      if (existingDraft) {
+        // Show recovery dialog instead of starting new survey
+        console.log('[Dashboard] Found draft when clicking card, showing recovery dialog');
+        setUnsavedDraft(existingDraft);
+        setShowRecoveryDialog(true);
+        return; // Don't proceed with new survey
+      }
+      
+      // No draft - proceed with normal flow
+      // Check if user has any active assignments
+      if (assignments.length === 0) {
+      Alert.alert(
+        'No Assignment',
+        'You do not have any active ward assignment. Please contact your administrator.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // User MUST have a primary assignment set to do surveys
+    if (!primaryAssignment) {
+      Alert.alert(
+        'Primary Assignment Required',
+        'Please set a primary assignment from your ward assignments before starting a survey. Click on the Primary button to set one.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // Verify primary assignment is active
+    if (!primaryAssignment.isActive) {
+      Alert.alert(
+        'Assignment Inactive',
+        'Your current assignment is inactive. You cannot proceed with the survey until your assignment is activated by the administrator.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     if (ongoingSurvey) {
       Alert.alert(
         'Ongoing Survey',
@@ -260,9 +452,44 @@ export default function SurveyorDashboard() {
         ]
       );
     }
-  };
+  } catch (error) {
+    console.error('Error in handleCardPress:', error);
+    // Fallback to normal behavior
+    navigation.navigate('SurveyForm', { surveyType });
+  }
+};
 
   const handleContinueOngoing = () => {
+    // Check if user has any active assignments
+    if (assignments.length === 0) {
+      Alert.alert(
+        'No Assignment',
+        'You do not have any active ward assignment. Please contact your administrator.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // User MUST have a primary assignment set to continue surveys
+    if (!primaryAssignment) {
+      Alert.alert(
+        'Primary Assignment Required',
+        'Please set a primary assignment from your ward assignments before continuing the survey.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // Verify primary assignment is active
+    if (!primaryAssignment.isActive) {
+      Alert.alert(
+        'Assignment Inactive',
+        'Your current assignment is inactive. You cannot continue the survey until your assignment is activated by the administrator.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     if (ongoingSurvey) {
       Alert.alert(
         'Continue Survey',
@@ -329,6 +556,44 @@ export default function SurveyorDashboard() {
     navigation.navigate('SurveyRecordsScreen');
   };
 
+  // Recovery dialog handlers
+  const handleContinueDraft = () => {
+    setShowRecoveryDialog(false);
+    if (unsavedDraft) {
+      console.log('[Dashboard] Continuing draft survey:', unsavedDraft.surveyId);
+      // Navigate with draft data so SurveyForm can restore it
+      navigation.navigate('SurveyForm', {
+        surveyType: unsavedDraft.surveyType,
+        editMode: false, // NOT edit mode - this is a new draft restoration
+        surveyId: unsavedDraft.surveyId,  // Pass the draft's survey ID for matching
+        hasDraft: true,  // Flag to indicate draft available
+      });
+      // Don't clear yet - let SurveyForm restore it first
+      // SurveyForm will clear after successful restoration
+    }
+  };
+
+  const handleNewSurveyFromRecovery = () => {
+    setShowRecoveryDialog(false);
+    clearUnsavedDraft();
+    console.log('[Dashboard] User chose to start new survey from recovery');
+    // After clearing, user needs to click the card again
+    // Show a toast to inform user
+    Toast.show({
+      type: 'success',
+      text1: 'Draft Cleared',
+      text2: 'You can now start a new survey',
+      visibilityTime: 2000,
+    });
+  };
+
+  const handleCancelRecovery = () => {
+    setShowRecoveryDialog(false);
+    // DON'T clear draft - user might want to continue later
+    // Only clear if user explicitly clicks "Start New Survey"
+    console.log('[Dashboard] User cancelled recovery - keeping draft intact');
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
@@ -342,11 +607,36 @@ export default function SurveyorDashboard() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
-      {/* Assignments Section */}
-      <View style={{ marginBottom: 16, alignItems: 'center' }}>
-        <Text style={{ marginBottom: 8, fontSize: 18, fontWeight: 'bold', color: '#1f2937', textAlign: 'center' }}>
-          Your Ward Assignment
-        </Text>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refreshData}
+            colors={['#2776F5']}
+            tintColor="#2776F5"
+          />
+        }>
+        {/* Assignments Section */}
+        <View style={{ marginBottom: 16, alignItems: 'center' }}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Your Ward Assignment</Text>
+            <TouchableOpacity
+              style={[
+                styles.refreshButton,
+                refreshing && styles.refreshButtonDisabled,
+              ]}
+              onPress={refreshData}
+              disabled={refreshing}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              {refreshing ? (
+                <ActivityIndicator size="small" color="#2776F5" />
+              ) : (
+                <Icon name="refresh" size={20} color="#2776F5" />
+              )}
+            </TouchableOpacity>
+          </View>
         {assignmentsLoading ? (
           <ActivityIndicator size="small" color="#2776F5" />
         ) : (
@@ -418,10 +708,10 @@ export default function SurveyorDashboard() {
             )}
           </View>
         )}
-      </View>
+        </View>
 
-      {/* Ongoing Survey Alert */}
-      {ongoingSurvey && (
+        {/* Ongoing Survey Alert */}
+        {ongoingSurvey && (
         <View style={styles.ongoingSurveyCard}>
           <Text style={styles.ongoingSurveyTitle}>Ongoing Survey</Text>
           <Text style={styles.ongoingSurveyText}>
@@ -474,6 +764,18 @@ export default function SurveyorDashboard() {
           <Text style={styles.syncingText}>Syncing...</Text>
         </View>
       )}
+      </ScrollView>
+      <Toast />
+      
+      {/* Recovery Dialog */}
+      <SurveyRecoveryDialog
+        visible={showRecoveryDialog}
+        surveyType={unsavedDraft?.surveyType}
+        timestamp={unsavedDraft?.timestamp}
+        onContinue={handleContinueDraft}
+        onNewSurvey={handleNewSurveyFromRecovery}
+        onCancel={handleCancelRecovery}
+      />
     </SafeAreaView>
   );
 }
@@ -485,6 +787,40 @@ const styles = StyleSheet.create({
     padding: 12,
     paddingTop: 0,
     paddingBottom: 0,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    marginTop: 8,
+    marginBottom: 8,
+    position: 'relative',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    textAlign: 'center',
+    flex: 1,
+  },
+  refreshButton: {
+    padding: 6,
+    borderRadius: 20,
+    backgroundColor: '#E0E7FF',
+    marginLeft: 8,
+    position: 'absolute',
+    right: 0,
+  },
+  refreshButtonDisabled: {
+    backgroundColor: '#F3F4F6',
+    opacity: 0.5,
   },
   loadingContainer: {
     flex: 1,

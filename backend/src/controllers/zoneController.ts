@@ -14,8 +14,15 @@ export const getAllZones = async (req: Request, res: Response) => {
         isActive: true,
         description: true,
       },
-      orderBy: { zoneNumber: 'asc' },
     });
+    
+    // Sort by integer value of zoneNumber
+    zones.sort((a: any, b: any) => {
+      const aNum = parseInt(a.zoneNumber.replace(/\D/g, '')) || 0;
+      const bNum = parseInt(b.zoneNumber.replace(/\D/g, '')) || 0;
+      return aNum - bNum;
+    });
+    
     res.json(zones);
   } catch (error) {
     console.error('Error fetching zones:', error);
@@ -39,11 +46,17 @@ export const getZonesByUlb = async (req: Request, res: Response) => {
           },
         },
       },
-      orderBy: {
-        zone: { zoneNumber: 'asc' },
-      },
     });
+    
     const zones = mappings.map((m: any) => m.zone);
+    
+    // Sort by integer value of zoneNumber
+    zones.sort((a: any, b: any) => {
+      const aNum = parseInt(a.zoneNumber.replace(/\D/g, '')) || 0;
+      const bNum = parseInt(b.zoneNumber.replace(/\D/g, '')) || 0;
+      return aNum - bNum;
+    });
+    
     res.json(zones);
   } catch (error) {
     console.error('Error fetching zones by ULB:', error);

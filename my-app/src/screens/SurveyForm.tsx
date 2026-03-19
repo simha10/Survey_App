@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   ScrollView,
   View,
@@ -11,8 +11,10 @@ import {
   Image as RNImage,
   Modal,
   BackHandler,
+  AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import FormInput from '../components/FormInput';
 import FormDropdown from '../components/FormDropdown';
 import {
@@ -21,6 +23,7 @@ import {
   getUnsyncedSurveys,
   getMasterData,
 } from '../utils/storage';
+import { saveUnsavedDraft, clearUnsavedDraft, getUnsavedDraft, updateSurveyStatus } from '../utils/draftStorage';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
@@ -149,9 +152,20 @@ export default function SurveyForm({ route }: any) {
   const navigation = useNavigation();
   console.log(`📱 Navigation stack info [${componentId.current}]:`, navigation?.getState?.());
   
+  // All refs first (before any state)
   const scrollViewRef = useRef<ScrollView>(null);
   const fieldRefs = useRef<{ [key: string]: View | null }>({});
+  const cameraViewRef = useRef<CameraView | null>(null);
+  const navigationBlocked = useRef(true);
+  const componentMounted = useRef(true);
+  const activeOperations = useRef(new Set<string>());
+  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Refs to track latest values for draft saving (avoids dependency issues)
+  const formDataRef = useRef<any>({ ulbId: '', zoneId: '', wardId: '', mohallaId: '', parcelId: '', mapId: '', gisId: '', subGisId: '', responseTypeId: 0, oldHouseNumber: '', electricityConsumerName: '', waterSewerageConnectionNumber: '', respondentName: '', respondentStatusId: 0, ownerName: '', fatherHusbandName: '', mobileNumber: '', aadharNumber: '', propertyLatitude: '', propertyLongitude: '', assessmentYear: new Date().getFullYear().toString(), propertyTypeId: 0, buildingName: '', roadTypeId: 0, constructionYear: '', constructionTypeId: 0, addressRoadName: '', locality: '', pinCode: '', landmark: '', fourWayEast: '', fourWayWest: '', fourWayNorth: '', fourWaySouth: '', newWardNumber: '', waterSourceId: 0, rainWaterHarvestingSystem: 'NO', plantation: 'NO', parking: 'NO', pollution: 'NO', pollutionMeasurementTaken: '', waterSupplyWithin200Meters: 'NO', sewerageLineWithin100Meters: 'NO' });
+  const photosRef = useRef<{ [key: string]: string | null }>({ khasra: null, front: null, left: null, right: null, other1: null, other2: null });
+  const CAMERA_IDLE_TIMEOUT = 5 * 60 * 1000; // 5 minutes idle timeout
 
+  // All useState calls together
   // State for master data
   const [masterData, setMasterData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -173,21 +187,30 @@ export default function SurveyForm({ route }: any) {
   });
   const [cameraVisible, setCameraVisible] = useState(false);
   const [cameraKey, setCameraKey] = useState<keyof typeof photos | null>(null);
-  const cameraViewRef = useRef<CameraView | null>(null);
+  const [cameraCardName, setCameraCardName] = useState<string>(''); // Display name for the photo card
   const [cameraLoading, setCameraLoading] = useState(false);
   const [camPermission, requestCamPermission] = useCameraPermissions();
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerUri, setViewerUri] = useState<string | null>(null);
+  const [viewerCardName, setViewerCardName] = useState<string>(''); // Display name for viewed photo
   // Add state to track camera initialization status
   const [cameraInitializing, setCameraInitializing] = useState(false);
   const [lastClickTime, setLastClickTime] = useState(0);
   const CLICK_DEBOUNCE_MS = 1000; // Prevent clicks within 1 second
   const [cameraReady, setCameraReady] = useState(false);
+  
+  // Track if draft was already saved on exit to prevent double-save
+  const draftSavedOnExit = useRef(false);
 
-  // Ultra-simple navigation state
-  const navigationBlocked = useRef(true);
-  const componentMounted = useRef(true);
-  const activeOperations = useRef(new Set<string>());
+  // Photo card display name mapping
+  const photoCardNames: { [key in keyof typeof photos]: string } = {
+    khasra: 'Khasra No.',
+    front: 'Building',
+    left: 'Left Side',
+    right: 'Right Side',
+    other1: 'Other 1',
+    other2: 'Other 2',
+  };
 
   // Safe state setter that only works if component is mounted
   const safeSetState = (setter: () => void, operationName: string = 'unknown') => {
@@ -202,49 +225,387 @@ export default function SurveyForm({ route }: any) {
     }
   };
 
+  // Reset idle timer on user interaction (using refs to avoid dependency issues)
+  const resetIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+    }
+    
+    idleTimerRef.current = setTimeout(() => {
+      if (componentMounted.current && cameraVisible) {
+        console.log('Camera idle timeout - cleaning up');
+        safeSetState(() => {
+          setCameraVisible(false);
+          setCameraReady(false);
+          setCameraKey(null);
+          setCameraCardName('');
+          setCameraLoading(false);
+        }, 'idleTimeoutCleanup');
+        
+        Alert.alert(
+          'Session Timeout',
+          'Camera was inactive for too long. Please restart the capture.',
+          [{ text: 'OK' }]
+        );
+      }
+    }, CAMERA_IDLE_TIMEOUT);
+  }, []); // Empty deps - uses refs and current state values directly
+
   // Track async operations to cancel them during navigation
   const trackOperation = (operationId: string) => {
     activeOperations.current.add(operationId);
     return () => activeOperations.current.delete(operationId);
   };
 
+  // Auto-save form data periodically when app goes background
+  const saveFormDataForRecovery = useCallback(async () => {
+    try {
+      const formDataToSave = {
+        surveyId: surveyIdState,
+        surveyType: surveyTypeKey,
+        editMode,
+        assignment,
+        masterData,
+        timestamp: Date.now(),
+      };
+      
+      await AsyncStorage.setItem('@ptms_survey_form_recovery', JSON.stringify(formDataToSave));
+      console.log('[SurveyForm] Auto-saved form data for recovery');
+    } catch (error) {
+      console.error('[SurveyForm] Failed to auto-save form data:', error);
+    }
+  }, [surveyIdState, surveyTypeKey, editMode, assignment, masterData]);
+
+  // Save complete draft for recovery (includes form field values)
+  const saveCompleteDraft = useCallback(async (actionType: 'form_updated' | 'photo_added' | 'navigation_exit' = 'navigation_exit') => {
+    try {
+      console.log('[SaveCompleteDraft] === STARTING DRAFT SAVE PROCESS ===');
+      console.log('[SaveCompleteDraft] Action type:', actionType);
+      console.log('[SaveCompleteDraft] Current formData state keys:', Object.keys(formData).length);
+      console.log('[SaveCompleteDraft] Current photos state:', JSON.stringify(photos));
+      console.log('[SaveCompleteDraft] formDataRef current keys:', Object.keys(formDataRef.current).length);
+      console.log('[SaveCompleteDraft] photosRef current:', JSON.stringify(photosRef.current));
+      
+      // Ensure survey ID exists - generate one if needed
+      let currentSurveyId = surveyIdState;
+      
+      if (!currentSurveyId) {
+        console.warn('[SaveCompleteDraft] No survey ID available, generating temporary ID...');
+        currentSurveyId = `temp_survey_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        console.log('[SaveCompleteDraft] Generated survey ID:', currentSurveyId);
+        
+        // Set it in state for future use (async, won't block save)
+        safeSetState(() => setSurveyIdState(currentSurveyId), 'setSurveyIdState_save');
+      }
+      
+      if (!componentMounted.current) {
+        console.error('[SaveCompleteDraft] Cannot save draft - component unmounted');
+        return;
+      }
+      
+      console.log('[SaveCompleteDraft] Survey ID:', currentSurveyId);
+      console.log('[SaveCompleteDraft] Component mounted:', componentMounted.current);
+      
+      // CRITICAL FIX: Use refs which ALWAYS have the most recent values
+      // State updates happen immediately, refs sync via useEffect and persist across renders
+      const latestFormData = { ...formDataRef.current };
+      const latestPhotos = { ...photosRef.current };
+      
+      console.log('[SaveCompleteDraft] Using formDataRef (most recent synced values)');
+      console.log('[SaveCompleteDraft] Using photosRef (most recent synced values)');
+      console.log('[SaveCompleteDraft] Sample formDataRef values:', {
+        ulbId: formDataRef.current.ulbId,
+        zoneId: formDataRef.current.zoneId,
+        wardId: formDataRef.current.wardId,
+        mohallaId: formDataRef.current.mohallaId,
+        mapId: formDataRef.current.mapId,
+        oldHouseNumber: formDataRef.current.oldHouseNumber,
+        respondentName: formDataRef.current.respondentName,
+      });
+      console.log('[SaveCompleteDraft] Sample photosRef values:', latestPhotos);
+      
+      // Use refs to get most recent values (avoids dependency issues)
+      // Refs are kept in sync with state via useEffect hooks
+      const draft = {
+        surveyId: currentSurveyId,
+        surveyType: surveyTypeKey,
+        editMode: editMode || false,
+        assignment,
+        masterData,
+        formData: latestFormData,
+        photos: latestPhotos,
+        timestamp: Date.now(),
+        lastAction: actionType,
+      };
+      
+      console.log('[SaveCompleteDraft] Draft object created, validating...');
+      console.log('[SaveCompleteDraft] Draft has formData:', !!draft.formData);
+      console.log('[SaveCompleteDraft] Draft has photos:', !!draft.photos);
+      console.log('[SaveCompleteDraft] Photo values:', draft.photos);
+      
+      // Validate that we have at least SOME data to save
+      // Check if ANY form field has a non-empty/non-default value
+      const hasFormData = draft.formData && Object.values(draft.formData).some(
+        v => v !== '' && v !== null && v !== undefined && v !== 0
+      );
+      
+      // Check if ANY photo has been captured (non-null URI)
+      const hasPhotos = draft.photos && Object.values(draft.photos).some(
+        v => v !== null && v !== undefined && v !== ''
+      );
+      
+      console.log('[SaveCompleteDraft] Has form data (with actual values):', hasFormData);
+      console.log('[SaveCompleteDraft] Has photos (captured):', hasPhotos);
+      console.log('[SaveCompleteDraft] Form data sample values:', {
+        ulbId: draft.formData?.ulbId,
+        zoneId: draft.formData?.zoneId,
+        respondentName: draft.formData?.respondentName,
+        oldHouseNumber: draft.formData?.oldHouseNumber,
+      });
+      
+      if (!hasFormData && !hasPhotos) {
+        console.log('[SaveCompleteDraft] ℹ️ Saving draft with minimal data (user just started survey)');
+      } else {
+        console.log('[SaveCompleteDraft] ✅ Draft has meaningful data - FormData:', hasFormData, 'Photos:', hasPhotos);
+      }
+      
+      // Try to stringify to catch any serialization errors
+      try {
+        const serialized = JSON.stringify(draft);
+        console.log('[SaveCompleteDraft] Draft serialized successfully, size:', serialized.length, 'bytes');
+        
+        // Check if it's actually savable
+        if (serialized === '{}' || serialized.length < 10) {
+          console.error('[SaveCompleteDraft] ERROR: Draft appears to be empty or invalid!');
+        }
+      } catch (serializeError) {
+        console.error('[SaveCompleteDraft] Serialization failed:', serializeError);
+        // Don't abort - AsyncStorage might handle it differently
+      }
+      
+      await saveUnsavedDraft(draft);
+      console.log('[SurveyForm] ✅ Saved complete draft with latest data:', draft.surveyId, '| Action:', actionType);
+      console.log('[SurveyForm] Form data fields saved:', Object.keys(latestFormData).length);
+      console.log('[SurveyForm] Photos saved:', JSON.stringify(latestPhotos));
+      console.log('[SaveCompleteDraft] === DRAFT SAVE PROCESS COMPLETED ===');
+    } catch (error) {
+      console.error('[SurveyForm] ❌ Failed to save complete draft:', error);
+      // Don't crash - draft save is best effort
+    }
+  }, [surveyIdState, surveyTypeKey, editMode, assignment, masterData]);
+
+  // Restore form data from recovery
+  const restoreFormDataFromRecovery = useCallback(async () => {
+    try {
+      const savedData = await AsyncStorage.getItem('@ptms_survey_form_recovery');
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+        
+        // Check if data is recent (less than 30 minutes old)
+        const age = Date.now() - parsed.timestamp;
+        const MAX_AGE = 30 * 60 * 1000; // 30 minutes
+        
+        if (age < MAX_AGE && parsed.surveyId === surveyIdState) {
+          console.log('[SurveyForm] Found recent form data for recovery');
+          // Could restore state here if needed
+          return parsed;
+        } else {
+          console.log('[SurveyForm] Recovery data too old or different survey, clearing');
+          await AsyncStorage.removeItem('@ptms_survey_form_recovery');
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('[SurveyForm] Failed to restore form data:', error);
+      return null;
+    }
+  }, [surveyIdState]);
+
   // Direct exit without state complexity
-  const handleExit = () => {
-    console.log('User confirmed exit - preparing safe navigation');
+  const handleExit = async () => {
+    console.log('=== User confirmed exit - preparing safe navigation ===');
     
-    // Mark component as unmounting to prevent state updates
-    componentMounted.current = false;
-    navigationBlocked.current = false;
+    // Ensure we have a survey ID for draft saving
+    let currentSurveyId = surveyIdState;
     
-    // Cancel all active operations
+    if (!currentSurveyId) {
+      // Generate a temporary survey ID for this session
+      currentSurveyId = `temp_survey_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      console.log('[HandleExit] No survey ID found, generated temporary ID:', currentSurveyId);
+      
+      // Set it in state for future use
+      safeSetState(() => setSurveyIdState(currentSurveyId), 'setSurveyIdState_exit');
+    }
+    
+    // Save draft before exiting (for recovery) - this will UPDATE existing draft or create new one
+    // Always save draft regardless of whether we have form data or photos
+    console.log('[HandleExit] Calling saveCompleteDraft to update/create draft...');
+    await saveCompleteDraft('navigation_exit');
+    console.log('[HandleExit] Draft saved/updated successfully');
+    
+    // Mark that we already saved on exit to prevent cleanup from saving again
+    draftSavedOnExit.current = true;
+    console.log('[HandleExit] Set draftSavedOnExit flag to prevent double-save');
+    
+    // Cancel all active operations BEFORE unmounting
     console.log('Cancelling', activeOperations.current.size, 'active operations');
     activeOperations.current.clear();
+    
+    // Clear idle timer
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+    
+    // Set flag to skip draft check in Dashboard (user intentionally exited)
+    await AsyncStorage.setItem('@ptms_skip_draft_check', 'true');
+    console.log('[SurveyForm] Set skip draft check flag');
+    
+    // DON'T set componentMounted to false here - let cleanup handle it
+    // This ensures navigation can complete safely
+    navigationBlocked.current = false;
     
     // Force immediate navigation
     navigation.goBack();
   };
+  
+  // Exit without saving draft
+  const handleExitWithoutSaving = async () => {
+    console.log('User chose to exit without saving - discarding draft');
+    
+    // Clear any existing draft
+    await clearUnsavedDraft();
+    console.log('[SurveyForm] Draft cleared - user chose not to save');
+    
+    // Mark that we explicitly exited (prevent cleanup from saving)
+    draftSavedOnExit.current = true;
+    console.log('[HandleExitWithoutSaving] Set draftSavedOnExit flag to prevent cleanup save');
+    
+    // Mark component as unmounting
+    componentMounted.current = false;
+    navigationBlocked.current = false;
+    
+    // Cancel all active operations
+    activeOperations.current.clear();
+    
+    // Set skip flag
+    await AsyncStorage.setItem('@ptms_skip_draft_check', 'true');
+    
+    // Navigate back
+    navigation.goBack();
+  };
 
-  // Simple confirmation dialog
-  const showExitConfirmation = () => {
-    Alert.alert(
-      'Leave Survey?',
-      'Unsaved changes may be lost. Are you sure?',
-      [
-        { text: 'Stay', style: 'cancel' },
-        { text: 'Leave', style: 'destructive', onPress: handleExit }
-      ],
-      { cancelable: false } // Prevent dismissing by tapping outside
-    );
+  // Simple confirmation dialog with draft save notification
+  const showExitConfirmation = async () => {
+    try {
+      // Check if there's already a draft
+      const existingDraft = await getUnsavedDraft();
+      
+      console.log('[ShowExitConfirmation] Checking for existing draft...');
+      console.log('[ShowExitConfirmation] Existing draft:', existingDraft ? `Found for survey ${existingDraft.surveyId}` : 'None found');
+      console.log('[ShowExitConfirmation] Current surveyId:', surveyIdState);
+      
+      if (existingDraft && existingDraft.surveyId === surveyIdState) {
+        // Already have a draft for this survey - will UPDATE it
+        console.log('[ShowExitConfirmation] Will UPDATE existing draft on Save & Exit');
+        Alert.alert(
+          'Leave Survey?',
+          'Your latest progress will be saved and will UPDATE your existing draft. You can continue later where you left off.',
+          [
+            { text: 'Stay', style: 'cancel' },
+            { 
+              text: 'Save & Exit', 
+              style: 'default',
+              onPress: handleExit 
+            },
+            {
+              text: 'Exit Without Saving',
+              style: 'destructive',
+              onPress: handleExitWithoutSaving
+            }
+          ],
+          { cancelable: false }
+        );
+      } else if (existingDraft && existingDraft.surveyId !== surveyIdState) {
+        // Have a draft for a DIFFERENT survey - will REPLACE it
+        console.log('[ShowExitConfirmation] Different survey draft exists, will REPLACE on Save & Exit');
+        Alert.alert(
+          'Leave Survey?',
+          `You have an unsaved ${existingDraft.surveyType} draft from another survey. Saving now will REPLACE that draft with this survey's data.`,
+          [
+            { text: 'Stay', style: 'cancel' },
+            { 
+              text: 'Save & Exit', 
+              style: 'default',
+              onPress: handleExit 
+            },
+            {
+              text: 'Exit Without Saving',
+              style: 'destructive',
+              onPress: handleExitWithoutSaving
+            }
+          ],
+          { cancelable: false }
+        );
+      } else {
+        // No existing draft - will CREATE new one
+        console.log('[ShowExitConfirmation] No draft exists, will CREATE new draft on Save & Exit');
+        Alert.alert(
+          'Leave Survey?',
+          'Unsaved changes will be saved automatically as a new draft so you can continue later.',
+          [
+            { text: 'Stay', style: 'cancel' },
+            { 
+              text: 'Save & Exit', 
+              style: 'default',
+              onPress: handleExit 
+            },
+            {
+              text: 'Exit Without Saving',
+              style: 'destructive',
+              onPress: handleExitWithoutSaving
+            }
+          ],
+          { cancelable: false }
+        );
+      }
+    } catch (error) {
+      console.error('Exit confirmation error:', error);
+      // Fallback to simple exit
+      handleExit();
+    }
   };
 
   // Add navigation focus/blur listeners to track navigation events
   useEffect(() => {
     const unsubscribeFocus = navigation.addListener('focus', () => {
       console.log(`🔍 SurveyForm focused [${componentId.current}]`);
+      
+      // Safety check: if camera is visible but component lost focus, reset it
+      if (!componentMounted.current) {
+        console.warn('Component not mounted but received focus event, resetting camera state');
+        setCameraVisible(false);
+        setCameraReady(false);
+        setCameraKey(null);
+        setCameraCardName('');
+        setCameraLoading(false);
+        setCameraInitializing(false);
+        if (idleTimerRef.current) {
+          clearTimeout(idleTimerRef.current);
+        }
+        return;
+      }
+      
+      resetIdleTimer(); // Reset idle timer on focus
     });
     
     const unsubscribeBlur = navigation.addListener('blur', () => {
       console.log(`🔍 SurveyForm blurred [${componentId.current}]`);
+      // Clear idle timer on blur to prevent timeouts during navigation
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+        idleTimerRef.current = null;
+      }
     });
     
     // Ultra-simple navigation protection using ref
@@ -281,13 +642,135 @@ export default function SurveyForm({ route }: any) {
       unsubscribeBeforeRemove();
       backHandler.remove();
     };
-  }, [navigation]); // Minimal dependencies
+  }, [navigation, resetIdleTimer]);
+
+  // Auto-save form data when app goes to background
+  useEffect(() => {
+    const appStateSubscription = AppState.addEventListener('change', (nextAppState) => {
+      console.log('[SurveyForm] AppState changed to:', nextAppState);
+      
+      // Save form data when going to background
+      if (nextAppState === 'background') {
+        console.log('[SurveyForm] App going to background, auto-saving form data...');
+        saveFormDataForRecovery();
+      }
+    });
+
+    return () => {
+      appStateSubscription.remove();
+    };
+  }, [saveFormDataForRecovery]); // Minimal dependencies
 
   // Track when component is fully mounted and stable
   useEffect(() => {
     console.log(`✅ SurveyForm fully mounted and stable [${componentId.current}]`);
     console.log(`✅ Survey Type: ${surveyTypeKey}, Edit Mode: ${editMode}, Survey ID: ${surveyId}`);
-  }, []);
+    
+    // Check if we should restore from draft
+    const checkAndRestoreDraft = async () => {
+      try {
+        const draft = await getUnsavedDraft();
+        
+        if (draft && componentMounted.current) {
+          console.log('[SurveyForm] Found draft, restoring...');
+          console.log('[SurveyForm] Draft surveyId:', draft.surveyId);
+          console.log('[SurveyForm] Current surveyIdState:', surveyIdState);
+          
+          // Validate expiry (30 minutes)
+          const age = Date.now() - draft.timestamp;
+          const MAX_AGE = 30 * 60 * 1000;
+          
+          if (age > MAX_AGE) {
+            console.log('[SurveyForm] Draft expired, not restoring');
+            return;
+          }
+          
+          // Restore form data safely
+          if (draft.formData && componentMounted.current) {
+            setFormData(prev => ({ ...prev, ...draft.formData }));
+            console.log('[SurveyForm] Restored form data - fields updated:', Object.keys(draft.formData).length);
+          }
+          
+          // Restore photos safely
+          if (draft.photos && componentMounted.current) {
+            setPhotos(draft.photos);
+            console.log('[SurveyForm] Restored photos:', JSON.stringify(draft.photos));
+          }
+          
+          // Sync refs immediately after restoration to ensure consistency
+          formDataRef.current = { ...formDataRef.current, ...draft.formData };
+          photosRef.current = { ...photosRef.current, ...draft.photos };
+          console.log('[SurveyForm] Synced refs with restored data');
+          
+          // DON'T clear draft here - keep it for potential future recoveries
+          // Draft will be cleared when user saves or starts new survey
+          console.log('[SurveyForm] Draft restored (kept for safety)');
+          
+          Toast.show({
+            type: 'success',
+            text1: 'Draft Restored',
+            text2: 'Your unsaved progress has been recovered',
+            visibilityTime: 3000,
+          });
+        } else if (!draft) {
+          console.log('[SurveyForm] No draft found');
+        }
+      } catch (error) {
+        console.error('[SurveyForm] Failed to restore draft:', error);
+        // Don't crash - just log the error
+      }
+    };
+    
+    checkAndRestoreDraft();
+    
+    // Component mount tracking
+    componentMounted.current = true;
+    navigationBlocked.current = true;
+    draftSavedOnExit.current = false; // Reset exit flag for fresh session
+    
+    // Cleanup function - runs when component unmounts
+    return () => {
+      console.log(`🧹 SurveyForm unmounting [${componentId.current}], cleaning up...`);
+      
+      // Mark as unmounted FIRST to prevent ANY state updates
+      componentMounted.current = false;
+      navigationBlocked.current = false;
+      
+      // Cancel ALL active operations immediately (prevents camera/storage crashes)
+      activeOperations.current.clear();
+      
+      // Clear idle timer (prevents timeout callbacks)
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+        idleTimerRef.current = null;
+      }
+      
+      // DON'T call setState here - component is already unmounting!
+      // Just clear refs and let React handle the rest
+      
+      // Clear camera reference (not state - avoid setState on unmount)
+      if (cameraViewRef.current) {
+        cameraViewRef.current = null;
+      }
+      
+      // Save draft on unmount ONLY if not already saved via handleExit
+      // This is a fire-and-forget operation - don't await it
+      if (surveyIdState && !draftSavedOnExit.current) {
+        console.log('[Cleanup] Draft not saved on exit, saving now (async)...');
+        // Call without await and catch errors silently
+        saveCompleteDraft('navigation_exit').catch(() => {
+          console.log('[Cleanup] Draft save failed (component already unmounted)');
+        });
+      } else if (draftSavedOnExit.current) {
+        console.log('[Cleanup] Draft already saved on exit, skipping duplicate save');
+      }
+      
+      // Clear recovery data on clean exit (fire-and-forget)
+      AsyncStorage.removeItem('@ptms_survey_form_recovery').catch(() => {});
+      
+      console.log(`🧹 SurveyForm cleanup completed [${componentId.current}]`);
+    };
+  }, []); // Empty deps array - only runs on mount/unmount
 
   useEffect(() => {
     const loadAssignment = async () => {
@@ -310,7 +793,40 @@ export default function SurveyForm({ route }: any) {
         
         if (json) {
           const parsedAssignment = JSON.parse(json);
+          
+          // Check if assignment is active
+          if (!parsedAssignment.isActive) {
+            console.log('Inactive assignment detected');
+            Alert.alert(
+              'Assignment Inactive',
+              'Your assignment is currently inactive. Please contact your administrator.',
+              [
+                {
+                  text: 'OK',
+                  onPress: () => navigation.goBack(),
+                },
+              ]
+            );
+            cleanupOperation();
+            return;
+          }
+          
           safeSetState(() => setAssignment(parsedAssignment), 'setAssignment');
+        } else {
+          // No assignment found
+          console.log('No primary assignment found');
+          Alert.alert(
+            'No Assignment',
+            'You do not have any assignment. Please contact your administrator.',
+            [
+              {
+                text: 'OK',
+                onPress: () => navigation.goBack(),
+              },
+            ]
+          );
+          cleanupOperation();
+          return;
         }
       } catch (error) {
         console.error('Failed to load assignment from storage:', error);
@@ -334,6 +850,12 @@ export default function SurveyForm({ route }: any) {
         // Cancel all active operations
         console.log('Cancelling', activeOperations.current.size, 'active operations on unmount');
         activeOperations.current.clear();
+        
+        // Clear idle timer
+        if (idleTimerRef.current) {
+          clearTimeout(idleTimerRef.current);
+          idleTimerRef.current = null;
+        }
         
         // Reset navigation blocking
         navigationBlocked.current = false;
@@ -385,6 +907,7 @@ export default function SurveyForm({ route }: any) {
     setCameraReady(false);
     setCameraLoading(false);
     setCameraKey(null);
+    setCameraCardName('');
     
     // Clear the camera ref to force reinitialization
     if (cameraViewRef.current) {
@@ -536,13 +1059,20 @@ export default function SurveyForm({ route }: any) {
         return;
       }
       
+      // Verify component is still mounted before proceeding
+      if (!componentMounted.current) {
+        console.log('Component not mounted, cannot open camera');
+        return;
+      }
+      
       // Set initialization state immediately
       setCameraInitializing(true);
       setCameraLoading(true);
       
-      // Set camera key immediately and persistently
+      // Set camera key and card name immediately and persistently
       setCameraKey(key);
-      console.log(`Camera key set to: ${key}`);
+      setCameraCardName(photoCardNames[key] || 'Photo');
+      console.log(`Camera key set to: ${key}, Card name: ${photoCardNames[key]}`);
       
       try {
         // Check camera permission
@@ -563,16 +1093,16 @@ export default function SurveyForm({ route }: any) {
         // Reset camera ready state
         setCameraReady(false);
         
-        // Ensure camera key persists through async operations
-        setCameraKey(key);
-        
         // Small delay to ensure all state updates are processed
         await new Promise(resolve => setTimeout(resolve, 100));
         
-        // Final validation before opening camera
-        if (!cameraKey) {
-          console.warn('Camera key was lost during setup, restoring...');
-          setCameraKey(key);
+        // Final validation - check component is still mounted
+        if (!componentMounted.current) {
+          console.log('Component unmounted during camera setup, aborting');
+          setCameraInitializing(false);
+          setCameraLoading(false);
+          setCameraKey(null);
+          return;
         }
         
         // Open camera modal
@@ -586,6 +1116,7 @@ export default function SurveyForm({ route }: any) {
         setCameraVisible(false);
         setCameraReady(false);
         setCameraKey(null);
+        setCameraCardName('');
         
         Alert.alert(
           'Camera Setup Error', 
@@ -601,6 +1132,7 @@ export default function SurveyForm({ route }: any) {
       setCameraVisible(false);
       setCameraReady(false);
       setCameraKey(null);
+      setCameraCardName('');
       
       Alert.alert('Camera Error', 'Failed to open camera. Please try again.');
     } finally {
@@ -618,6 +1150,12 @@ export default function SurveyForm({ route }: any) {
     const captureTime = Date.now();
     
     console.log(`Starting capture process for: ${captureKey} at ${captureTime}`);
+    
+    // Critical: Check if component is still mounted
+    if (!componentMounted.current) {
+      console.error('Component not mounted, aborting capture');
+      return;
+    }
     
     // Enhanced validation with recovery mechanisms
     if (!cameraViewRef.current) {
@@ -665,7 +1203,7 @@ export default function SurveyForm({ route }: any) {
         });
         
         const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Camera capture timeout')), 10000); // 10 second timeout
+          setTimeout(() => reject(new Error('Camera capture timeout')), 5000); // Reduced to 5 seconds
         });
         
         photo = await Promise.race([capturePromise, timeoutPromise]) as any;
@@ -707,43 +1245,66 @@ export default function SurveyForm({ route }: any) {
 
       // Step 3: Update UI immediately using the stored camera key
       console.log(`Updating UI with captured image for: ${captureKey}`);
-      setPhotos((prev) => ({ ...prev, [captureKey]: finalUri }));
+      safeSetState(() => setPhotos((prev) => ({ ...prev, [captureKey]: finalUri })), 'setPhotos_capture');
 
       // Step 4: Close camera immediately to prevent state issues
       console.log('Closing camera after successful capture...');
-      setCameraVisible(false);
-      setCameraKey(null);
-      setCameraReady(false);
+      
+      // Verify component is still mounted before closing
+      if (componentMounted.current) {
+        // Batch all camera state resets together using safeSetState
+        safeSetState(() => {
+          setCameraVisible(false);
+          setCameraKey(null);
+          setCameraCardName('');
+          setCameraReady(false);
+          setCameraLoading(false);
+          setCameraInitializing(false);
+        }, 'closeCamera_afterCapture');
+        
+        // Clear idle timer
+        if (idleTimerRef.current) {
+          clearTimeout(idleTimerRef.current);
+          idleTimerRef.current = null;
+        }
+        
+        // Clear camera ref
+        if (cameraViewRef.current) {
+          cameraViewRef.current = null;
+        }
+      }
 
       // Step 5: Background storage (non-blocking with safety)
       const operationId = `capture_${captureTime}_${Math.random().toString(36).substr(2, 5)}`;
       const cleanupOperation = trackOperation(operationId);
       
+      // Increased timeout to ensure UI has fully updated
       setTimeout(async () => {
         try {
-          // Check if component is still mounted before proceeding
+          // CRITICAL: Check mount status FIRST
           if (!componentMounted.current) {
-            console.log('Component unmounted, skipping background storage');
+            console.log('[Camera] Component unmounted, skipping background storage');
             cleanupOperation();
             return;
           }
           
+          // Double-check operation is still active
           if (!activeOperations.current.has(operationId)) {
-            console.log('Operation cancelled, skipping background storage');
+            console.log('[Camera] Operation cancelled, skipping background storage');
             return;
           }
           
           if (!surveyIdState) {
             const tempSurveyId = `temp_survey_${captureTime}_${Math.random().toString(36).substr(2, 9)}`;
-            safeSetState(() => setSurveyIdState(tempSurveyId), 'setSurveyIdState');
-            console.log('Generated temporary survey ID:', tempSurveyId);
+            safeSetState(() => setSurveyIdState(tempSurveyId), 'setSurveyIdState_background');
+            console.log('[Camera] Generated temporary survey ID for storage:', tempSurveyId);
           }
           
           const finalSurveyId = surveyIdState || `temp_survey_${captureTime}_${Math.random().toString(36).substr(2, 9)}`;
           
-          // Only proceed if still active
-          if (!activeOperations.current.has(operationId)) {
-            console.log('Operation cancelled during storage');
+          // Triple-check before proceeding
+          if (!componentMounted.current || !activeOperations.current.has(operationId)) {
+            console.log('[Camera] Aborted - component unmounted or operation cancelled');
             return;
           }
           
@@ -756,7 +1317,7 @@ export default function SurveyForm({ route }: any) {
           
           // Update UI with stored URI if successful and component still mounted
           if (componentMounted.current && activeOperations.current.has(operationId)) {
-            safeSetState(() => setPhotos((prev) => ({ ...prev, [captureKey]: storedUri })), 'setPhotos');
+            safeSetState(() => setPhotos((prev) => ({ ...prev, [captureKey]: storedUri })), 'setPhotos_backgroundStorage');
             console.log('Background storage completed:', storedUri);
           }
           
@@ -766,28 +1327,30 @@ export default function SurveyForm({ route }: any) {
         } finally {
           cleanupOperation();
         }
-      }, 200); // Slightly longer delay to ensure UI updates
+      }, 500); // Increased delay to ensure UI updates complete
 
       console.log(`Image capture completed successfully for: ${captureKey}`);
 
     } catch (e) {
       console.error('Image capture error:', e);
       
-      // Ensure camera is closed even on error
-      setCameraVisible(false);
-      setCameraKey(null);
-      setCameraReady(false);
+      // Ensure camera is closed even on error using safeSetState
+      safeSetState(() => {
+        setCameraVisible(false);
+        setCameraKey(null);
+        setCameraReady(false);
+      }, 'closeCamera_onError');
       
       const errorMessage = e instanceof Error ? e.message : 'Failed to capture image. Please try again.';
       Alert.alert('Capture Error', errorMessage);
     } finally {
-      setCameraLoading(false);
+      safeSetState(() => setCameraLoading(false), 'setCameraLoading_finally');
       
       // Safety cleanup with shorter timeout
       setTimeout(() => {
         if (cameraLoading) {
           console.warn('Force clearing camera loading state');
-          setCameraLoading(false);
+          safeSetState(() => setCameraLoading(false), 'setCameraLoading_safety');
         }
       }, 1000); // Reduced timeout
     }
@@ -950,6 +1513,15 @@ export default function SurveyForm({ route }: any) {
       })), 'setFormData from assignment');
     }
   }, [assignment]);
+
+  // Update refs when state changes (MUST be separate useEffects at top level)
+  useEffect(() => {
+    formDataRef.current = formData;
+  }, [formData]);
+  
+  useEffect(() => {
+    photosRef.current = photos;
+  }, [photos]);
 
   const createDropdownOptions = (items: any[], labelKey: string, valueKey: string) => {
     if (!items) return [{ label: 'No selection', value: 0 }];
@@ -1236,6 +1808,13 @@ export default function SurveyForm({ route }: any) {
             
             if (componentMounted.current) {
               Alert.alert('Saved', 'Survey saved locally.');
+              
+              // Mark survey as saved and clear draft
+              if (idToUse) {
+                await updateSurveyStatus(idToUse, true);
+                await clearUnsavedDraft();
+                console.log('[SurveyForm] Survey marked as saved, draft cleared');
+              }
             }
           }
         } catch (storageError) {
@@ -1273,6 +1852,13 @@ export default function SurveyForm({ route }: any) {
           
           if (componentMounted.current) {
             Alert.alert('Saved', 'Survey saved locally.');
+            
+            // Mark survey as saved and clear draft
+            if (idToUse) {
+              await updateSurveyStatus(idToUse, true);
+              await clearUnsavedDraft();
+              console.log('[SurveyForm] Survey marked as saved, draft cleared');
+            }
           }
         } catch (storageError) {
           console.error('Storage error during new survey save:', storageError);
@@ -1725,6 +2311,7 @@ export default function SurveyForm({ route }: any) {
                       style={styles.cardActionBtn}
                       onPress={() => {
                         setViewerUri(photos.front);
+                        setViewerCardName(photoCardNames.front);
                         setViewerVisible(true);
                       }}>
                       <Text style={styles.cardActionText}>View</Text>
@@ -1755,6 +2342,7 @@ export default function SurveyForm({ route }: any) {
                       style={styles.cardActionBtn}
                       onPress={() => {
                         setViewerUri(photos.khasra);
+                        setViewerCardName(photoCardNames.khasra);
                         setViewerVisible(true);
                       }}>
                       <Text style={styles.cardActionText}>View</Text>
@@ -1785,6 +2373,7 @@ export default function SurveyForm({ route }: any) {
                       style={styles.cardActionBtn}
                       onPress={() => {
                         setViewerUri(photos.left);
+                        setViewerCardName(photoCardNames.left);
                         setViewerVisible(true);
                       }}>
                       <Text style={styles.cardActionText}>View</Text>
@@ -1815,6 +2404,7 @@ export default function SurveyForm({ route }: any) {
                       style={styles.cardActionBtn}
                       onPress={() => {
                         setViewerUri(photos.right);
+                        setViewerCardName(photoCardNames.right);
                         setViewerVisible(true);
                       }}>
                       <Text style={styles.cardActionText}>View</Text>
@@ -1845,6 +2435,7 @@ export default function SurveyForm({ route }: any) {
                       style={styles.cardActionBtn}
                       onPress={() => {
                         setViewerUri(photos.other1);
+                        setViewerCardName(photoCardNames.other1);
                         setViewerVisible(true);
                       }}>
                       <Text style={styles.cardActionText}>View</Text>
@@ -1875,6 +2466,7 @@ export default function SurveyForm({ route }: any) {
                       style={styles.cardActionBtn}
                       onPress={() => {
                         setViewerUri(photos.other2);
+                        setViewerCardName(photoCardNames.other2);
                         setViewerVisible(true);
                       }}>
                       <Text style={styles.cardActionText}>View</Text>
@@ -1907,21 +2499,43 @@ export default function SurveyForm({ route }: any) {
         animationType="slide"
         onRequestClose={() => {
           console.log('Camera modal close requested');
+          // Comprehensive cleanup with proper state reset
           setCameraVisible(false);
           setCameraReady(false);
           setCameraKey(null);
+          setCameraCardName('');
+          setCameraLoading(false);
+          setCameraInitializing(false);
+          if (idleTimerRef.current) {
+            clearTimeout(idleTimerRef.current);
+          }
+          // Clear camera ref to force reinitialization
+          if (cameraViewRef.current) {
+            cameraViewRef.current = null;
+          }
         }}>
         <SafeAreaView style={styles.cameraContainer} edges={['top', 'left', 'right', 'bottom']}>
           <View style={styles.cameraHeader}>
             <TouchableOpacity onPress={() => {
               console.log('Camera back button pressed');
+              // Comprehensive cleanup with proper state reset
               setCameraVisible(false);
               setCameraReady(false);
               setCameraKey(null);
+              setCameraCardName('');
+              setCameraLoading(false);
+              setCameraInitializing(false);
+              if (idleTimerRef.current) {
+                clearTimeout(idleTimerRef.current);
+              }
+              // Clear camera ref to force reinitialization
+              if (cameraViewRef.current) {
+                cameraViewRef.current = null;
+              }
             }} style={styles.cameraBackBtn}>
               <Text style={styles.topBackArrow}>←</Text>
             </TouchableOpacity>
-            <Text style={styles.topHeaderTitle}>Capture Photo</Text>
+            <Text style={styles.topHeaderTitle}>{cameraCardName}</Text>
           </View>
           <View style={styles.cameraViewWrapper}>
             {camPermission?.granted ? (
@@ -1931,25 +2545,30 @@ export default function SurveyForm({ route }: any) {
                 facing="back"
                 onCameraReady={() => {
                   console.log('Camera is ready');
+                  resetIdleTimer(); // Start idle timer when camera is ready
                   setTimeout(() => {
                     setCameraReady(true);
                   }, 300); // Shorter delay for better UX
                 }}
                 onMountError={(error) => {
                   console.error('Camera mount error:', error);
+                  // Comprehensive cleanup on mount error
+                  setCameraVisible(false);
+                  setCameraReady(false);
+                  setCameraKey(null);
+                  setCameraCardName('');
+                  setCameraLoading(false);
+                  setCameraInitializing(false);
+                  if (idleTimerRef.current) {
+                    clearTimeout(idleTimerRef.current);
+                  }
+                  if (cameraViewRef.current) {
+                    cameraViewRef.current = null;
+                  }
                   Alert.alert(
                     'Camera Error', 
                     'Failed to initialize camera. Please try again.',
-                    [
-                      {
-                        text: 'OK',
-                        onPress: () => {
-                          setCameraVisible(false);
-                          setCameraReady(false);
-                          setCameraKey(null);
-                        }
-                      }
-                    ]
+                    [{ text: 'OK' }]
                   );
                 }}
               />
@@ -1981,6 +2600,7 @@ export default function SurveyForm({ route }: any) {
             <TouchableOpacity
               onPress={() => {
                 try {
+                  resetIdleTimer(); // Reset idle timer on capture
                   handleCapture();
                 } catch (error) {
                   console.error('Capture button error:', error);
@@ -2004,14 +2624,24 @@ export default function SurveyForm({ route }: any) {
         visible={viewerVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setViewerVisible(false)}>
+        onRequestClose={() => {
+          setViewerVisible(false);
+          setViewerUri(null);
+          setViewerCardName('');
+        }}>
         <View style={styles.viewerBackdrop}>
-          <TouchableOpacity style={styles.viewerClose} onPress={() => setViewerVisible(false)}>
-            <Text style={styles.viewerCloseText}>✕</Text>
-          </TouchableOpacity>
+          <View style={styles.viewerHeader}>
+            <TouchableOpacity style={styles.viewerClose} onPress={() => setViewerVisible(false)}>
+              <Text style={styles.viewerCloseText}>✕</Text>
+            </TouchableOpacity>
+            {viewerCardName ? (
+              <Text style={styles.viewerTitle}>{viewerCardName}</Text>
+            ) : null}
+          </View>
           {viewerUri ? <RNImage source={{ uri: viewerUri }} style={styles.viewerImage} /> : null}
         </View>
       </Modal>
+      <Toast />
     </SafeAreaView>
   );
   } catch (renderError) {
@@ -2165,6 +2795,25 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '700',
+  },
+  viewerHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    paddingTop: 50,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 10,
+  },
+  viewerTitle: {
+    fontSize: 18,
+    color: 'white',
+    fontWeight: '600',
+    textAlign: 'center',
   },
   cameraContainer: {
     flex: 1,

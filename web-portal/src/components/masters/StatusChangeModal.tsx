@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { masterDataApi, surveyStatusApi } from "@/lib/api";
+import { masterDataApi, surveyStatusApi, wardApi } from "@/lib/api";
 import toast from "react-hot-toast";
 
 interface StatusChangeModalProps {
@@ -53,7 +53,7 @@ export default function StatusChangeModal({
     }: {
       wardId: string;
       wardStatusId: number;
-    }) => surveyStatusApi.updateWardStatus(wardId, wardStatusId),
+    }) => wardApi.updateWardStatus(wardId, wardStatusId),
     onSuccess: () => {
       toast.success("Survey status updated successfully");
       queryClient.invalidateQueries({ queryKey: ["wards-with-status"] });
@@ -61,8 +61,10 @@ export default function StatusChangeModal({
       queryClient.invalidateQueries({ queryKey: ["mohallas"] });
       handleClose();
     },
-    onError: () => {
-      toast.error("Failed to update status");
+    onError: (error: any) => {
+      console.error("Status update error:", error);
+      const errorMessage = error?.response?.data?.error || "Failed to update status";
+      toast.error(errorMessage);
     },
   });
 

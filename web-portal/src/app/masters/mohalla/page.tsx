@@ -15,6 +15,10 @@ export default function MohallaMasterPage() {
   const [selectedWard, setSelectedWard] = React.useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [sortConfig, setSortConfig] = useState<{
+    key: string;
+    direction: "asc" | "desc";
+  } | null>(null);
 
   useEffect(() => {
     // Simulate loading time for consistency
@@ -51,6 +55,46 @@ export default function MohallaMasterPage() {
     mohallas?.filter((mohalla: any) =>
       mohalla.mohallaName.toLowerCase().includes(searchTerm.toLowerCase())
     ) || [];
+
+  // Handle sorting
+  const handleSort = (key: string) => {
+    let direction: "asc" | "desc" = "asc";
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  // Get sorted filtered mohallas
+  const getSortedFilteredMohallas = () => {
+    if (!filteredMohallas || !sortConfig) return filteredMohallas || [];
+    
+    const sorted = [...filteredMohallas];
+    sorted.sort((a: any, b: any) => {
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+      
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        return sortConfig.direction === "asc" ? aValue - bValue : bValue - aValue;
+      }
+      
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        return sortConfig.direction === "asc" 
+          ? aValue.localeCompare(bValue) 
+          : bValue.localeCompare(aValue);
+      }
+      
+      return 0;
+    });
+    
+    return sorted;
+  };
+
+  // Get sort icon
+  const getSortIcon = (columnKey: string) => {
+    if (!sortConfig || sortConfig.key !== columnKey) return "↕️";
+    return sortConfig.direction === "asc" ? "↑" : "↓";
+  };
 
   if (loading) {
     return <Loading fullScreen />;
@@ -108,14 +152,19 @@ export default function MohallaMasterPage() {
             <table className="w-full text-sm bg-gray-800 rounded-lg overflow-hidden">
               <thead>
                 <tr>
-                  <th className="px-4 py-2 text-left">Mohalla Name</th>
+                  <th 
+                    className="px-4 py-2 text-left cursor-pointer hover:bg-gray-700"
+                    onClick={() => handleSort("mohallaName")}
+                  >
+                    Mohalla Name {getSortIcon("mohallaName")}
+                  </th>
                   <th className="px-4 py-2 text-left">Survey Status</th>
                   <th className="px-4 py-2 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredMohallas && filteredMohallas.length > 0 ? (
-                  filteredMohallas.map((mohalla: any) => (
+                {getSortedFilteredMohallas().length > 0 ? (
+                  getSortedFilteredMohallas().map((mohalla: any) => (
                     <tr
                       key={mohalla.mohallaId}
                       className="border-b border-gray-700"
