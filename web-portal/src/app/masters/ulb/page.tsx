@@ -1,13 +1,11 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import ULBSelector from "@/components/masters/ULBSelector";
 import { useQuery } from "@tanstack/react-query";
 import { masterDataApi } from "@/lib/api";
 import MainLayout from "@/components/layout/MainLayout";
 import Loading from "@/components/ui/loading";
 
-export default function ZoneMasterPage() {
-  const [selectedUlb, setSelectedUlb] = React.useState<string | null>(null);
+export default function UlbMasterPage() {
   const [loading, setLoading] = useState(true);
   const [sortConfig, setSortConfig] = useState<{
     key: string;
@@ -22,15 +20,14 @@ export default function ZoneMasterPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Fetch zones for selected ULB
+  // Fetch ULBs with statistics
   const {
-    data: zones,
-    isLoading: zonesLoading,
-    error: zonesError,
+    data: ulbs,
+    isLoading: ulbsLoading,
+    error: ulbsError,
   } = useQuery({
-    queryKey: ["zones", selectedUlb],
-    queryFn: () => masterDataApi.getZonesByUlb(selectedUlb!),
-    enabled: !!selectedUlb,
+    queryKey: ["ulbs-with-stats"],
+    queryFn: () => masterDataApi.getUlbsWithStats(),
   });
 
   // Handle sorting
@@ -42,21 +39,14 @@ export default function ZoneMasterPage() {
     setSortConfig({ key, direction });
   };
 
-  // Get sorted zones
-  const getSortedZones = () => {
-    if (!zones || !sortConfig) return zones || [];
+  // Get sorted ULBs
+  const getSortedUlbs = () => {
+    if (!ulbs || !sortConfig) return ulbs || [];
     
-    const sorted = [...zones];
+    const sorted = [...ulbs];
     sorted.sort((a: any, b: any) => {
       const aValue = a[sortConfig.key];
       const bValue = b[sortConfig.key];
-      
-      // Special handling for zoneNumber - extract numeric part
-      if (sortConfig.key === "zoneNumber") {
-        const aNum = parseInt(String(a.zoneNumber).replace(/\D/g, '')) || 0;
-        const bNum = parseInt(String(b.zoneNumber).replace(/\D/g, '')) || 0;
-        return sortConfig.direction === "asc" ? aNum - bNum : bNum - aNum;
-      }
       
       if (typeof aValue === "number" && typeof bValue === "number") {
         return sortConfig.direction === "asc" ? aValue - bValue : bValue - aValue;
@@ -87,54 +77,68 @@ export default function ZoneMasterPage() {
   return (
     <MainLayout>
       <div className="bg-gray-900 min-h-screen text-white">
-        <h1 className="text-2xl font-bold mb-4">Zone Master</h1>
-        <div className="mb-4">
-          <ULBSelector value={selectedUlb} onChange={setSelectedUlb} />
-        </div>
+        <h1 className="text-3xl font-bold mb-6">ULB Master</h1>
+
         <div>
-          {zonesLoading && (
-            <div className="text-gray-400">Loading zones...</div>
+          {ulbsLoading && (
+            <div className="text-gray-400">Loading ULBs...</div>
           )}
-          {zonesError && (
-            <div className="text-red-400">Error loading zones</div>
+          {ulbsError && (
+            <div className="text-red-400">Error loading ULBs</div>
           )}
-          {!zonesLoading && !zonesError && (
+          {!ulbsLoading && !ulbsError && (
             <table className="w-full bg-gray-800 rounded-lg overflow-hidden text-sm">
               <thead>
                 <tr>
                   <th 
                     className="px-4 py-2 text-left cursor-pointer hover:bg-gray-700"
-                    onClick={() => handleSort("zoneNumber")}
+                    onClick={() => handleSort("ulbCode")}
                   >
-                    Zone Number {getSortIcon("zoneNumber")}
+                    ULB Code {getSortIcon("ulbCode")}
                   </th>
                   <th 
                     className="px-4 py-2 text-left cursor-pointer hover:bg-gray-700"
-                    onClick={() => handleSort("zoneName")}
+                    onClick={() => handleSort("ulbName")}
                   >
-                    Zone Name {getSortIcon("zoneName")}
+                    Name {getSortIcon("ulbName")}
                   </th>
                   <th 
                     className="px-4 py-2 text-left cursor-pointer hover:bg-gray-700"
+                    onClick={() => handleSort("totalZones")}
                   >
-                    Description
+                    No. of Zones {getSortIcon("totalZones")}
+                  </th>
+                  <th 
+                    className="px-4 py-2 text-left cursor-pointer hover:bg-gray-700"
+                    onClick={() => handleSort("totalWards")}
+                  >
+                    No. of Wards {getSortIcon("totalWards")}
+                  </th>
+                  <th 
+                    className="px-4 py-2 text-left cursor-pointer hover:bg-gray-700"
+                    onClick={() => handleSort("totalMohallas")}
+                  >
+                    No. of Mohallas {getSortIcon("totalMohallas")}
                   </th>
                   <th className="px-4 py-2 text-left">Active</th>
+                  <th className="px-4 py-2 text-left">Description</th>
                   <th className="px-4 py-2 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {getSortedZones().length > 0 ? (
-                  getSortedZones().map((zone: any) => (
-                    <tr key={zone.zoneId} className="border-b border-gray-700">
-                      <td className="px-4 py-2">{zone.zoneNumber}</td>
-                      <td className="px-4 py-2">{zone.zoneName}</td>
-                      <td className="px-4 py-2">{zone.description}</td>
+                {getSortedUlbs().length > 0 ? (
+                  getSortedUlbs().map((ulb: any) => (
+                    <tr key={ulb.ulbId} className="border-b border-gray-700">
+                      <td className="px-4 py-2">{ulb.ulbCode}</td>
+                      <td className="px-4 py-2">{ulb.ulbName}</td>
+                      <td className="px-4 py-2">{ulb.totalZones}</td>
+                      <td className="px-4 py-2">{ulb.totalWards}</td>
+                      <td className="px-4 py-2">{ulb.totalMohallas}</td>
                       <td className="px-4 py-2">
-                        {zone.isActive ? "Yes" : "No"}
+                        {ulb.isActive ? "Yes" : "No"}
                       </td>
+                      <td className="px-4 py-2">{ulb.description || "-"}</td>
                       <td className="px-4 py-2">
-                        {/* Future: Edit/Delete buttons */}
                         <button className="text-blue-400 hover:underline mr-2">
                           Edit
                         </button>
@@ -146,13 +150,8 @@ export default function ZoneMasterPage() {
                   ))
                 ) : (
                   <tr>
-                    <td
-                      colSpan={5}
-                      className="px-4 py-4 text-center text-gray-400"
-                    >
-                      {selectedUlb
-                        ? "No zones found for this ULB."
-                        : "Select a ULB to view zones."}
+                    <td colSpan={8} className="px-4 py-4 text-center text-gray-400">
+                      No ULBs found.
                     </td>
                   </tr>
                 )}

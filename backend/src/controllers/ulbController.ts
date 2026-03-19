@@ -116,4 +116,79 @@ export const deleteUlb = async (req: Request, res: Response) => {
     console.error('Error deleting ULB:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
+};
+
+export const getUlbWithStats = async (req: Request, res: Response) => {
+  try {
+    const ulbs = await prisma.ulbMaster.findMany({
+      where: { isActive: true },
+      select: {
+        ulbId: true,
+        ulbCode: true,
+        ulbName: true,
+        isActive: true,
+        description: true,
+        ulbZoneMaps: {
+          where: { isActive: true },
+          include: {
+            zone: {
+              include: {
+                zoneWardMaps: {
+                  where: { isActive: true },
+                  include: {
+                    ward: {
+                      include: {
+                        wardMohallaMaps: {
+                          where: { isActive: true },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Calculate statistics for each ULB
+    const ulbsWithStats = ulbs.map((ulb: any) => {
+      const zones = ulb.ulbZoneMaps.map((m: any) => m.zone);
+      const totalZones = zones.length;
+      
+      let totalWards = 0;
+      let totalMohallas = 0;
+      
+      zones.forEach((zone: any) => {
+        const wards = zone.zoneWardMaps.map((m: any) => m.ward);
+        totalWards += wards.length;
+        
+        wards.forEach((ward: any) => {
+          totalMohallas += ward.wardMohallaMaps.length;
+        });
+      });
+
+      return {
+        ulbId: ulb.ulbId,
+        ulbCode: ulb.ulbCode || 'N/A',
+        ulbName: ulb.ulbName,
+        description: ulb.description,
+        isActive: ulb.isActive,
+        totalZones,
+        totalWards,
+        totalMohallas,
+      };
+    });
+
+    // Sort by ULB name
+    ulbsWithStats.sort((a: any, b: any) => 
+      a.ulbName.localeCompare(b.ulbName)
+    );
+
+    res.json(ulbsWithStats);
+  } catch (error) {
+    console.error('Error fetching ULBs with stats:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 }; 

@@ -70,6 +70,26 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       roles: ["SUPERADMIN", "ADMIN"],
       children: [
         {
+          name: "ULB Master",
+          href: "/masters/ulb",
+          roles: ["SUPERADMIN", "ADMIN"],
+          icon: (
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 10h16M4 14h16M4 18h16"
+              />
+            </svg>
+          ),
+        },
+        {
           name: "Zone Master",
           href: "/masters/zone",
           roles: ["SUPERADMIN", "ADMIN"],

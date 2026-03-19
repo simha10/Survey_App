@@ -1,11 +1,12 @@
 import React from "react";
-import { View, Text, StyleSheet, Platform } from "react-native";
+import { View, Text, StyleSheet, Platform, AppState, AppStateStatus } from "react-native";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { ThemeProvider, useTheme } from "./src/context/ThemeContext";
 import { AuthProvider } from "./src/context/AuthContext";
 import { migrateUserObject } from "./src/utils/storage";
 import { initializeDatabase } from "./src/services/sqlite";
 import { useMemoryWarning } from "./src/hooks/useMemoryWarning";
+import { useAppStatePersistence } from "./src/hooks/useAppStatePersistence";
 import SplashScreen from "./src/screens/SplashScreen";
 
 // global styles for native and web (tailwind utilities)
@@ -109,9 +110,32 @@ function AppContent() {
   const { theme } = useTheme();
   const [isReady, setIsReady] = React.useState(false);
   const [initError, setInitError] = React.useState<Error | null>(null);
+  const appStateRef = React.useRef(AppState.currentState);
+  const { restoreAppState, clearAppState } = useAppStatePersistence();
 
   // Add memory warning hook
   useMemoryWarning();
+
+  // Handle app state changes (background/foreground)
+  React.useEffect(() => {
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      console.log('[AppState] Changed from:', appStateRef.current, 'to:', nextAppState);
+      
+      // App is going to background - save state
+      if (appStateRef.current.match(/inactive|background/) && nextAppState === 'active') {
+        console.log('[AppState] App returning to foreground');
+        // Could trigger state restoration here if needed
+      }
+      
+      appStateRef.current = nextAppState;
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   React.useEffect(() => {
     console.log('[AppContent] Starting initialization...');
@@ -148,6 +172,15 @@ function AppContent() {
             }, 2500);
           }), // minimum 2.5s splash
         ]);
+        
+        // Check for saved app state or recovery data after initialization
+        console.log('[AppContent] Checking for recovery data...');
+        const savedState = await restoreAppState();
+        if (savedState) {
+          console.log('[AppContent] Found saved state, could restore to:', savedState.routeName);
+          // Future: Could navigate to saved state here
+        }
+        
         console.log('[AppContent] All initialization tasks completed, setting isReady=true');
         setIsReady(true);
       } catch (error) {

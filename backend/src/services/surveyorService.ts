@@ -152,7 +152,7 @@ export async function getSurveyorAssignments(userId: string) {
     await validateUserRole(userId, 'SURVEYOR');
 
     const assignments = await prisma.surveyorAssignment.findMany({
-      where: { userId, isActive: true },
+      where: { userId },
       include: {
         ward: true,
         assignedBy: {
@@ -199,6 +199,7 @@ export async function getSurveyorAssignments(userId: string) {
         zone: zone ? { zoneId: zone.zoneId, zoneName: zone.zoneName } : null,
         ward: a.ward ? { wardId: a.ward.wardId, wardName: a.ward.wardName } : null,
         mohallas,
+        isActive: a.isActive,
       };
     }));
 

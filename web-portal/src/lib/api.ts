@@ -214,8 +214,9 @@ export const wardApi = {
     return response.data;
   },
 
-  updateWardStatus: async (data: any): Promise<any> => {
-    const response = await apiClient.put('/api/ward/update-status', data);
+  // Update ward status - Using REST-style endpoint
+  updateWardStatus: async (wardId: string, wardStatusId: number): Promise<any> => {
+    const response = await apiClient.put(`/api/ward/${wardId}/status`, { wardStatusId });
     return response.data;
   },
 
@@ -469,6 +470,11 @@ export const masterDataApi = {
   // ULB Master Data
   getAllUlbs: async (): Promise<any> => {
     const response = await apiClient.get('/api/ulbs');
+    return response.data;
+  },
+
+  getUlbsWithStats: async (): Promise<any> => {
+    const response = await apiClient.get('/api/ulbs/with-stats');
     return response.data;
   },
 

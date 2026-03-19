@@ -37,6 +37,8 @@ const UserAssignmentPage: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingAssignment, setPendingAssignment] = useState<any>(null);
   const [wardMohallaMap, setWardMohallaMap] = useState<{
     [wardId: string]: string[];
   }>({});
@@ -253,40 +255,56 @@ const UserAssignmentPage: React.FC = () => {
       toast.error("Please select a user to assign.");
       return;
     }
-    const confirmed = window.confirm(
-      "Are you sure you want to assign the selected mohallas to this user?"
-    );
-    if (!confirmed) return;
+    
+    // Build assignments array: [{ wardId, mohallaIds }]
+    const assignments = Object.entries(wardMohallaMap)
+      .map(([wardId, mohallaIds]) => ({
+        wardId,
+        mohallaIds: mohallaIds.filter((mid) =>
+          selectedMohallas.includes(mid)
+        ),
+      }))
+      .filter((a) => a.mohallaIds.length > 0);
+    
+    if (assignments.length === 0) {
+      toast.error("No mohallas selected for assignment.");
+      return;
+    }
+    
+    // Store pending assignment and show confirmation dialog
+    setPendingAssignment({
+      userId: selectedUser,
+      assignmentType: userType,
+      assignments,
+    });
+    setShowConfirmDialog(true);
+  };
+
+  const confirmAssignment = async () => {
+    if (!pendingAssignment) {
+      setShowConfirmDialog(false);
+      return;
+    }
+    
     setSubmitting(true);
+    setShowConfirmDialog(false);
+    
     try {
-      // Build assignments array: [{ wardId, mohallaIds }]
-      const assignments = Object.entries(wardMohallaMap)
-        .map(([wardId, mohallaIds]) => ({
-          wardId,
-          mohallaIds: mohallaIds.filter((mid) =>
-            selectedMohallas.includes(mid)
-          ),
-        }))
-        .filter((a) => a.mohallaIds.length > 0);
-      if (assignments.length === 0) {
-        toast.error("No mohallas selected for assignment.");
-        setSubmitting(false);
-        return;
-      }
-      const payload = {
-        userId: selectedUser,
-        assignmentType: userType,
-        assignments,
-      };
-      const res = await assignmentApi.bulkAssign(payload);
+      const res = await assignmentApi.bulkAssign(pendingAssignment);
       console.log("Assignment API response:", res);
+      
       if (res.success && res.assigned && res.assigned.length > 0) {
-        toast.success("Assignment successful!");
+        toast.success("Assignment successful!", {
+          position: "top-right",
+        });
+        
         if (res.conflicts && res.conflicts.length > 0) {
           toast("Some mohallas were already assigned and skipped.", {
             icon: "⚠️",
+            position: "top-right",
           });
         }
+        
         // Refresh available wards to update the list
         queryClient.invalidateQueries({ queryKey: ["wards"] });
         queryClient.invalidateQueries({ queryKey: ["mohallas"] });
@@ -308,16 +326,22 @@ const UserAssignmentPage: React.FC = () => {
       } else if (res.success && (!res.assigned || res.assigned.length === 0)) {
         toast(
           "No new mohallas were assigned. All selected mohallas may already be assigned.",
-          { icon: "⚠️" }
+          { 
+            icon: "⚠️",
+            position: "top-right",
+          }
         );
       } else {
-        toast.error("Assignment failed");
+        toast.error("Assignment failed", { position: "top-right" });
       }
     } catch (err: any) {
       console.error("Assignment API error:", err);
-      toast.error(err?.response?.data?.error || "Assignment failed");
+      toast.error(err?.response?.data?.error || "Assignment failed", {
+        position: "top-right",
+      });
     } finally {
       setSubmitting(false);
+      setPendingAssignment(null);
     }
   };
 
@@ -713,6 +737,104 @@ const UserAssignmentPage: React.FC = () => {
               </Button>
             </div>
           </form>
+          
+          {/* Confirmation Dialog */}
+          {showConfirmDialog && (
+            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+              <div className="bg-white text-black rounded-lg p-6 w-[500px] shadow-2xl">
+                <h3 className="text-xl font-bold mb-4 text-red-600">
+                  Confirm Assignment
+                </h3>
+                
+                <div className="mb-6 space-y-3">
+                  <div className="bg-gray-100 p-3 rounded-md">
+                    <p className="text-sm">
+                      <strong className="text-gray-700">User Type:</strong>{" "}
+                      <span className="ml-2 font-semibold">
+                        {pendingAssignment?.assignmentType}
+                      </span>
+                    </p>
+                  </div>
+                  
+                  <div className="bg-gray-100 p-3 rounded-md">
+                    <p className="text-sm">
+                      <strong className="text-gray-700">User:</strong>{" "}
+                      <span className="ml-2 font-semibold">
+                        {users.find((u) => u.userId === pendingAssignment?.userId)?.name || 
+                         users.find((u) => u.userId === pendingAssignment?.userId)?.username || "N/A"}
+                      </span>
+                    </p>
+                  </div>
+                  
+                  <div className="bg-gray-100 p-3 rounded-md">
+                    <p className="text-sm mb-2">
+                      <strong className="text-gray-700">ULB:</strong>{" "}
+                      <span className="ml-2 font-semibold">
+                        {ulbs.find((u: any) => u.ulbId === selectedUlb)?.ulbName || "N/A"}
+                      </span>
+                    </p>
+                    <p className="text-sm">
+                      <strong className="text-gray-700">Zone:</strong>{" "}
+                      <span className="ml-2 font-semibold">
+                        {zones.find((z: any) => z.zoneId === selectedZone)?.zoneNumber || "N/A"}
+                      </span>
+                    </p>
+                  </div>
+                  
+                  <div className="bg-gray-100 p-3 rounded-md max-h-32 overflow-y-auto">
+                    <p className="text-sm mb-2">
+                      <strong className="text-gray-700">Wards:</strong>
+                    </p>
+                    <ul className="text-sm ml-4 list-disc">
+                      {wards
+                        .filter((w: any) => selectedWards.includes(w.wardId))
+                        .map((w: any) => (
+                          <li key={w.wardId} className="text-gray-800">
+                            {w.wardName} (Ward #{w.newWardNumber})
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-gray-100 p-3 rounded-md max-h-32 overflow-y-auto">
+                    <p className="text-sm mb-2">
+                      <strong className="text-gray-700">Mohallas to Assign:</strong>
+                    </p>
+                    <p className="text-sm text-gray-800">
+                      {selectedMohallas.length} mohalla(s) selected
+                    </p>
+                  </div>
+                </div>
+                
+                <p className="mb-6 text-gray-700 font-medium">
+                  Are you sure you want to proceed with this assignment?
+                </p>
+                
+                <div className="flex justify-end gap-4">
+                  <button
+                    type="button"
+                    className="px-6 py-2 rounded bg-gray-300 hover:bg-gray-400 transition-colors font-medium"
+                    onClick={() => {
+                      setShowConfirmDialog(false);
+                      setPendingAssignment(null);
+                    }}
+                    disabled={submitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="px-6 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium disabled:bg-blue-400"
+                    onClick={confirmAssignment}
+                    disabled={submitting}
+                  >
+                    {submitting ? "Assigning..." : "Confirm Assignment"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* Assignment Summary */}
           <div className="col-span-2 mt-6">
             <h3 className="font-bold mb-2">Assignment Summary</h3>

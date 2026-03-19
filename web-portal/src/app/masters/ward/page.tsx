@@ -18,6 +18,10 @@ export default function WardMasterPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [sortConfig, setSortConfig] = useState<{
+    key: string;
+    direction: "asc" | "desc";
+  } | null>(null);
 
   useEffect(() => {
     // Simulate loading time for consistency
@@ -66,6 +70,53 @@ export default function WardMasterPage() {
     wards?.filter((ward: any) =>
       ward.wardName.toLowerCase().includes(searchTerm.toLowerCase())
     ) || [];
+
+  // Handle sorting
+  const handleSort = (key: string) => {
+    let direction: "asc" | "desc" = "asc";
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  // Get sorted filtered wards
+  const getSortedFilteredWards = () => {
+    if (!filteredWards || !sortConfig) return filteredWards || [];
+    
+    const sorted = [...filteredWards];
+    sorted.sort((a: any, b: any) => {
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+      
+      // Special handling for newWardNumber - extract numeric part
+      if (sortConfig.key === "newWardNumber") {
+        const aNum = parseInt(String(a.newWardNumber).replace(/\D/g, '')) || 0;
+        const bNum = parseInt(String(b.newWardNumber).replace(/\D/g, '')) || 0;
+        return sortConfig.direction === "asc" ? aNum - bNum : bNum - aNum;
+      }
+      
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        return sortConfig.direction === "asc" ? aValue - bValue : bValue - aValue;
+      }
+      
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        return sortConfig.direction === "asc" 
+          ? aValue.localeCompare(bValue) 
+          : bValue.localeCompare(aValue);
+      }
+      
+      return 0;
+    });
+    
+    return sorted;
+  };
+
+  // Get sort icon
+  const getSortIcon = (columnKey: string) => {
+    if (!sortConfig || sortConfig.key !== columnKey) return "↕️";
+    return sortConfig.direction === "asc" ? "↑" : "↓";
+  };
 
   if (loading) {
     return <Loading fullScreen />;
@@ -122,15 +173,25 @@ export default function WardMasterPage() {
             <table className="w-full bg-gray-800 rounded-lg overflow-hidden text-sm font-medium">
               <thead>
                 <tr>
-                  <th className="px-4 py-2 text-left">Ward Number</th>
-                  <th className="px-4 py-2 text-left">Ward Name</th>
+                  <th 
+                    className="px-4 py-2 text-left cursor-pointer hover:bg-gray-700"
+                    onClick={() => handleSort("newWardNumber")}
+                  >
+                    Ward Number {getSortIcon("newWardNumber")}
+                  </th>
+                  <th 
+                    className="px-4 py-2 text-left cursor-pointer hover:bg-gray-700"
+                    onClick={() => handleSort("wardName")}
+                  >
+                    Ward Name {getSortIcon("wardName")}
+                  </th>
                   <th className="px-4 py-2 text-left">Survey Status</th>
                   <th className="px-4 py-2 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredWards && filteredWards.length > 0 ? (
-                  filteredWards.map((ward: any) => (
+                {getSortedFilteredWards().length > 0 ? (
+                  getSortedFilteredWards().map((ward: any) => (
                     <tr key={ward.wardId} className="border-b border-gray-700">
                       <td className="px-4 py-2">{ward.newWardNumber}</td>
                       <td className="px-4 py-2">{ward.wardName}</td>
