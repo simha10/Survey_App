@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import ProtectedRoute from "@/features/auth/ProtectedRoute";
-import { userApi, authApi, User, RegisterRequest } from "@/lib/api";
+import { userApi, authApi, User, RegisterRequest, canManageUser, getUserRoleRank, ROLE_RANK } from "@/lib/api";
 import toast from "react-hot-toast";
 import { useAuth } from "@/features/auth/AuthContext";
 import MainLayout from "@/components/layout/MainLayout";
@@ -18,6 +18,12 @@ const UserManagementPage: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [creatingUser, setCreatingUser] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
+  const [userToDeactivate, setUserToDeactivate] = useState<User | null>(null);
+  const [showEditConfirm, setShowEditConfirm] = useState(false);
+  const [userToEdit, setUserToEdit] = useState<User | null>(null);
 
   const [formData, setFormData] = useState({
     username: "",
@@ -139,11 +145,26 @@ const UserManagementPage: React.FC = () => {
       return;
     }
 
-    // Confirmation dialog before editing
+    // Check role change permission
+    const currentRoleRank = ROLE_RANK[selectedUser.role || selectedUser.userRoleMaps?.[0]?.role?.roleName || ""] || 0;
+    const newRoleRank = ROLE_RANK[formData.role] || 0;
+    
+    if (currentUser && newRoleRank >= currentUserRank(currentUser)) {
+      toast.error(`Cannot assign ${formData.role} role. You can only assign roles lower than your own.`);
+      return;
+    }
+
+    // Show confirmation before updating
+    const roleChanged = formData.role !== (selectedUser.role || selectedUser.userRoleMaps?.[0]?.role?.roleName);
     const confirmed = window.confirm(
       `Are you sure you want to update this user?\n\n` +
-        `Name: ${formData.name}`
+        `Name: ${formData.name}\n` +
+        `${formData.password ? 'New Password: ***\n' : ''}` +
+        `Mobile: ${formData.mobileNumber}\n` +
+        `${roleChanged ? `Role: ${selectedUser.role || selectedUser.userRoleMaps?.[0]?.role?.roleName} → ${formData.role}\n` : ''}` +
+        `\nClick OK to confirm.`
     );
+    
     if (!confirmed) return;
 
     try {
@@ -161,18 +182,33 @@ const UserManagementPage: React.FC = () => {
       if (formData.password) {
         updatePayload.password = formData.password;
       }
-      // Only send update if something actually changed
+      
+      // Handle role change
+      if (roleChanged && currentUser && getUserRoleRank(currentUser) > newRoleRank) {
+        // Use assignRole API to change the role
+        await authApi.assignRole({
+          userId: selectedUser.userId,
+          role: formData.role as "SUPERADMIN" | "ADMIN" | "SUPERVISOR" | "SURVEYOR",
+          reason: `Role changed by ${currentUser.username}`,
+        });
+      }
+      
+      // Only send update if something actually changed (excluding role which is handled separately)
       if (
         !updatePayload.name &&
         !updatePayload.mobileNumber &&
-        !updatePayload.password
+        !updatePayload.password &&
+        !roleChanged
       ) {
         toast("No changes detected.");
         return;
       }
-      // Update user name, mobile number, and/or password
-      const updateRes = await userApi.updateUser(updatePayload);
-      if (updateRes?.error) throw new Error(updateRes.error);
+      
+      // Update user name, mobile number, and/or password (if there are changes)
+      if (updatePayload.name || updatePayload.mobileNumber || updatePayload.password) {
+        const updateRes = await userApi.updateUser(updatePayload);
+        if (updateRes?.error) throw new Error(updateRes.error);
+      }
 
       await fetchUsers(); // Ensure UI is updated before closing modal
       toast.success("User updated successfully");
@@ -196,20 +232,32 @@ const UserManagementPage: React.FC = () => {
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this user? This action cannot be undone and will permanently remove the user from the system."
-      )
-    )
-      return;
+  // Helper to get current user rank
+  const currentUserRank = (user: typeof currentUser) => {
+    if (!user) return 0;
+    return getUserRoleRank(user);
+  };
 
+  const handleDeleteUser = async (userId: string) => {
     try {
       await userApi.deleteUser({ userId, hardDelete: true });
       toast.success("User deleted successfully");
       fetchUsers();
     } catch (error: any) {
       toast.error(error.response?.data?.error || "Failed to delete user");
+    }
+  };
+
+  const handleDeactivateUser = async (user: User) => {
+    try {
+      await userApi.updateUserStatus({
+        userId: user.userId,
+        isActive: !user.isActive,
+      });
+      toast.success(`User ${user.isActive ? "deactivated" : "activated"} successfully`);
+      fetchUsers();
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || "Failed to update user status");
     }
   };
 
@@ -222,10 +270,22 @@ const UserManagementPage: React.FC = () => {
     return matchesSearch && matchesRole;
   });
 
-  // Sort filteredUsers so inactive users are at the bottom
+  // Sort users by role hierarchy (highest to lowest), then by name
   const sortedUsers = [...filteredUsers].sort((a, b) => {
-    if (a.isActive === b.isActive) return 0;
-    return a.isActive ? -1 : 1;
+    const roleA = a.role || a.userRoleMaps?.[0]?.role?.roleName || "";
+    const roleB = b.role || b.userRoleMaps?.[0]?.role?.roleName || "";
+    const rankA = ROLE_RANK[roleA] || 0;
+    const rankB = ROLE_RANK[roleB] || 0;
+    
+    // First sort by role rank (descending)
+    if (rankA !== rankB) {
+      return rankB - rankA;
+    }
+    
+    // Then sort by name (ascending)
+    const nameA = a.name || a.username;
+    const nameB = b.name || b.username;
+    return nameA.localeCompare(nameB);
   });
 
   if (loading) {
@@ -241,13 +301,9 @@ const UserManagementPage: React.FC = () => {
       <MainLayout>
         <div className="p-6">
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-white-900">
               User Management
             </h1>
-            <p className="text-gray-600 mt-2">
-              Manage all system users including Admins, Supervisors, and
-              Surveyors
-            </p>
           </div>
 
           {/* Controls */}
@@ -272,10 +328,17 @@ const UserManagementPage: React.FC = () => {
                 <option value="ADMIN">Admin</option>
                 <option value="SUPERVISOR">Supervisor</option>
                 <option value="SURVEYOR">Surveyor</option>
+                <option value="VIEWER">Viewer</option>
               </select>
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={!currentUser || getUserRoleRank(currentUser) < ROLE_RANK.ADMIN}
+                className={`px-4 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  !currentUser || getUserRoleRank(currentUser) < ROLE_RANK.ADMIN
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
+                title={!currentUser || getUserRoleRank(currentUser) < ROLE_RANK.ADMIN ? "Only Admin can create users" : "Add user"}
               >
                 Add User
               </button>
@@ -346,73 +409,85 @@ const UserManagementPage: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setFormData({
-                              username: user.username,
-                              name: user.name || "",
-                              password: "",
-                              role: userRole,
-                              mobileNumber: user.mobileNumber || "",
-                              status: user.isActive ? "ACTIVE" : "INACTIVE",
-                            });
-                            setShowEditModal(true);
-                          }}
-                          className="text-blue-600 hover:text-blue-900 mr-3"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteUser(user.userId)}
-                          className="text-red-600 hover:text-red-900 mr-3"
-                        >
-                          Delete
-                        </button>
-                        <button
-                          disabled={currentUser?.userId === user.userId}
-                          onClick={async () => {
-                            if (
-                              !window.confirm(
-                                `Are you sure you want to ${
-                                  user.isActive ? "deactivate" : "activate"
-                                } this user?`
-                              )
-                            )
-                              return;
-                            try {
-                              await userApi.updateUserStatus({
-                                userId: user.userId,
-                                isActive: !user.isActive,
-                              });
-                              toast.success(
-                                `User ${
-                                  user.isActive ? "deactivated" : "activated"
-                                } successfully`
-                              );
-                              fetchUsers();
-                            } catch (error: any) {
-                              toast.error(
-                                error.response?.data?.error ||
-                                  "Failed to update user status"
-                              );
-                            }
-                          }}
-                          className={`px-3 py-1 rounded-md border transition
-                            ${
-                              user.isActive
-                                ? "border-red-500 text-red-600 hover:bg-red-50"
-                                : "border-green-500 text-green-600 hover:bg-green-50"
-                            }
-                            ${
-                              currentUser?.userId === user.userId
-                                ? "opacity-60 cursor-not-allowed bg-gray-100 border-gray-300 text-gray-400"
-                                : ""
-                            }
-                          `}
-                        >
-                          {user.isActive ? "Deactivate" : "Activate"}
-                        </button>
+                        {(() => {
+                          const canManage = currentUser && canManageUser(currentUser, user);
+                          const userRoleName = user.role || user.userRoleMaps?.[0]?.role?.roleName || "";
+                          
+                          return (
+                            <div className="flex items-center space-x-2">
+                              {/* Edit Button */}
+                              <button
+                                onClick={() => {
+                                  setUserToEdit(user);
+                                  setShowEditConfirm(true);
+                                }}
+                                disabled={!canManage}
+                                className={`p-2 rounded-lg transition ${
+                                  canManage
+                                    ? "text-blue-600 hover:bg-blue-50"
+                                    : "text-gray-300 cursor-not-allowed"
+                                }`}
+                                title={!canManage ? `Cannot edit users with ${userRoleName} role or higher` : "Edit user"}
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                              
+                              {/* Delete Button */}
+                              <button
+                                onClick={() => {
+                                  setUserToDelete(user.userId);
+                                  setShowDeleteConfirm(true);
+                                }}
+                                disabled={!canManage}
+                                className={`p-2 rounded-lg transition ${
+                                  canManage
+                                    ? "text-red-600 hover:bg-red-50"
+                                    : "text-gray-300 cursor-not-allowed"
+                                }`}
+                                title={!canManage ? `Cannot delete users with ${userRoleName} role or higher` : "Delete user"}
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                              
+                              {/* Deactivate/Activate Button */}
+                              <button
+                                onClick={() => {
+                                  setUserToDeactivate(user);
+                                  setShowDeactivateConfirm(true);
+                                }}
+                                disabled={currentUser?.userId === user.userId || !canManage}
+                                className={`p-2 rounded-lg transition ${
+                                  currentUser?.userId === user.userId || !canManage
+                                    ? "text-gray-300 cursor-not-allowed"
+                                    : user.isActive
+                                    ? "text-orange-600 hover:bg-orange-50"
+                                    : "text-green-600 hover:bg-green-50"
+                                }`}
+                                title={
+                                  currentUser?.userId === user.userId
+                                    ? "Cannot deactivate your own account"
+                                    : !canManage
+                                    ? `Cannot manage users with ${userRoleName} role or higher`
+                                    : user.isActive ? "Deactivate" : "Activate"
+                                }
+                              >
+                                {user.isActive ? (
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                  </svg>
+                                ) : (
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                )}
+                              </button>
+                            </div>
+                          );
+                        })()}
                       </td>
                     </tr>
                   );
@@ -486,10 +561,22 @@ const UserManagementPage: React.FC = () => {
                         }
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                       >
-                        <option value="ADMIN">Admin</option>
-                        <option value="SUPERADMIN">Super Admin</option>
-                        <option value="SUPERVISOR">Supervisor</option>
-                        <option value="SURVEYOR">Surveyor</option>
+                        {currentUser && getUserRoleRank(currentUser) > ROLE_RANK.SUPERADMIN ? (
+                          <>
+                            <option value="SUPERADMIN">Super Admin</option>
+                            <option value="ADMIN">Admin</option>
+                            <option value="SUPERVISOR">Supervisor</option>
+                            <option value="SURVEYOR">Surveyor</option>
+                            <option value="VIEWER">Viewer</option>
+                          </>
+                        ) : (
+                          <>
+                            <option value="ADMIN">Admin</option>
+                            <option value="SUPERVISOR">Supervisor</option>
+                            <option value="SURVEYOR">Surveyor</option>
+                            <option value="VIEWER">Viewer</option>
+                          </>
+                        )}
                       </select>
                     </div>
                     <div>
@@ -585,14 +672,41 @@ const UserManagementPage: React.FC = () => {
                       </label>
                       <select
                         value={formData.role}
-                        disabled
-                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-900"
+                        onChange={(e) =>
+                          setFormData({ ...formData, role: e.target.value })
+                        }
+                        disabled={!currentUser || getUserRoleRank(currentUser) <= ROLE_RANK[formData.role]}
+                        className={`mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          !currentUser || getUserRoleRank(currentUser) <= ROLE_RANK[formData.role]
+                            ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                            : "bg-white text-gray-900"
+                        }`}
+                        title={!currentUser || getUserRoleRank(currentUser) <= ROLE_RANK[formData.role] 
+                          ? `Cannot assign ${formData.role} role or higher` 
+                          : "Change user role"}
                       >
-                        <option value="ADMIN">Admin</option>
-                        <option value="SUPERADMIN">Super Admin</option>
-                        <option value="SUPERVISOR">Supervisor</option>
-                        <option value="SURVEYOR">Surveyor</option>
+                        {currentUser && getUserRoleRank(currentUser) > ROLE_RANK.SUPERADMIN ? (
+                          <>
+                            <option value="SUPERADMIN">Super Admin</option>
+                            <option value="ADMIN">Admin</option>
+                            <option value="SUPERVISOR">Supervisor</option>
+                            <option value="SURVEYOR">Surveyor</option>
+                            <option value="VIEWER">Viewer</option>
+                          </>
+                        ) : (
+                          <>
+                            <option value="ADMIN">Admin</option>
+                            <option value="SUPERVISOR">Supervisor</option>
+                            <option value="SURVEYOR">Surveyor</option>
+                            <option value="VIEWER">Viewer</option>
+                          </>
+                        )}
                       </select>
+                      {(!currentUser || getUserRoleRank(currentUser) <= ROLE_RANK[formData.role]) && (
+                        <p className="text-xs text-orange-600 mt-1">
+                          ⚠️ You can only assign roles lower than your own
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">
@@ -650,6 +764,148 @@ const UserManagementPage: React.FC = () => {
                       </button>
                     </div>
                   </form>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Edit Confirmation Modal */}
+          {showEditConfirm && userToEdit && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+              <div className="relative mx-auto p-6 border w-96 shadow-lg rounded-lg bg-white">
+                <div className="text-center">
+                  <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+                    <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Edit User</h3>
+                  <p className="text-sm text-gray-500 mb-6">
+                    You are about to edit user <strong>{userToEdit.name || userToEdit.username}</strong>. 
+                    Click "Continue" to proceed with editing user details.
+                  </p>
+                  <div className="flex justify-center space-x-3">
+                    <button
+                      onClick={() => {
+                        setShowEditConfirm(false);
+                        setUserToEdit(null);
+                      }}
+                      className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedUser(userToEdit);
+                        const userRoleName = userToEdit.role || userToEdit.userRoleMaps?.[0]?.role?.roleName || "";
+                        setFormData({
+                          username: userToEdit.username,
+                          name: userToEdit.name || "",
+                          password: "",
+                          role: userRoleName,
+                          mobileNumber: userToEdit.mobileNumber || "",
+                          status: userToEdit.isActive ? "ACTIVE" : "INACTIVE",
+                        });
+                        setShowEditConfirm(false);
+                        setUserToEdit(null);
+                        setShowEditModal(true);
+                      }}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    >
+                      Continue
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Confirmation Modal */}
+          {showDeleteConfirm && userToDelete && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+              <div className="relative mx-auto p-6 border w-96 shadow-lg rounded-lg bg-white">
+                <div className="text-center">
+                  <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                    <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Delete User</h3>
+                  <p className="text-sm text-gray-500 mb-6">
+                    Are you sure you want to delete this user? This action cannot be undone and will permanently remove the user from the system.
+                  </p>
+                  <div className="flex justify-center space-x-3">
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleDeleteUser(userToDelete);
+                        setShowDeleteConfirm(false);
+                        setUserToDelete(null);
+                      }}
+                      className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Deactivate/Activate Confirmation Modal */}
+          {showDeactivateConfirm && userToDeactivate && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+              <div className="relative mx-auto p-6 border w-96 shadow-lg rounded-lg bg-white">
+                <div className="text-center">
+                  <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 ${
+                    userToDeactivate.isActive ? 'bg-orange-100' : 'bg-green-100'
+                  }`}>
+                    <svg className={`h-6 w-6 ${
+                      userToDeactivate.isActive ? 'text-orange-600' : 'text-green-600'
+                    }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {userToDeactivate.isActive ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                      ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      )}
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    {userToDeactivate.isActive ? "Deactivate" : "Activate"} User
+                  </h3>
+                  <p className="text-sm text-gray-500 mb-6">
+                    Are you sure you want to {userToDeactivate.isActive ? "deactivate" : "activate"} this user?
+                  </p>
+                  <div className="flex justify-center space-x-3">
+                    <button
+                      onClick={() => {
+                        setShowDeactivateConfirm(false);
+                        setUserToDeactivate(null);
+                      }}
+                      className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleDeactivateUser(userToDeactivate);
+                        setShowDeactivateConfirm(false);
+                        setUserToDeactivate(null);
+                      }}
+                      className={`px-4 py-2 text-white rounded-md hover:bg-opacity-90 ${
+                        userToDeactivate.isActive 
+                          ? "bg-orange-600 hover:bg-orange-700" 
+                          : "bg-green-600 hover:bg-green-700"
+                      }`}
+                    >
+                      {userToDeactivate.isActive ? "Deactivate" : "Activate"}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

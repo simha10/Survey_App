@@ -53,7 +53,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, user }) => {
               </svg>
             </button>
             <h1 className="ml-4 text-xl font-semibold text-gray-900">
-              Survey Management Portal
+              Property Tax Survey Management Portal
             </h1>
           </div>
 

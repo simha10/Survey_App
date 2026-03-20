@@ -60,25 +60,30 @@ const LoginPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-lg w-full bg-gray-800 rounded-lg shadow-2xl p-8 space-y-8 border border-gray-700">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-lg w-full bg-gradient-to-br from-gray-800 to-gray-850 rounded-2xl shadow-2xl p-8 space-y-8 border border-gray-700">
         {/* Logo */}
         <div className="text-center">
-          <Image
-            src="/logo.png"
-            alt="LRM Consultants Logo"
-            width={80}
-            height={80}
-            className="mx-auto mb-4"
-          />
+          <div className="inline-block p-4 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl shadow-xl mb-4 transform hover:scale-105 transition-transform duration-200">
+            <Image
+              src="/logo.png"
+              alt="LRM Consultants Logo"
+              width={80}
+              height={80}
+              className="drop-shadow-lg"
+            />
+          </div>
+          <h1 className="text-3xl font-extrabold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+            LRM Consultants
+          </h1>
         </div>
 
         {backendStatus === "offline" && (
-          <div className="bg-red-900/20 border border-red-700 rounded-md p-4 mb-6">
+          <div className="bg-red-900/30 border-l-4 border-red-500 rounded-lg p-4 mb-6 shadow-lg">
             <div className="flex">
               <div className="flex-shrink-0">
                 <svg
-                  className="h-5 w-5 text-red-400"
+                  className="h-6 w-6 text-red-400"
                   viewBox="0 0 20 20"
                   fill="currentColor"
                 >
@@ -90,7 +95,7 @@ const LoginPage: React.FC = () => {
                 </svg>
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-300">
+                <h3 className="text-sm font-semibold text-red-300">
                   Backend Server Offline
                 </h3>
                 <p className="text-sm text-red-200 mt-1">
@@ -103,16 +108,16 @@ const LoginPage: React.FC = () => {
 
         {/* Header */}
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-white">LRM Consultants</h2>
-          <p className="mt-4 text-sm text-gray-400">Sign in to your account</p>
+          <h2 className="text-2xl font-bold text-white">Welcome Back!</h2>
+          <p className="mt-2 text-sm text-gray-400">Sign in to access your dashboard</p>
         </div>
 
         {/* Login Form */}
         <LoginForm onSuccess={handleLoginSuccess} onError={handleLoginError} />
 
         {/* Footer */}
-        <div className="text-center">
-          <p className="text-xs text-gray-400">
+        <div className="text-center pt-4 border-t border-gray-700">
+          <p className="text-xs text-gray-500">
             © 2024 LRM Consultants. All rights reserved.
           </p>
         </div>
