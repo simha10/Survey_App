@@ -674,7 +674,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       >
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between h-16 px-4 bg-gray-900">
-            <h1 className="text-xl font-semibold text-white">Survey Portal</h1>
+            <h1 className="text-xl font-semibold text-white">LRMC PTMS</h1>
             <button
               onClick={onClose}
               className="text-gray-300 hover:text-white lg:hidden"

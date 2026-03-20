@@ -16,6 +16,39 @@ import {
 
 const prisma = new PrismaClient();
 
+// Role hierarchy ranking (higher number = higher authority)
+const ROLE_RANK: { [key: string]: number } = {
+  SUPERADMIN: 4,
+  ADMIN: 3,
+  SUPERVISOR: 2,
+  SURVEYOR: 1,
+  VIEWER: 0,
+};
+
+// Helper function to get user's highest role rank
+async function getUserRoleRank(userId: string): Promise<number> {
+  const mappings = await prisma.userRoleMapping.findMany({
+    where: { userId, isActive: true },
+    include: { role: true },
+  });
+
+  if (!mappings || mappings.length === 0) {
+    return 0; // No role assigned
+  }
+
+  // Return the highest role rank
+  return Math.max(...mappings.map((m) => ROLE_RANK[m.role.roleName] || 0));
+}
+
+// Helper function to check if requesting user can manage target user
+async function canManageUser(requestingUserId: string, targetUserId: string): Promise<boolean> {
+  const requestingUserRank = await getUserRoleRank(requestingUserId);
+  const targetUserRank = await getUserRoleRank(targetUserId);
+
+  // User can only manage users with lower role rank
+  return requestingUserRank > targetUserRank;
+}
+
 // Helper function to validate user role
 async function validateUserRole(userId: string, expectedRole: string) {
   const mapping = await prisma.userRoleMapping.findFirst({
@@ -262,6 +295,12 @@ export async function updateUserStatus(dto: UpdateUserStatusDto, updatedById: st
       throw { status: 400, message: 'Cannot deactivate your own account' };
     }
 
+    // Check role hierarchy - user can only manage users with lower roles
+    const canManage = await canManageUser(updatedById, userId);
+    if (!canManage) {
+      throw { status: 403, message: 'Access denied. You can only manage users with lower roles than yours.' };
+    }
+
     const old_value = { isActive: user.isActive };
     const result = await prisma.usersMaster.update({
       where: { userId },
@@ -299,6 +338,12 @@ export async function deleteUser(dto: DeleteUserDto, deletedById: string) {
     // Prevent deleting own account
     if (userId === deletedById) {
       throw { status: 400, message: 'Cannot delete your own account' };
+    }
+
+    // Check role hierarchy - user can only manage users with lower roles
+    const canManage = await canManageUser(deletedById, userId);
+    if (!canManage) {
+      throw { status: 403, message: 'Access denied. You can only manage users with lower roles than yours.' };
     }
 
     if (hardDelete) {
@@ -631,6 +676,12 @@ export async function updateUser(dto: UpdateUserDto, updatedById: string) {
 
     if (!user) {
       throw { status: 404, message: 'User not found' };
+    }
+
+    // Check role hierarchy - user can only manage users with lower roles
+    const canManage = await canManageUser(updatedById, userId);
+    if (!canManage) {
+      throw { status: 403, message: 'Access denied. You can only manage users with lower roles than yours.' };
     }
 
     const updateData: any = {};

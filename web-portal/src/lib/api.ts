@@ -47,6 +47,35 @@ export interface User {
   }>;
 }
 
+// Role hierarchy ranking (higher number = higher authority)
+export const ROLE_RANK: { [key: string]: number } = {
+  SUPERADMIN: 4,
+  ADMIN: 3,
+  SUPERVISOR: 2,
+  SURVEYOR: 1,
+  VIEWER: 0,
+};
+
+// Helper function to get user's highest role rank
+export function getUserRoleRank(user: User | { userId: string; username: string; role: string; name?: string; mobileNumber?: string; isActive: boolean }): number {
+  let roleName = '';
+  if ('role' in user && typeof user.role === 'string') {
+    roleName = user.role;
+  } else if ('userRoleMaps' in user) {
+    roleName = (user as User).role || user.userRoleMaps?.[0]?.role?.roleName || '';
+  }
+  return ROLE_RANK[roleName] || 0;
+}
+
+// Helper function to check if requesting user can manage target user
+export function canManageUser(currentUser: User | { userId: string; username: string; role: string; name?: string; mobileNumber?: string; isActive: boolean }, targetUser: User): boolean {
+  const currentUserRank = getUserRoleRank(currentUser);
+  const targetUserRank = getUserRoleRank(targetUser);
+  
+  // User can only manage users with lower role rank
+  return currentUserRank > targetUserRank;
+}
+
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -95,6 +124,11 @@ export const authApi = {
 
   register: async (userData: RegisterRequest): Promise<any> => {
     const response = await apiClient.post('/api/auth/register', userData);
+    return response.data;
+  },
+
+  assignRole: async (data: { userId: string; role: string; reason?: string }): Promise<any> => {
+    const response = await apiClient.post('/api/user/assign-role', data);
     return response.data;
   },
 };
